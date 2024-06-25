@@ -13,7 +13,7 @@ resource app_version {
 
 	internal = 0,
 
-	short_info = "SENSEI PDF Extractor",
+	short_info = "SEN PDF Extractor",
 	long_info  = "SEN module to extract structure outline from PDFs."
 };
 

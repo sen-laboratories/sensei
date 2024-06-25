@@ -59,8 +59,9 @@ void App::RefsReceived(BMessage *message)
         reply->AddString("result", strerror(result));
     }
 
+    std::cout << "Sending reply:" << std::endl;
     reply->PrintToStream();
-    message->SendReply(reply);
+    message->SendReply(reply, message->ReturnAddress(), 2);
 
     return;
 }
@@ -76,9 +77,8 @@ status_t App::ExtractPdfBookmarks(const entry_ref* ref, BMessage *reply)
         QPDFOutlineDocumentHelper odh(qpdf);
 
         if (odh.hasOutlines()) {
-            std::vector<int> numbers;
-            generate_page_map(qpdf);
-            extract_bookmarks(odh.getTopLevelOutlines(), numbers);
+            GeneratePageMap(qpdf);
+            ExtractBookmarks(odh.getTopLevelOutlines(), reply);
         } else {
             return B_OK;
         }
@@ -92,7 +92,7 @@ status_t App::ExtractPdfBookmarks(const entry_ref* ref, BMessage *reply)
     return result;
 }
 
-void App::generate_page_map(QPDF& qpdf)
+void App::GeneratePageMap(QPDF& qpdf)
 {
     QPDFPageDocumentHelper dh(qpdf);
     int n = 0;
@@ -101,31 +101,37 @@ void App::generate_page_map(QPDF& qpdf)
     }
 }
 
-void App::extract_bookmarks(std::vector<QPDFOutlineObjectHelper> outlines, std::vector<int>& numbers)
+void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessage* msg)
 {
-    numbers.push_back(0);
+    BMessage* childrenRoot = new BMessage('Bmrk');
 
     for (auto& outline: outlines) {
-        ++(numbers.back());
-        show_bookmark_details(outline, numbers);
-        extract_bookmarks(outline.getKids(), numbers);
+        AddBookmarkDetails(outline, childrenRoot);
+        // recurse with bookmark just added as new parent node
+        ExtractBookmarks(outline.getKids(), childrenRoot);
     }
 
-    numbers.pop_back();
+    if (outlines.size() != 0) {
+        msg->AddMessage("item", const_cast<const BMessage*>(childrenRoot));
+    }
 }
 
-void App::show_bookmark_details(QPDFOutlineObjectHelper outline, std::vector<int> numbers)
+BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg)
 {
-    std::string target = "unknown";
+    int32 targetPage = 0;
     QPDFObjectHandle dest_page = outline.getDestPage();
     if (!dest_page.isNull()) {
         QPDFObjGen og = dest_page.getObjGen();
         if (page_map.count(og)) {
-            target = std::to_string(page_map[og]);
+            targetPage = page_map[og];
         }
     }
-    std::cout << "[ -> " << target << " ] ";
-    std::cout << outline.getTitle() << std::endl;
+    BString bookmark(outline.getTitle().c_str());
+    msg->AddString("label", bookmark.String());
+    msg->AddString("type", "bookmark");
+    msg->AddInt32("page", targetPage);
+
+    return msg;
 }
 
 int main()

@@ -27,9 +27,9 @@ public:
     status_t            ExtractPdfBookmarks(const entry_ref* ref, BMessage *message);
 
 private:
-    void generate_page_map(QPDF& qpdf);
-    void extract_bookmarks(std::vector<QPDFOutlineObjectHelper> outlines, std::vector<int>& numbers);
-    void show_bookmark_details(QPDFOutlineObjectHelper outline, std::vector<int> numbers);
+    void GeneratePageMap(QPDF& qpdf);
+    void ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessage *msg);
+    BMessage* AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage *msg);
 };
 
 #endif // APP_H
