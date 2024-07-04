@@ -17,22 +17,20 @@ resource app_version {
 	long_info  = "SEN module to extract structure outline from PDFs."
 };
 
-/* define as extractor for SEN so it will be detected accordingly. */
-resource(0, "SEN:TYPE") #'MSIG' "application/x-vnd.sen.sensei-extractor";
+/* declare as a SEN extractor plugin so it will be detected and used accordingly. */
+resource(0, "SEN:TYPE") "meta/x-vnd.sen-meta.plugin";
+resource(1, "SENSEI:TYPE") "extractor";
 
-
-/* defines input and output (generated) types
-   output file types must be installed already and will be checked by SEN. */
-resource (1, "SENSEI:TYPES") message {
-    "input" = "application/pdf",
-    "output" = "entity/x-vnd.sen-document.bookmark"
+/* defines supported file types for scanning */
+resource (2, "SENSEI:INPUT_TYPES") message {
+    "input" = "application/pdf"
 };
 
-/* schema to define supported input and output file types and an optional mapping.
-   this is a simple type alias mapping to strip down message size of result */
-resource(2, "SENSEI:SCHEMA") message {
+/* schema to define supported output file types (relations) and an optional mapping for the receiver.
+   this is a simple type alias mapping to strip down message size of the extraction result. */
+resource(3, "SENSEI:OUTPUT_MAPPING") message {
     /* this defines a default schema that is used when no type is provided in extraction result. */
-    "_default" = "entity/x-vnd.sen-document.bookmark"
+    "_default" = "relation/x-vnd.sen-relation.docref"
 };
 
 resource vector_icon {

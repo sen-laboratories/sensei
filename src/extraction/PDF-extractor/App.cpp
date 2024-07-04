@@ -64,9 +64,9 @@ void App::RefsReceived(BMessage *message)
 
     std::cout << "Sending reply:" << std::endl;
     reply->PrintToStream();
-    message->SendReply(reply, message->ReturnAddress(), 2);
 
-    return;
+    message->SendReply(reply);
+    Quit();
 }
 
 status_t App::ExtractPdfBookmarks(const entry_ref* ref, BMessage *reply)
@@ -131,7 +131,7 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
     }
     BString bookmark(outline.getTitle().c_str());
     msg->AddString("label", bookmark.String());
-    msg->AddString("type", "bookmark");
+    msg->AddString("kind", "bookmark");
     msg->AddInt32("page", targetPage);
 
     return msg;
@@ -140,10 +140,10 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
 int main()
 {
 	App* app = new App();
-	app->Run();
     if (app->InitCheck() != B_OK) {
         return 1;
     }
+	app->Run();
 	delete app;
 	return 0;
 }
