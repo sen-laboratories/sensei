@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "App.h"
+#include "../../Sensei.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.PdfExtractor";
 static std::map<QPDFObjGen, int> page_map;
@@ -55,7 +56,7 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    BMessage* reply = new BMessage('SErs');
+    BMessage* reply = new BMessage(SENSEI_MESSAGE_RESULT);
     status_t result = ExtractPdfBookmarks(const_cast<const entry_ref*>(&ref), reply);
 
     if (result != B_OK) {
@@ -106,17 +107,17 @@ void App::GeneratePageMap(QPDF& qpdf)
 
 void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessage* msg)
 {
-    BMessage* childrenRoot = new BMessage('Bmrk');
+    BMessage childrenRoot('Bmrk');
 
     for (auto& outline: outlines) {
-        AddBookmarkDetails(outline, childrenRoot);
+        AddBookmarkDetails(outline, &childrenRoot);
         // recurse with bookmark just added as new parent node
-        ExtractBookmarks(outline.getKids(), childrenRoot);
+        ExtractBookmarks(outline.getKids(), &childrenRoot);
     }
 
-    if (outlines.size() != 0) {
-        msg->AddMessage("item", const_cast<const BMessage*>(childrenRoot));
-    }
+    // childrenRoot may be empty but we need to add it nevertheless as a filler so the message field order
+    // (array indices) stay intact and we can relate children to their root node in the message structure.
+    msg->AddMessage("item", new BMessage(childrenRoot));
 }
 
 BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg)
@@ -131,7 +132,6 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
     }
     BString bookmark(outline.getTitle().c_str());
     msg->AddString("label", bookmark.String());
-    msg->AddString("kind", "bookmark");
     msg->AddInt32("page", targetPage);
 
     return msg;
