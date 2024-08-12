@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "App.h"
+#include "../../Sen.h"
 #include "../../Sensei.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.PdfExtractor";
@@ -63,9 +64,6 @@ void App::RefsReceived(BMessage *message)
         reply->AddString("result", strerror(result));
     }
 
-    std::cout << "Sending reply:" << std::endl;
-    reply->PrintToStream();
-
     message->SendReply(reply);
     Quit();
 }
@@ -93,7 +91,7 @@ status_t App::ExtractPdfBookmarks(const entry_ref* ref, BMessage *reply)
         return B_ERROR;
     }
 
-    return result;
+    return B_OK;
 }
 
 void App::GeneratePageMap(QPDF& qpdf)

@@ -23,14 +23,15 @@ resource(1, "SENSEI:TYPE") "extractor";
 
 /* defines supported file types for scanning */
 resource file_types message {
-    "types" = "application/pdf"
+    "types" = "application/pdf",
+    "types" = "relation/x-vnd.sen-labs.relation.docref"
 };
 
 /* schema to define supported output file types (relations) and an optional mapping for the receiver.
    this is a simple type alias mapping to strip down message size of the extraction result. */
 resource(3, "SENSEI:OUTPUT_MAPPING") message {
     /* this defines a default schema that is used when no type is provided in extraction result. */
-    "_default" = "relation/x-vnd.sen-relation.docref"
+    "sen:sei:default" = "relation/x-vnd.sen-labs.relation.docref"
 };
 
 resource vector_icon {

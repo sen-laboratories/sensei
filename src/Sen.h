@@ -45,10 +45,16 @@
 #define SEN_RELATION_TYPE   "SEN:relationType"
 #define SEN_RELATION_TARGET "SEN:target"
 #define SEN_RELATION_PROPERTIES "SEN:relationProps"
+// relation flavor
+#define SEN_RELATION_IS_DYNAMIC "sen:dynamic"
+#define SEN_RELATION_IS_SELF 	"sen:self"
 
 // messages
 #define SEN_RELATIONS_GET           'SRgo'
 #define SEN_RELATIONS_GET_ALL       'SRga'
+#define SEN_RELATIONS_GET_SELF      'SRsg'
+#define SEN_RELATIONS_GET_ALL_SELF  'SRsa'
+
 #define SEN_RELATION_ADD	        'SRad'
 #define SEN_RELATION_REMOVE	    	'SRrm'
 #define SEN_RELATIONS_REMOVE_ALL    'SRra'
@@ -56,6 +62,8 @@
 // Tracker integration
 #define SEN_OPEN_RELATION_VIEW		    'STor'
 #define SEN_OPEN_RELATION_TARGET_VIEW	'STot'
+// sent when a relation is invoked to include arguments for handling plugin
+#define SEN_OPEN_RELATION_ARGS_KEY  	"sen:args"
 
 // todo: set to 13 for TSID later
 #define SEN_ID_LEN					32

@@ -19,7 +19,6 @@ App::~App()
 {
 }
 
-
 void App::RefsReceived(BMessage *message)
 {
     entry_ref ref;
