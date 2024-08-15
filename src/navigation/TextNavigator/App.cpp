@@ -29,6 +29,7 @@ void App::RefsReceived(BMessage *message)
             "Oh no.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
 
+        Quit();
         return;
     }
 
@@ -40,10 +41,13 @@ void App::RefsReceived(BMessage *message)
             error << strerror(result), "OK not OK.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
 
+        Quit();
         return;
     }
 
     be_roster->Launch(&ref, message);
+
+    Quit();
     return;
 }
 

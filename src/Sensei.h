@@ -10,8 +10,8 @@
 #define SENSEI_INPUT_TYPES      "SENSEI:INPUT_TYPES"
 #define SENSEI_OUTPUT_MAPPING   "SENSEI:OUTPUT_MAPPING"
 
-#define SENSEI_MESSAGE_TYPE             'SEni'
-#define SENSEI_MESSAGE_RESULT		    'SErs'
+#define SENSEI_MESSAGE_TYPE        'SEni'
+#define SENSEI_MESSAGE_RESULT	   'SErs'
 
 // self relations
 #define SENSEI_PLUGIN_CONFIG_KEY	"sen:sei:config"
