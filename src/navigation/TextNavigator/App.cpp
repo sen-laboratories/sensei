@@ -4,10 +4,12 @@
  */
 
 #include <Alert.h>
+#include <AppFileInfo.h>
 #include <Errors.h>
 #include <Roster.h>
 
 #include "App.h"
+#include "../../Sen.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.TextNavigator";
 
@@ -28,6 +30,7 @@ void App::RefsReceived(BMessage *message)
             "Failed to resolve relation target.",
             "Oh no.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+        alert->Go();
 
         Quit();
         return;
@@ -40,12 +43,44 @@ void App::RefsReceived(BMessage *message)
         BAlert* alert = new BAlert("Invalid usage of SEN Relation Navigator",
             error << strerror(result), "OK not OK.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+        alert->Go();
 
         Quit();
         return;
     }
 
-    be_roster->Launch(&ref, message);
+    // we need to build our own refs received message so we can send the properties with it
+    entry_ref appRef;
+    result = be_roster->FindApp(&ref, &appRef);
+    if (result == B_OK) {
+        if (! be_roster->IsRunning(&appRef)) {
+            result = be_roster->Launch(&appRef, message);
+        } else {
+            char appSig[B_MIME_TYPE_LENGTH];
+            BFile appFile(&appRef, B_READ_ONLY);
+            if (appFile.InitCheck() == B_OK) {
+                BAppFileInfo appFileInfo(&appFile);
+                if (appFileInfo.InitCheck() == B_OK) {
+                    if (appFileInfo.GetSignature(appSig) == B_OK) {
+                        LOG("got MIME type %s for ref %s\n", appSig, appRef.name);
+                        // send message to running instance for a more seamless experience
+                        BMessenger appMess(appSig);
+                        appMess.SendMessage(message);
+                    }
+                }
+            } else {
+                LOG("failed to get MIME Type for ref %s: %s\n", appRef.name, strerror(result));
+            }
+        }
+    }
+    if (result != B_OK && result != B_ALREADY_RUNNING) {
+            BString error("Could not launch target application: ");
+            error << strerror(result);
+            BAlert* alert = new BAlert("SEN Relation Navigator",
+                error << strerror(result), "OK");
+            alert->SetFlags(alert->Flags() | B_STOP_ALERT | B_CLOSE_ON_ESCAPE);
+            alert->Go();
+    }
 
     Quit();
     return;
