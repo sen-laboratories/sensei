@@ -53,7 +53,7 @@ void App::RefsReceived(BMessage *message)
             "Failed to resolve source file.",
             "Oh no.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
-
+        alert->Go();
         return;
     }
 
