@@ -17,8 +17,8 @@
 #define SENSEI_MESSAGE_RESULT      'SErs'
 
 // dynamic relations
-#define SENSEI_PLUGIN_CONFIG_KEY    "SEN:SEI:plugin_config"
-#define SENSEI_PLUGIN_KEY           "SEN:SEI:plugin"
-#define SENSEI_TYPES_PLUGINS_KEY    "SEN:SEI:types_plugins"
-#define SENSEI_DEFAULT_TYPE_KEY     "SEN:SEI:default_type"
-#define SENSEI_DEFAULT_TYPE         "SEN:SEI:default"
+#define SENSEI_PLUGIN_CONFIG_KEY   "SEN:SEI:plugin_config"
+#define SENSEI_PLUGIN_KEY          "SEN:SEI:plugin"
+#define SENSEI_TYPES_PLUGINS_KEY   "SEN:SEI:types_plugins"
+#define SENSEI_DEFAULT_TYPE_KEY    "SEN:SEI:default_type"
+#define SENSEI_DEFAULT_TYPE        "SEN:SEI:default"
