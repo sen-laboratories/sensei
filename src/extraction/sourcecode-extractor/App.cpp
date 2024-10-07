@@ -15,7 +15,7 @@
 #include <cstring>
 
 #include "App.h"
-#include "clang-include-checker/IncludeFinder.hpp"
+#include "clang-include-checker/ClangWrapper.hpp"
 #include "../../Sen.h"
 #include "../../Sensei.h"
 
@@ -76,8 +76,8 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
     BPath inputPath(ref);
 
     try {
-        IncludeFinder includeFinder(inputPath.Path());
-        int result = includeFinder.run();
+        ClangWrapper clangWrapper(inputPath.Path());
+        int result = clangWrapper.run();
         switch(result) {
             case 0: return B_OK;
             case 1: return B_ERROR;

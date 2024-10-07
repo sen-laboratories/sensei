@@ -23,22 +23,22 @@
 #include <clang/Tooling/Tooling.h>
 #include <llvm/Support/CommandLine.h>
 
-#include "IncludeFinder.hpp"
+#include "ClangWrapper.hpp"
 #include "IncludeFinderAction.hpp"
 
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory toolCategory("IncludeFinder options");
+static llvm::cl::OptionCategory toolCategory("ClangWrapper options");
 
 static llvm::cl::extrahelp commonHelp(CommonOptionsParser::HelpMessage);
 
-IncludeFinder::IncludeFinder(const char* filePath) {
+ClangWrapper::ClangWrapper(const char* filePath) {
    fSourcePath = filePath;
 }
 
-IncludeFinder::~IncludeFinder() {}
+ClangWrapper::~ClangWrapper() {}
 
-int IncludeFinder::run() {
+int ClangWrapper::run() {
     const char* argv[3];
     argv[0] = "clang";
     argv[1] = fSourcePath;
@@ -67,5 +67,6 @@ int IncludeFinder::run() {
     } diagConsumer;
 
     fTool->setDiagnosticConsumer(&diagConsumer);
+
     return fTool->run(newFrontendActionFactory<IncludeFinderAction>().get());
 }
