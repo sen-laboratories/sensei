@@ -29,62 +29,16 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <utility>
 
 namespace
 {
-/*
-class CallbacksProxy : public clang::PPCallbacks
-{
-public:
-    inline CallbacksProxy(clang::PPCallbacks &master);
 
-public:
-  virtual inline void InclusionDirective(clang::SourceLocation hashLoc,
-                                  const clang::Token &includeTok,
-                                  clang::StringRef fileName,
-                                  bool isAngled,
-                                  clang::CharSourceRange filenameRange,
-                                  clang::OptionalFileEntryRef file,
-                                  clang::StringRef searchPath,
-                                  clang::StringRef relativePath,
-                                  const clang::Module *suggestedModule,
-                                  clang::SrcMgr::CharacteristicKind fileType);
-
-private:
-    clang::PPCallbacks &master;
+struct IncludeInfo {
+    unsigned int lineNum;
+    std::string  fileName;
+    bool         global;
 };
 
-inline
-CallbacksProxy::CallbacksProxy(clang::PPCallbacks &master)
-    : master(master)
-{
-}
-
-inline void
-CallbacksProxy::InclusionDirective(clang::SourceLocation hashLoc,
-                                  const clang::Token &includeToken,
-                                  clang::StringRef fileName,
-                                  bool isAngled,
-                                  clang::CharSourceRange filenameRange,
-                                  clang::OptionalFileEntryRef file,
-                                  clang::StringRef searchPath,
-                                  clang::StringRef relativePath,
-                                  const clang::Module *suggestedModule,
-                                  clang::SrcMgr::CharacteristicKind fileType)
-{
-    master.InclusionDirective(hashLoc,
-                              includeToken,
-                              fileName,
-                              isAngled,
-                              filenameRange,
-                              file,
-                              searchPath,
-                              relativePath,
-                              suggestedModule,
-                              fileType);
-}
-*/
 class IncludeFinder : private clang::PPCallbacks
 {
 public:
@@ -109,10 +63,7 @@ public:
 private:
     const clang::CompilerInstance &compiler;
     std::string name;
-
-    typedef std::pair<int, std::string> IncludeInfo;
-    typedef std::vector<IncludeInfo> Includes;
-    Includes includes;
+    std::vector<IncludeInfo*> includes;
 };
 
 IncludeFinder::IncludeFinder(const clang::CompilerInstance &compiler)
@@ -120,14 +71,12 @@ IncludeFinder::IncludeFinder(const clang::CompilerInstance &compiler)
 {
     const clang::FileID mainFile = compiler.getSourceManager().getMainFileID();
     name = compiler.getSourceManager().getFileEntryRefForID(mainFile)->getName();
-    printf("got file name %s\n", name.data());
 }
 
 std::unique_ptr<clang::PPCallbacks>
 IncludeFinder::createPreprocessorCallbacks()
 {
-    printf("createPreprocessorCallbacks\n");
-    return std::unique_ptr<PPCallbacks>(this); // no CallbacksProxy
+    return std::unique_ptr<PPCallbacks>(this);
 }
 
 void
@@ -143,8 +92,7 @@ IncludeFinder::InclusionDirective(clang::SourceLocation HashLoc,
                                   clang::SrcMgr::CharacteristicKind FileType)
 {
     const unsigned int lineNum = compiler.getSourceManager().getSpellingLineNumber(HashLoc);
-    std::cout << "adding new include for file " << FileName.str() << " at line " << lineNum;
-    includes.push_back(std::make_pair(lineNum, FileName.str()));
+    includes.push_back(new IncludeInfo{lineNum, FileName.str(), IsAngled});
 }
 
 }
@@ -152,7 +100,6 @@ IncludeFinder::InclusionDirective(clang::SourceLocation HashLoc,
 void
 IncludeFinderAction::ExecuteAction()
 {
-    printf("ExecuteAction\n");
     IncludeFinder includeFinder(getCompilerInstance());
     getCompilerInstance().getPreprocessor().addPPCallbacks(
         includeFinder.createPreprocessorCallbacks()
@@ -168,13 +115,15 @@ IncludeFinderAction::ExecuteAction()
 void
 IncludeFinder::diagnoseAndReport()
 {
-    typedef Includes::iterator It;
     printf("*** diagnosis report:\n");
     printf("%ld includes:\n", includes.size());
 
-    for (It it = includes.begin(); it != includes.end(); ++it) {
-        const unsigned int lineNum = it->first;
-        const std::string &hdrPath = it->second;
-        std::cout << lineNum << ": " << hdrPath << std::endl;
+    std::vector<IncludeInfo*>::iterator it;
+    for (it = includes.begin(); it != includes.end(); ++it) {
+        unsigned int lineNum = (*it)->lineNum;
+        std::string  hdrPath = (*it)->fileName;
+        bool         isGlobal = (*it)->global;
+
+        std::cout << lineNum << ": " << hdrPath << (isGlobal ? " (global)" : "(local)") << std::endl;
     }
 }

@@ -27,9 +27,7 @@
 #include "IncludeFinderAction.hpp"
 
 using namespace clang::tooling;
-
-static llvm::cl::OptionCategory toolCategory("ClangWrapper options");
-
+static llvm::cl::OptionCategory toolCategory("Include scanner");
 static llvm::cl::extrahelp commonHelp(CommonOptionsParser::HelpMessage);
 
 ClangWrapper::ClangWrapper(const char* filePath) {
@@ -52,21 +50,9 @@ int ClangWrapper::run() {
     }
     CommonOptionsParser& optionsParser = ExpectedParser.get();
 
-    clang::tooling::ClangTool* fTool = new ClangTool(
+    clang::tooling::ClangTool* tool = new ClangTool(
         optionsParser.getCompilations(),
         optionsParser.getSourcePathList());
 
-    class : public clang::DiagnosticConsumer
-    {
-    public:
-        virtual bool
-        IncludeInDiagnosticCounts() const
-        {
-            return false;
-        }
-    } diagConsumer;
-
-    fTool->setDiagnosticConsumer(&diagConsumer);
-
-    return fTool->run(newFrontendActionFactory<IncludeFinderAction>().get());
+    return tool->run(newFrontendActionFactory<IncludeFinderAction>().get());
 }

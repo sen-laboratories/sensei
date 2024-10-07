@@ -16,7 +16,6 @@
 
 #include "App.h"
 #include "clang-include-checker/ClangWrapper.hpp"
-#include "../../Sen.h"
 #include "../../Sensei.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.CodeExtractor";
@@ -67,7 +66,7 @@ void App::RefsReceived(BMessage *message)
 
     message->PrintToStream();   //TEST
     message->SendReply(reply);
-    Quit();
+    //Quit();
 }
 
 status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
@@ -78,6 +77,8 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
     try {
         ClangWrapper clangWrapper(inputPath.Path());
         int result = clangWrapper.run();
+        printf("got result %d\n", result);
+
         switch(result) {
             case 0: return B_OK;
             case 1: return B_ERROR;
