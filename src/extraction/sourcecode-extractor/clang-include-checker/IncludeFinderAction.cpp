@@ -30,100 +30,102 @@
 #include <string>
 #include <vector>
 
-namespace
-{
+using namespace clang;
 
 struct IncludeInfo {
     unsigned int lineNum;
     std::string  fileName;
+    std::string  filePath;
     bool         global;
 };
 
-class IncludeFinder : private clang::PPCallbacks
+class IncludeFinder : private PPCallbacks
 {
 public:
-    IncludeFinder(const clang::CompilerInstance &compiler);
+    IncludeFinder(const CompilerInstance &compiler);
 
 public:
-    std::unique_ptr<clang::PPCallbacks> createPreprocessorCallbacks();
+    std::unique_ptr<PPCallbacks> createPreprocessorCallbacks();
 
-    void diagnoseAndReport();
+    virtual void EndOfMainFile();
 
-    virtual void InclusionDirective(clang::SourceLocation HashLoc,
-                                  const clang::Token &IncludeTok,
-                                  clang::StringRef FileName,
+    virtual void InclusionDirective(SourceLocation HashLoc,
+                                  const Token &IncludeTok,
+                                  StringRef FileName,
                                   bool IsAngled,
-                                  clang::CharSourceRange FilenameRange,
-                                  clang::OptionalFileEntryRef File,
-                                  clang::StringRef SearchPath,
-                                  clang::StringRef RelativePath,
-                                  const clang::Module *Imported,
-                                  clang::SrcMgr::CharacteristicKind FileType);
+                                  CharSourceRange FilenameRange,
+                                  OptionalFileEntryRef File,
+                                  StringRef SearchPath,
+                                  StringRef RelativePath,
+                                  const Module *Imported,
+                                  SrcMgr::CharacteristicKind FileType);
 
 private:
-    const clang::CompilerInstance &compiler;
+    const CompilerInstance &compiler;
     std::string name;
     std::vector<IncludeInfo*> includes;
 };
 
-IncludeFinder::IncludeFinder(const clang::CompilerInstance &compiler)
+IncludeFinder::IncludeFinder(const CompilerInstance &compiler)
     : compiler(compiler)
 {
-    const clang::FileID mainFile = compiler.getSourceManager().getMainFileID();
+    const FileID mainFile = compiler.getSourceManager().getMainFileID();
     name = compiler.getSourceManager().getFileEntryRefForID(mainFile)->getName();
 }
 
-std::unique_ptr<clang::PPCallbacks>
+std::unique_ptr<PPCallbacks>
 IncludeFinder::createPreprocessorCallbacks()
 {
     return std::unique_ptr<PPCallbacks>(this);
 }
 
 void
-IncludeFinder::InclusionDirective(clang::SourceLocation HashLoc,
-                                  const clang::Token &IncludeTok,
-                                  clang::StringRef FileName,
+IncludeFinder::InclusionDirective(SourceLocation HashLoc,
+                                  const Token &IncludeTok,
+                                  StringRef FileName,
                                   bool IsAngled,
-                                  clang::CharSourceRange FilenameRange,
-                                  clang::OptionalFileEntryRef File,
-                                  clang::StringRef SearchPath,
-                                  clang::StringRef RelativePath,
-                                  const clang::Module *Imported,
-                                  clang::SrcMgr::CharacteristicKind FileType)
+                                  CharSourceRange FilenameRange,
+                                  OptionalFileEntryRef File,
+                                  StringRef SearchPath,
+                                  StringRef RelativePath,
+                                  const Module *Imported,
+                                  SrcMgr::CharacteristicKind FileType)
 {
     const unsigned int lineNum = compiler.getSourceManager().getSpellingLineNumber(HashLoc);
-    includes.push_back(new IncludeInfo{lineNum, FileName.str(), IsAngled});
+    includes.push_back(new IncludeInfo{lineNum, FileName.str(), SearchPath.str(), IsAngled});
 }
 
+void
+IncludeFinder::EndOfMainFile()
+{
+    printf("*** end of main file reached.\n");
+    printf("found %ld includes:\n", includes.size());
+
+    std::vector<IncludeInfo*>::iterator it;
+    for (it = includes.begin(); it != includes.end(); ++it) {
+        unsigned int lineNum = (*it)->lineNum;
+        std::string  hdrPath = (*it)->fileName;
+        std::string  searchPath = (*it)->filePath;
+        bool         isGlobal = (*it)->global;
+
+        std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
+            (isGlobal ? " (global)" : "(local)") << std::endl;
+    }
 }
 
 void
 IncludeFinderAction::ExecuteAction()
 {
     IncludeFinder includeFinder(getCompilerInstance());
+
     getCompilerInstance().getPreprocessor().addPPCallbacks(
         includeFinder.createPreprocessorCallbacks()
     );
+
     // only parse a single file and don't follow dependency chain
     getCompilerInstance().getPreprocessor().getPreprocessorOpts().SingleFileParseMode = true;
 
     clang::PreprocessOnlyAction::ExecuteAction();
 
-    includeFinder.diagnoseAndReport();
-}
-
-void
-IncludeFinder::diagnoseAndReport()
-{
-    printf("*** diagnosis report:\n");
-    printf("%ld includes:\n", includes.size());
-
-    std::vector<IncludeInfo*>::iterator it;
-    for (it = includes.begin(); it != includes.end(); ++it) {
-        unsigned int lineNum = (*it)->lineNum;
-        std::string  hdrPath = (*it)->fileName;
-        bool         isGlobal = (*it)->global;
-
-        std::cout << lineNum << ": " << hdrPath << (isGlobal ? " (global)" : "(local)") << std::endl;
-    }
+    includeFinder.EndOfMainFile();
 }

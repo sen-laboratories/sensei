@@ -34,25 +34,27 @@ ClangWrapper::ClangWrapper(const char* filePath) {
    fSourcePath = filePath;
 }
 
-ClangWrapper::~ClangWrapper() {}
+ClangWrapper::~ClangWrapper() {
+    delete fSourcePath;
+}
 
 int ClangWrapper::run() {
     const char* argv[3];
-    argv[0] = "clang";
+    argv[0] = "clang++";
     argv[1] = fSourcePath;
     argv[2] = "--";
     int argc = 3;
 
-    auto ExpectedParser = CommonOptionsParser::create(argc, argv, toolCategory);
-    if (!ExpectedParser) {
-        llvm::errs() << ExpectedParser.takeError();
+    llvm::Expected<CommonOptionsParser> optionsParserOpt = CommonOptionsParser::create(argc, argv, toolCategory);
+    if (!optionsParserOpt) {
+        llvm::errs() << optionsParserOpt.takeError();
         return -1;
     }
-    CommonOptionsParser& optionsParser = ExpectedParser.get();
+    CommonOptionsParser& optionsParser = optionsParserOpt.get();
 
-    clang::tooling::ClangTool* tool = new ClangTool(
+    clang::tooling::ClangTool tool(
         optionsParser.getCompilations(),
         optionsParser.getSourcePathList());
 
-    return tool->run(newFrontendActionFactory<IncludeFinderAction>().get());
+    return tool.run(newFrontendActionFactory<IncludeFinderAction>().get());
 }

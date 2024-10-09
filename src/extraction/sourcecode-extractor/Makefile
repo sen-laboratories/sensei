@@ -30,7 +30,7 @@ APP_MIME_SIG = application/x-vnd.sen-labs.CodeExtractor
 #	means this Makefile will not work correctly if two source files with the
 #	same name (source.c or source.cpp) are included from different directories.
 #	Also note that spaces in folder names do not work well with this Makefile.
-SRCS =  App.cpp clang-include-checker/ClangWrapper.cpp clang-include-checker/IncludeFinderAction.cpp
+SRCS = App.cpp clang-include-checker/ClangWrapper.cpp clang-include-checker/IncludeFinderAction.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be
 #	used.
@@ -56,7 +56,7 @@ RSRCS =
 #	- 	if your library does not follow the standard library naming scheme,
 #		you need to specify the path to the library and it's name.
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
-LIBS =  be $(STDCPPLIBS) clang clangBasic clang-cpp clangAST clangASTMatchers clangSupport clangTooling LLVM-18
+LIBS =  be $(STDCPPLIBS) clang clangBasic clang-cpp clangSupport clangTooling LLVM-18
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
@@ -99,14 +99,14 @@ WARNINGS =
 
 #	With image symbols, stack crawls in the debugger are meaningful.
 #	If set to "TRUE", symbols will be created.
-SYMBOLS :=
+SYMBOLS := TRUE
 
 #	Includes debug information, which allows the binary to be debugged easily.
 #	If set to "TRUE", debug info will be created.
-DEBUGGER :=
+DEBUGGER := TRUE
 
 #	Specify any additional compiler flags to be used.
-COMPILER_FLAGS =
+COMPILER_FLAGS = -std=c++20 -fPIC
 
 #	Specify any additional linker flags to be used.
 LINKER_FLAGS =
@@ -120,13 +120,8 @@ LINKER_FLAGS =
 DRIVER_PATH =
 
 ## Include the Makefile-Engine
-DEVEL_DIRECTORY = \
-	$(shell findpaths -e B_FIND_PATH_DEVELOP_DIRECTORY etc/makefile-engine)
-include $(DEVEL_DIRECTORY)
+DEVEL_DIRECTORY := \
+	$(shell findpaths -r "makefile_engine" B_FIND_PATH_DEVELOP_DIRECTORY)
+include $(DEVEL_DIRECTORY)/etc/makefile-engine
 
-## Include the Makefile-Engine
-#DEVEL_DIRECTORY := \
-#	$(shell findpaths -r "makefile_engine" B_FIND_PATH_DEVELOP_DIRECTORY)
-#include $(DEVEL_DIRECTORY)/etc/makefile-engine
-
-#$(VERSION_RDEF): Makefile
+$(VERSION_RDEF): Makefile
