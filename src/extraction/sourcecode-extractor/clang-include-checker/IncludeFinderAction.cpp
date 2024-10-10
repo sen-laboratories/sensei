@@ -11,7 +11,7 @@ IncludeFinderAction::IncludeFinderAction(IncludeFinder* includeFinder)
 void
 IncludeFinderAction::ExecuteAction()
 {
-    std::cout << "got IncludeFinder instance " << includeFinder << std::endl;
+    includeFinder->SetCompilerInstance(&getCompilerInstance());
     getCompilerInstance().getPreprocessor().addPPCallbacks(
         includeFinder->createPreprocessorCallbacks()
     );
@@ -25,5 +25,4 @@ IncludeFinderAction::ExecuteAction()
 void IncludeFinderAction::EndSourceFileAction()
 {
     std::cout << "end of file reached." << std::endl;
-    IncludeFinder::getInstance()->EndOfMainFile();
 }

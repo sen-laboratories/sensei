@@ -5,13 +5,9 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include "IncludeFinder.hpp"
 
-IncludeFinder* IncludeFinder::instance = NULL;
-std::mutex     IncludeFinder::mutex = std::mutex();
-
 std::unique_ptr<PPCallbacks>
 IncludeFinder::createPreprocessorCallbacks()
 {
-    std::cout << "createPreprocessorCallbacks\n" << std::endl;
     return std::unique_ptr<PPCallbacks>(this);
 }
 
@@ -27,8 +23,7 @@ IncludeFinder::InclusionDirective(SourceLocation HashLoc,
                                   const Module *Imported,
                                   SrcMgr::CharacteristicKind FileType)
 {
-    const unsigned int lineNum = CompilerInstance().getSourceManager().getSpellingLineNumber(HashLoc);
-    std::cout << "new include found at line " << lineNum << std::endl;
+    const unsigned int lineNum = compiler->getSourceManager().getSpellingLineNumber(HashLoc);
     includes.push_back(new IncludeInfo{lineNum, FileName.str(), SearchPath.str(), IsAngled});
 }
 
@@ -39,10 +34,10 @@ IncludeFinder::EndOfMainFile()
 
     std::vector<IncludeInfo*>::iterator it;
     for (it = includes.begin(); it != includes.end(); ++it) {
-        unsigned int lineNum = (*it)->lineNum;
-        std::string  hdrPath = (*it)->fileName;
+        unsigned int lineNum =    (*it)->lineNum;
+        std::string  hdrPath =    (*it)->fileName;
         std::string  searchPath = (*it)->filePath;
-        bool         isGlobal = (*it)->global;
+        bool         isGlobal =   (*it)->global;
 
         std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
             (isGlobal ? " (global)" : "(local)") << std::endl;

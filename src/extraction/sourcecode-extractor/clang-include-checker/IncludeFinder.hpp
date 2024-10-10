@@ -4,7 +4,6 @@
  */
 #pragma once
 
-#include <mutex>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Preprocessor.h>
 #include <clang/Lex/PreprocessorOptions.h>
@@ -22,18 +21,13 @@ struct IncludeInfo {
 class IncludeFinder : private PPCallbacks
 {
 public:
-    static IncludeFinder* getInstance() {
-        if (instance == NULL) {
-            std::lock_guard<std::mutex> lock(mutex);
-            if (instance == NULL) {
-                instance = new IncludeFinder();
-                printf("IncludeFinder: created new instance.\n");
-            } else {
-                printf("IncludeFinder: return existing instance.\n");
-            }
-            std::lock_guard<std::mutex> unlock(mutex);
-        }
-        return instance;
+    IncludeFinder() {};
+    ~IncludeFinder() {
+        includes.clear();
+    };
+
+    void SetCompilerInstance(clang::CompilerInstance* compilerInstance) {
+        this->compiler = compilerInstance;
     };
 
     std::unique_ptr<PPCallbacks> createPreprocessorCallbacks();
@@ -52,10 +46,6 @@ public:
                                   SrcMgr::CharacteristicKind FileType);
 
 private:
-    IncludeFinder() {};
-    IncludeFinder(const IncludeFinder& other) = delete;
-
     std::vector<IncludeInfo*>     includes;
-    static IncludeFinder*         instance;
-    static std::mutex             mutex;
+    clang::CompilerInstance      *compiler;
 };

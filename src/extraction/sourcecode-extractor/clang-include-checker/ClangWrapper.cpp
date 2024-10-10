@@ -56,6 +56,9 @@ int ClangWrapper::run() {
         optionsParser.getCompilations(),
         optionsParser.getSourcePathList());
 
-    int result = tool.run(customFrontendActionFactory(IncludeFinder::getInstance()).get());
+    IncludeFinder *includeFinder = new IncludeFinder();
+    int result = tool.run(customFrontendActionFactory(includeFinder).get());
+    delete includeFinder;
+
     return result;
 }
