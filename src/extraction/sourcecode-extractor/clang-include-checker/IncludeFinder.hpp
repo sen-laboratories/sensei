@@ -22,13 +22,12 @@ class IncludeFinder : private PPCallbacks
 {
 public:
     IncludeFinder() {};
-    ~IncludeFinder() {
-        includes.clear();
-    };
 
     void SetCompilerInstance(clang::CompilerInstance* compilerInstance) {
         this->compiler = compilerInstance;
     };
+
+    std::vector<IncludeInfo*>     GetIncludes() { return includes;};
 
     std::unique_ptr<PPCallbacks> createPreprocessorCallbacks();
 

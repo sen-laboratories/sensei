@@ -18,6 +18,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <iostream>
+#include <Message.h>
+
 #include <clang/Basic/Diagnostic.h>
 #include <clang/Tooling/CommonOptionsParser.h>
 #include <clang/Tooling/Tooling.h>
@@ -38,7 +41,7 @@ ClangWrapper::~ClangWrapper() {
     delete fSourcePath;
 }
 
-int ClangWrapper::run() {
+int ClangWrapper::run(BMessage *reply) {
     const char* argv[3];
     argv[0] = "clang++";
     argv[1] = fSourcePath;
@@ -58,7 +61,26 @@ int ClangWrapper::run() {
 
     IncludeFinder *includeFinder = new IncludeFinder();
     int result = tool.run(customFrontendActionFactory(includeFinder).get());
-    delete includeFinder;
 
+    // prepare result
+    std::vector<IncludeInfo*> includes = includeFinder->GetIncludes();
+    std::vector<IncludeInfo*>::iterator it;
+
+    for (it = includes.begin(); it != includes.end(); ++it) {
+        unsigned int lineNum =    (*it)->lineNum;
+        std::string  hdrPath =    (*it)->fileName;
+        std::string  searchPath = (*it)->filePath;
+        bool         isGlobal =   (*it)->global;
+
+        std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
+            (isGlobal ? " (global)" : "(local)") << std::endl;
+
+        reply->AddInt32("be:line", lineNum);
+        reply->AddString("includePath", hdrPath.c_str());
+        reply->AddString("searchPath", searchPath.c_str());
+        reply->AddBool("global", isGlobal);
+    }
+
+    delete includeFinder;
     return result;
 }

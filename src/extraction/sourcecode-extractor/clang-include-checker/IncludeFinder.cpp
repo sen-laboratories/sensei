@@ -30,16 +30,5 @@ IncludeFinder::InclusionDirective(SourceLocation HashLoc,
 void
 IncludeFinder::EndOfMainFile()
 {
-    std::cout << "*** end of main file reached.\nfound " << includes.size() << " includes." << std::endl;
-
-    std::vector<IncludeInfo*>::iterator it;
-    for (it = includes.begin(); it != includes.end(); ++it) {
-        unsigned int lineNum =    (*it)->lineNum;
-        std::string  hdrPath =    (*it)->fileName;
-        std::string  searchPath = (*it)->filePath;
-        bool         isGlobal =   (*it)->global;
-
-        std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
-            (isGlobal ? " (global)" : "(local)") << std::endl;
-    }
+    std::cout << "*** end of main file reached, found " << includes.size() << " includes." << std::endl;
 }

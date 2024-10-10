@@ -64,7 +64,9 @@ void App::RefsReceived(BMessage *message)
         reply->AddString("result", strerror(result));
     }
 
-    message->PrintToStream();   //TEST
+    printf("got reply:\n");
+    reply->PrintToStream();   //TEST
+
     message->SendReply(reply);
     Quit();
 }
@@ -76,7 +78,7 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
 
     try {
         ClangWrapper clangWrapper(inputPath.Path());
-        int result = clangWrapper.run();
+        int result = clangWrapper.run(reply);
         printf("got result %d\n", result);
 
         switch(result) {
