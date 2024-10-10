@@ -66,7 +66,7 @@ void App::RefsReceived(BMessage *message)
 
     message->PrintToStream();   //TEST
     message->SendReply(reply);
-    //Quit();
+    Quit();
 }
 
 status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)

@@ -1,131 +1,29 @@
-/*
- * self-inc-first
- *
- * Copyright (C) 2014 xaizek.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
- */
-
+#include <iostream>
+#include <clang/Frontend/CompilerInstance.h>
+#include "IncludeFinder.hpp"
 #include "IncludeFinderAction.hpp"
 
-#include <clang/Frontend/CompilerInstance.h>
-
-#include <clang/Lex/Preprocessor.h>
-#include <clang/Lex/PreprocessorOptions.h>
-#include <clang/Lex/PPCallbacks.h>
-
-#include <iostream>
-#include <string>
-#include <vector>
-
-using namespace clang;
-
-struct IncludeInfo {
-    unsigned int lineNum;
-    std::string  fileName;
-    std::string  filePath;
-    bool         global;
-};
-
-class IncludeFinder : private PPCallbacks
+IncludeFinderAction::IncludeFinderAction(IncludeFinder* includeFinder)
+: includeFinder(includeFinder)
 {
-public:
-    IncludeFinder(const CompilerInstance &compiler);
-
-public:
-    std::unique_ptr<PPCallbacks> createPreprocessorCallbacks();
-
-    virtual void EndOfMainFile();
-
-    virtual void InclusionDirective(SourceLocation HashLoc,
-                                  const Token &IncludeTok,
-                                  StringRef FileName,
-                                  bool IsAngled,
-                                  CharSourceRange FilenameRange,
-                                  OptionalFileEntryRef File,
-                                  StringRef SearchPath,
-                                  StringRef RelativePath,
-                                  const Module *Imported,
-                                  SrcMgr::CharacteristicKind FileType);
-
-private:
-    const CompilerInstance &compiler;
-    std::string name;
-    std::vector<IncludeInfo*> includes;
-};
-
-IncludeFinder::IncludeFinder(const CompilerInstance &compiler)
-    : compiler(compiler)
-{
-    const FileID mainFile = compiler.getSourceManager().getMainFileID();
-    name = compiler.getSourceManager().getFileEntryRefForID(mainFile)->getName();
-}
-
-std::unique_ptr<PPCallbacks>
-IncludeFinder::createPreprocessorCallbacks()
-{
-    return std::unique_ptr<PPCallbacks>(this);
-}
-
-void
-IncludeFinder::InclusionDirective(SourceLocation HashLoc,
-                                  const Token &IncludeTok,
-                                  StringRef FileName,
-                                  bool IsAngled,
-                                  CharSourceRange FilenameRange,
-                                  OptionalFileEntryRef File,
-                                  StringRef SearchPath,
-                                  StringRef RelativePath,
-                                  const Module *Imported,
-                                  SrcMgr::CharacteristicKind FileType)
-{
-    const unsigned int lineNum = compiler.getSourceManager().getSpellingLineNumber(HashLoc);
-    includes.push_back(new IncludeInfo{lineNum, FileName.str(), SearchPath.str(), IsAngled});
-}
-
-void
-IncludeFinder::EndOfMainFile()
-{
-    printf("*** end of main file reached.\n");
-    printf("found %ld includes:\n", includes.size());
-
-    std::vector<IncludeInfo*>::iterator it;
-    for (it = includes.begin(); it != includes.end(); ++it) {
-        unsigned int lineNum = (*it)->lineNum;
-        std::string  hdrPath = (*it)->fileName;
-        std::string  searchPath = (*it)->filePath;
-        bool         isGlobal = (*it)->global;
-
-        std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
-            (isGlobal ? " (global)" : "(local)") << std::endl;
-    }
 }
 
 void
 IncludeFinderAction::ExecuteAction()
 {
-    IncludeFinder includeFinder(getCompilerInstance());
-
+    std::cout << "got IncludeFinder instance " << includeFinder << std::endl;
     getCompilerInstance().getPreprocessor().addPPCallbacks(
-        includeFinder.createPreprocessorCallbacks()
+        includeFinder->createPreprocessorCallbacks()
     );
 
     // only parse a single file and don't follow dependency chain
     getCompilerInstance().getPreprocessor().getPreprocessorOpts().SingleFileParseMode = true;
 
-    clang::PreprocessOnlyAction::ExecuteAction();
+    PreprocessOnlyAction::ExecuteAction();
+}
 
-    includeFinder.EndOfMainFile();
+void IncludeFinderAction::EndSourceFileAction()
+{
+    std::cout << "end of file reached." << std::endl;
+    IncludeFinder::getInstance()->EndOfMainFile();
 }
