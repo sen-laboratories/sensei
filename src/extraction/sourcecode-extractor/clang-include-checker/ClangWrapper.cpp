@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <Path.h>
 #include <iostream>
 #include <Message.h>
 
@@ -75,9 +76,11 @@ int ClangWrapper::run(BMessage *reply) {
         std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
             (isGlobal ? " (global)" : "(local)") << std::endl;
 
-        reply->AddInt32("be:line", lineNum);
-        reply->AddString("includePath", hdrPath.c_str());
-        reply->AddString("searchPath", searchPath.c_str());
+        BPath path(hdrPath.c_str());
+        reply->AddString("label", path.Leaf());
+        reply->AddString("path", path.Path());
+        reply->AddString("spath", searchPath.c_str());
+        reply->AddInt32("line", lineNum);
         reply->AddBool("global", isGlobal);
     }
 

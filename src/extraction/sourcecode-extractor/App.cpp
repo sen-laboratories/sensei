@@ -79,7 +79,6 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
     try {
         ClangWrapper clangWrapper(inputPath.Path());
         int result = clangWrapper.run(reply);
-        printf("got result %d\n", result);
 
         switch(result) {
             case 0: return B_OK;

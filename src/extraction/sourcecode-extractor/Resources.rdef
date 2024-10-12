@@ -30,14 +30,16 @@ resource file_types message {
    this is a simple type alias mapping to strip down message size of the extraction result. */
 resource(2, "SEN:SEI:type_mapping") message {
     /* this defines a default schema that is used when no type is provided in extraction result. */
-    "inc" = "relation/x-vnd.sen-labs.relation.code.include",
+    "_default" = "relation/x-vnd.sen-labs.relation.code.include",
     "fun" = "relation/x-vnd.sen-labs.relation.code.function"
 };
 
 /* schema to define aliases for full attribute names used for output relations.
    similar to type alias mapping to strip down message size of the extraction result. */
 resource(3, "SEN:SEI:attr_mapping") message {
-    "line" = "SEN:REL:coderef:line"
+    "line" = "be:line",
+    "path" = "SourceInclude:path",
+    "spath" = "SourceInclude:search_path"
 };
 
 resource vector_icon {
