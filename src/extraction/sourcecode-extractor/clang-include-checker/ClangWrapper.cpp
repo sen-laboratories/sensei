@@ -66,8 +66,10 @@ int ClangWrapper::run(BMessage *reply) {
     // prepare result
     std::vector<IncludeInfo*> includes = includeFinder->GetIncludes();
     std::vector<IncludeInfo*>::iterator it;
+    BMessage item;
+    int32 msgIndex = 0;
 
-    for (it = includes.begin(); it != includes.end(); ++it) {
+    for (it = includes.begin(); it != includes.end(); ++it, msgIndex++) {
         unsigned int lineNum =    (*it)->lineNum;
         std::string  hdrPath =    (*it)->fileName;
         std::string  searchPath = (*it)->filePath;
@@ -77,12 +79,14 @@ int ClangWrapper::run(BMessage *reply) {
             (isGlobal ? " (global)" : "(local)") << std::endl;
 
         BPath path(hdrPath.c_str());
-        reply->AddString("label", path.Leaf());
-        reply->AddString("path", path.Path());
-        reply->AddString("spath", searchPath.c_str());
-        reply->AddInt32("line", lineNum);
-        reply->AddBool("global", isGlobal);
+
+        item.AddString("label", path.Leaf());
+        item.AddString("path", path.Path());
+        item.AddString("spath", searchPath.c_str());
+        item.AddInt32("line", lineNum);
+        item.AddBool("global", isGlobal);
     }
+    reply->AddMessage("item", new BMessage(item));
 
     delete includeFinder;
     return result;

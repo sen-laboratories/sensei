@@ -18,7 +18,7 @@
 #include "clang-include-checker/ClangWrapper.hpp"
 #include "../../Sensei.h"
 
-const char* kApplicationSignature = "application/x-vnd.sen-labs.CodeExtractor";
+const char* kApplicationSignature = "application/x-vnd.sen-labs.SourceCodeExtractor";
 
 App::App() : BApplication(kApplicationSignature)
 {
@@ -49,7 +49,7 @@ void App::RefsReceived(BMessage *message)
     entry_ref ref;
 
     if (message->FindRef("refs", &ref) != B_OK) {
-        BAlert* alert = new BAlert("Error launching SEN Code Extractor",
+        BAlert* alert = new BAlert("Error launching SEN SourceCode Extractor",
             "Failed to resolve source file.",
             "Oh no.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
@@ -57,17 +57,19 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    BMessage* reply = new BMessage(SENSEI_MESSAGE_RESULT);
-    status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), reply);
+    BMessage reply(SENSEI_MESSAGE_RESULT);
+    status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), &reply);
 
     if (result != B_OK) {
-        reply->AddString("result", strerror(result));
+        reply.AddString("result", strerror(result));
     }
 
     printf("got reply:\n");
-    reply->PrintToStream();   //TEST
+    reply.PrintToStream();   //TEST
 
-    message->SendReply(reply);
+    // we don't expect a reply but run into a race condition with the app
+    // being deleted too early, resulting in a malloc assertion failure.
+    message->SendReply(&reply, this);
     Quit();
 }
 
@@ -77,8 +79,9 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
     BPath inputPath(ref);
 
     try {
-        ClangWrapper clangWrapper(inputPath.Path());
-        int result = clangWrapper.run(reply);
+        ClangWrapper* clangWrapper = new ClangWrapper(inputPath.Path());
+        int result = clangWrapper->run(reply);
+        delete clangWrapper;
 
         switch(result) {
             case 0: return B_OK;

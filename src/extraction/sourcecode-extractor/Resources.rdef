@@ -1,4 +1,4 @@
-resource app_signature "application/x-vnd.sen-labs.CodeExtractor";
+resource app_signature "application/x-vnd.sen-labs.SourceCodeExtractor";
 
 resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
 
@@ -13,8 +13,8 @@ resource app_version {
 
 	internal = 0,
 
-	short_info = "SEN Code Extractor",
-	long_info  = "SEN module to extract structure outline and references from source code."
+	short_info = "SEN SourceCode Extractor",
+	long_info  = "SEN module to extract include references from source code files."
 };
 
 /* declare as a SEN extractor plugin so it will be detected and used accordingly. */
@@ -28,18 +28,17 @@ resource file_types message {
 
 /* schema to define supported output file types (relations) and an optional mapping for the receiver.
    this is a simple type alias mapping to strip down message size of the extraction result. */
-resource(2, "SEN:SEI:type_mapping") message {
-    /* this defines a default schema that is used when no type is provided in extraction result. */
-    "_default" = "relation/x-vnd.sen-labs.relation.code.include",
-    "fun" = "relation/x-vnd.sen-labs.relation.code.function"
+resource(2, "SENSEI:type_mapping") message {
+    /* this defines a default schema that is used when no type is provided in extraction result items. */
+    "SENSEI:default" = "relation/x-vnd.sen-labs.relation.sourcecode.include"
 };
 
 /* schema to define aliases for full attribute names used for output relations.
    similar to type alias mapping to strip down message size of the extraction result. */
-resource(3, "SEN:SEI:attr_mapping") message {
-    "line" = "be:line",
-    "path" = "SourceInclude:path",
-    "spath" = "SourceInclude:search_path"
+resource(3, "SENSEI:attr_mapping") message {
+    "line" =  "be:line",
+    "path" =  "sourcecode:include:path",
+    "spath" = "sourcecode:include:search_path"
 };
 
 resource vector_icon {

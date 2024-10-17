@@ -28,14 +28,14 @@ resource file_types message {
 
 /* schema to define supported output file types (relations) and an optional mapping for the receiver.
    this is a simple type alias mapping to strip down message size of the extraction result. */
-resource(2, "SEN:SEI:type_mapping") message {
-    /* this defines a default schema that is used when no type is provided in extraction result. */
-    "SEN:SEI:default" = "relation/x-vnd.sen-labs.relation.docref"
+resource(2, "SENSEI:type_mapping") message {
+    /* this defines a default schema that is used when no type is provided in extraction result items. */
+    "SENSEI:default" = "relation/x-vnd.sen-labs.relation.docref"
 };
 
 /* schema to define aliases for full attribute names used for output relations.
    similar to type alias mapping to strip down message size of the extraction result. */
-resource(3, "SEN:SEI:attr_mapping") message {
+resource(3, "SENSEI:attr_mapping") message {
     "page" = "SEN:REL:docref:page"
 };
 
