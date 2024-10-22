@@ -64,9 +64,6 @@ void App::RefsReceived(BMessage *message)
         reply.AddString("result", strerror(result));
     }
 
-    printf("got reply:\n");
-    reply.PrintToStream();   //TEST
-
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
     message->SendReply(&reply, this);
@@ -92,7 +89,6 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
     } catch (std::exception& e) {
         BString error("Could not analyse source code: ");
         error << e.what();
-        reply->AddString("result", strerror(result));
         return B_ERROR;
     }
 
