@@ -34,15 +34,22 @@ class QPDF_DLL_CLASS Pl_DCT: public Pipeline
     QPDF_DLL
     Pl_DCT(char const* identifier, Pipeline* next);
 
-    class QPDF_DLL_CLASS CompressConfig
-    {
-      public:
-        QPDF_DLL
-        CompressConfig() = default;
-        QPDF_DLL
-        virtual ~CompressConfig() = default;
-        virtual void apply(jpeg_compress_struct*) = 0;
-    };
+    // Limit the memory used by jpeglib when decompressing data.
+    // NB This is a static option affecting all Pl_DCT instances.
+    QPDF_DLL
+    static void setMemoryLimit(long limit);
+
+    // Limit the number of scans used by jpeglib when decompressing progressive jpegs.
+    // NB This is a static option affecting all Pl_DCT instances.
+    QPDF_DLL
+    static void setScanLimit(int limit);
+
+    // Treat corrupt data as a runtime error rather than attempting to decompress regardless. This
+    // is the qpdf default behaviour. To attempt to decompress corrupt data set 'treat_as_error' to
+    // false.
+    // NB This is a static option affecting all Pl_DCT instances.
+    QPDF_DLL
+    static void setThrowOnCorruptData(bool treat_as_error);
 
     // Constructor for compressing image data
     QPDF_DLL
@@ -52,8 +59,7 @@ class QPDF_DLL_CLASS Pl_DCT: public Pipeline
         JDIMENSION image_width,
         JDIMENSION image_height,
         int components,
-        J_COLOR_SPACE color_space,
-        CompressConfig* config_callback = nullptr);
+        J_COLOR_SPACE color_space);
 
     QPDF_DLL
     ~Pl_DCT() override;
@@ -78,28 +84,26 @@ class QPDF_DLL_CLASS Pl_DCT: public Pipeline
       public:
         QPDF_DLL
         ~Members() = default;
+        Members(Members const&) = delete;
 
       private:
+        // For compression
         Members(
-            action_e action,
-            char const* buf_description,
-            JDIMENSION image_width = 0,
-            JDIMENSION image_height = 0,
-            int components = 1,
-            J_COLOR_SPACE color_space = JCS_GRAYSCALE,
-            CompressConfig* config_callback = nullptr);
-        Members(Members const&) = delete;
+            JDIMENSION image_width,
+            JDIMENSION image_height,
+            int components,
+            J_COLOR_SPACE color_space);
+        // For decompression
+        Members();
 
         action_e action;
         Pl_Buffer buf;
 
         // Used for compression
-        JDIMENSION image_width;
-        JDIMENSION image_height;
-        int components;
-        J_COLOR_SPACE color_space;
-
-        CompressConfig* config_callback;
+        JDIMENSION image_width{0};
+        JDIMENSION image_height{0};
+        int components{1};
+        J_COLOR_SPACE color_space{JCS_GRAYSCALE};
     };
 
     std::shared_ptr<Members> m;
