@@ -1,5 +1,39 @@
+resource app_signature "application/x-vnd.sen-labs.bert";
 
-resource(<your resource id here>) #'VICN' array {
+resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
+
+resource app_version {
+	major  = 0,
+	middle = 1,
+	minor  = 0,
+
+	/* 0 = development	1 = alpha			2 = beta
+	   3 = gamma		4 = golden master	5 = final */
+	variety = 0,
+
+	internal = 0,
+
+	short_info = "SEN Book Enrichment Tool (BERT)",
+	long_info  = "SEN module to grab metadata for books from online services."
+};
+
+/* declare as a SEN extractor plugin so it will be detected and used accordingly. */
+resource(0, "SEN:TYPE") "meta/x-vnd.sen-meta.plugin";
+/* SENSEI specific type, one of extractor, enricher, navigator or identifier */
+resource(1, "SENSEI:TYPE") "enricher";
+
+/* defines supported file types for scanning */
+resource file_types message {
+    "types" = "entity/book"
+};
+
+/* LATER: schema to define aliases for full attribute names used for grabbing/enrichment
+resource(3, "SENSEI:attr_mapping") message {
+    "page" = "SEN:REL:docref:page"
+};
+*/
+
+resource vector_icon {
 	$"6E6369660805010200060338D2F73CD163BF82B23B84A94B88504870C900FFEF"
 	$"A5BDFFFCC0FFFFF890020106023E49240000000000003CAAAA4940004A30007C"
 	$"F1B706FFFFFCC0040192020016023A55A6BAC2293F0DA33E958646C2EB47A1D6"

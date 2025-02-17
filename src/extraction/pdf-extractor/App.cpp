@@ -59,10 +59,7 @@ void App::RefsReceived(BMessage *message)
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = ExtractPdfBookmarks(const_cast<const entry_ref*>(&ref), &reply);
-
-    if (result != B_OK) {
-        reply.AddString("result", strerror(result));
-    }
+    reply.AddString("result", strerror(result));
 
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
@@ -87,9 +84,7 @@ status_t App::ExtractPdfBookmarks(const entry_ref* ref, BMessage *reply)
             return B_OK;
         }
     } catch (std::exception& e) {
-        BString error("Could not extract content: ");
-        error << e.what();
-        reply->AddString("result", strerror(result));
+        reply->AddString("error", e.what());
         return B_ERROR;
     }
 
