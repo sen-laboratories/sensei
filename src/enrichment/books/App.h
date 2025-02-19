@@ -21,10 +21,22 @@ public:
     /**
      * call lookup service with params in message.
      */
-    status_t            FetchBookMetadata(const entry_ref* ref, BMessage *message);
+    status_t            FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg);
 
 private:
+    // attribute handling
+    status_t            MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg);
+    status_t            GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg);
+    bool                IsInternalAttr(BString* attrName);
+
+    // query handling
+    status_t            FetchAuthor(BMessage *msgQuery, BMessage *msgResult);
+    status_t            FetchByQuery(BMessage *msgQuery, BMessage *msgResult);
+    status_t            FetchCover(BMessage *msgQuery, BMessage *msgResult);
+
+    // remote connection handling
     status_t            FetchRemoteContent(const BUrl& httpUrl, BString* resultBody);
     void                PrintUsage(const char* errorMsg = NULL);
     BHttpSession*       fHttpSession;
+    bool                fDebugMode;
 };

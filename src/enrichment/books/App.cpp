@@ -8,6 +8,9 @@
 #include <Alert.h>
 #include <Entry.h>
 #include <Errors.h>
+#include <fs_attr.h>
+#include <NodeInfo.h>
+#include <MimeType.h>
 #include <Path.h>
 #include <private/netservices2/ExclusiveBorrow.h>
 #include <private/netservices2/HttpFields.h>
@@ -104,7 +107,7 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    bool debug = message->GetBool("debug", false);
+    fDebugMode = message->GetBool("debug", false);
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = FetchBookMetadata(const_cast<const entry_ref*>(&ref), &reply);
@@ -117,49 +120,187 @@ void App::RefsReceived(BMessage *message)
         alert->Go();
         return;
     }
-    if (debug) {
+    if (fDebugMode) {
         reply.PrintToStream();
     }
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
     message->SendReply(&reply, this);
+
     Quit();
 }
 
 status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *message)
 {
-    // TODO: gather attributes from ref to map and use those as search params
+    // gather attributes from ref to map and use as search params
+    BMessage inputAttrsMsg;
+    status_t result = MapAttrsToMsg(ref, &inputAttrsMsg);
 
-    BString resultJson;
-
-    // TEST author lookup by Thing key
-    status_t result = FetchRemoteContent(BUrl("http://openlibrary.org/authors/OL1A.json"), &resultJson);
-    if (result != B_OK) {
-        printf("error accessing remote API: %s", strerror(result));
-        return result;
+    if (fDebugMode) {
+        inputAttrsMsg.PrintToStream();
     }
-    printf("GOT JSON:\n");
 
     BMessage resultMsg;
-    BPrivate::BJson::Parse(resultJson, resultMsg);
-    resultMsg.PrintToStream();
-
-    // TEST book lookup by ISBN
-    resultJson = "";
-    result = FetchRemoteContent(BUrl("http://openlibrary.org/search.json?isbn=9783866476158"), &resultJson);
-    if (result != B_OK) {
-        printf("error accessing remote API: %s", strerror(result));
-        return result;
-    }
-    printf("GOT JSON:\n");
-
-    resultMsg.MakeEmpty();
-    BPrivate::BJson::Parse(resultJson, resultMsg);
-    resultMsg.PrintToStream();
-
     // TODO: map result fields to attributes from input ref and write back to return *message
 
     return B_OK;
+}
+
+status_t App::FetchByQuery(BMessage *msgQuery, BMessage *msgResult)
+{
+    BString resultJson;
+    status_t result = FetchRemoteContent(BUrl("http://openlibrary.org/search.json?isbn=9783866476158"), &resultJson);
+
+    if (result != B_OK) {
+        printf("error accessing remote API: %s", strerror(result));
+        return result;
+    }
+}
+
+status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
+{
+    BString resultJson;
+    status_t result = FetchRemoteContent(BUrl("http://openlibrary.org/authors/OL1A.json"), &resultJson);
+
+    if (result != B_OK) {
+        printf("error accessing remote API: %s", strerror(result));
+        return result;
+    }
+
+}
+
+status_t App::FetchCover(BMessage *msgQuery, BMessage *msgResult)
+{
+    BString resultJson;
+    status_t result = FetchRemoteContent(BUrl("http://openlibrary.org/search.json?isbn=9783866476158"), &resultJson);
+
+    if (result != B_OK) {
+        printf("error accessing remote API: %s", strerror(result));
+        return result;
+    }
+}
+
+//
+// helper methods
+//
+
+status_t App::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
+{
+    status_t result;
+    BNode node(ref);
+
+    result = node.InitCheck();
+	if (result != B_OK) {
+        printf("failed to read input file from ref %s: %s\n", ref->name, strerror(result));
+		return result;
+    }
+
+	char *attrName = new char[B_ATTR_NAME_LENGTH];
+    BMessage mimeInfoMsg;
+
+    result = GetMimeTypeAttrs(ref, &mimeInfoMsg);
+    if (result != B_OK) {
+        return result;
+    }
+
+    if (fDebugMode) {
+        mimeInfoMsg.PrintToStream();
+    }
+
+    attr_info attrInfo;
+    result = node.GetAttrInfo(attrName, &attrInfo);
+    if (result != B_OK) {
+        printf("could not get attribute info for attribute %s of node %s: %s\n", attrName, ref->name, strerror(result));
+        return result;
+    }
+
+	while (node.GetNextAttrName(attrName) == B_OK) {
+		if (! mimeInfoMsg.HasString(attrName)) {
+            // skip internal/undefined/custom attributes
+            continue;
+        }
+
+        char* attrValue = new char[attrInfo.size + 1];
+        int32 attrType = mimeInfoMsg.GetInt32(attrName, B_STRING_TYPE);
+
+        ssize_t bytesRead = node.ReadAttr(
+            attrName,
+            attrType,
+            0,
+            attrValue,
+            attrInfo.size);
+
+        if (bytesRead == 0) {
+            printf("attribute %s has unexpeted type %u in file %s.\n", attrName, attrType, ref->name);
+            return B_ERROR;
+        } else if (bytesRead < 0) {
+            printf("failed to read attribute value for attribute %s of file %s.\n", attrName, ref->name);
+            return B_ERROR;
+        }
+
+        attrMsg->AddData(attrName, attrType, attrValue, bytesRead);
+	}
+}
+
+status_t App::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg)
+{
+    BNode node(ref);
+    BMimeType mimeType;
+    char type[B_MIME_TYPE_LENGTH];
+
+    BNodeInfo nodeInfo(&node);
+    status_t result = nodeInfo.GetType(type);
+
+    if (result == B_OK) {
+        mimeType.SetType(type);
+    } else {
+        result = BMimeType::GuessMimeType(ref, &mimeType);
+        if (result != B_OK) {
+            printf("failed to get MIME info for input file %s: %s\n", ref->name, strerror(result));
+            return result;
+        }
+    }
+    if (fDebugMode) {
+        printf("got MIME type '%s' for file '%s'.\n", mimeType.Type(), ref->name);
+    }
+
+    BMessage attrInfoMsg;
+    result = mimeType.GetAttrInfo(&attrInfoMsg);
+    if (result != B_OK) {
+        printf("failed to get attrInfo for MIME type %s: %s\n", mimeType.Type(), strerror(result));
+        return result;
+    }
+
+    if (fDebugMode) {
+        printf("attrInfoMsg:\n");
+        attrInfoMsg.PrintToStream();
+    }
+
+    // fill in name and type and return as msg
+    for (int32 info = 0; info < attrInfoMsg.CountNames(B_STRING_TYPE); info++) {
+        const char* attrName = attrInfoMsg.GetString("attr:name", info, NULL);
+        if (attrName == NULL) {
+            printf("MIME type DB is borked: could not get 'attr:name'! Aborting.\n");
+            return B_ERROR;
+        }
+        int32 typeCode = attrInfoMsg.GetInt32("attr:type", info, B_STRING_TYPE);
+
+        // add name/type mapping for MIME type
+        mimeAttrMsg->AddInt32(attrName, typeCode);
+    }
+    return B_OK;
+}
+
+bool App::IsInternalAttr(BString* attrName)
+{
+    return attrName->StartsWith("be:") ||
+           attrName->StartsWith("BEOS:") ||
+           attrName->StartsWith("META:") ||
+           attrName->StartsWith("_trk/") ||
+           // application specific metadata
+           attrName->StartsWith("pe-info") ||
+           attrName->StartsWith("PDF:") ||
+           attrName->StartsWith("bepdf:");
 }
 
 status_t
