@@ -26,6 +26,7 @@ public:
 private:
     // attribute handling
     status_t            MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg);
+    status_t            MapAttrsToServiceParams(BMessage *attrMsg, BMessage *serviceParamMsg);
     status_t            GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg);
     bool                IsInternalAttr(BString* attrName);
 

@@ -130,31 +130,116 @@ void App::RefsReceived(BMessage *message)
     Quit();
 }
 
-status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *message)
+status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 {
     // gather attributes from ref to map and use as search params
     BMessage inputAttrsMsg;
     status_t result = MapAttrsToMsg(ref, &inputAttrsMsg);
-
     if (fDebugMode) {
         inputAttrsMsg.PrintToStream();
     }
 
-    BMessage resultMsg;
-    // TODO: map result fields to attributes from input ref and write back to return *message
+    BMessage paramsMsg;
+    result = MapAttrsToServiceParams(&inputAttrsMsg, &paramsMsg);
+    if (result != B_OK) {
+        printf("error mapping attributes to lookup parameters, aborting.\n");
+        return result;
+    }
+
+    if (fDebugMode) {
+        printf("got service params:\n");
+        paramsMsg.PrintToStream();
+    }
+
+    result = FetchByQuery(&paramsMsg, resultMsg);
+    if (result != B_OK) {
+        printf("error in remote service call: %s\n", strerror(result));
+        return result;
+    }
+
+    // get docs
+    BMessage books;
+    double numFound = -1;
+
+    result = resultMsg->FindDouble("numFound", &numFound);
+    if (result == B_OK) {
+        result = resultMsg->FindMessage("docs", &books);
+    }
+    if (fDebugMode) {
+        if (result == B_OK) {
+            printf("received %f results:\n", numFound);
+            books.PrintToStream();
+        } else {
+            printf("unexpected result format, could not find books in 'docs' list: %s\n", strerror(result));
+            // print result msg as is for debugging purposes
+            resultMsg->PrintToStream();
+            return result;
+        }
+    }
+
+    if (numFound > 1) {
+        // user needs to select a result
+        printf("please select a book...");
+    }
+
+    // map back result fields to attributes from input ref and write back to return *message
 
     return B_OK;
 }
 
 status_t App::FetchByQuery(BMessage *msgQuery, BMessage *msgResult)
 {
-    BString resultJson;
-    status_t result = FetchRemoteContent(BUrl("http://openlibrary.org/search.json?isbn=9783866476158"), &resultJson);
+    BUrl queryUrl("http://openlibrary.org/search.json");
+    BString request;
+    status_t result;
+    // add all message data to Url as request params
+    for (int32 i = 0; i < msgQuery->CountNames(B_ANY_TYPE); i++) {
+        char *key;
+        uint32 type;
+        result = msgQuery->GetInfo(B_ANY_TYPE, i, &key, &type);
+
+        if (result == B_OK) {
+            const void* data;
+            ssize_t dataSize;
+            result = msgQuery->FindData(reinterpret_cast<const char*>(key), type, i, &data, &dataSize);
+            if (result == B_OK && dataSize > 0) {
+                if (! request.IsEmpty()) {
+                    request << "&";
+                }
+                BString value;
+                switch(type){
+                    case B_STRING_TYPE:
+                        value << (const char*) data;
+                        break;
+                    case B_INT32_TYPE:
+                        value << (*(const int32*) data);
+                        break;
+                    case B_BOOL_TYPE:
+                        value << *((bool*) data);
+                        break;
+                    default:
+                        printf("unsupported type, skipping.");
+                        break;
+                }
+                request << key << "=" << BUrl::UrlEncode(value);
+            } else {
+                printf("failed to fetch message data for key '%s': %s\n", key, strerror(result));
+            }
+        }
+    }
+    queryUrl.SetRequest(request);
+
+    BString resultBody;
+    result = FetchRemoteContent(queryUrl, &resultBody);
 
     if (result != B_OK) {
         printf("error accessing remote API: %s", strerror(result));
         return result;
     }
+
+    BJson::Parse(resultBody, *msgResult);
+
+    return B_OK;
 }
 
 status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
@@ -166,7 +251,7 @@ status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
         printf("error accessing remote API: %s", strerror(result));
         return result;
     }
-
+    return B_OK;
 }
 
 status_t App::FetchCover(BMessage *msgQuery, BMessage *msgResult)
@@ -178,6 +263,7 @@ status_t App::FetchCover(BMessage *msgQuery, BMessage *msgResult)
         printf("error accessing remote API: %s", strerror(result));
         return result;
     }
+    return B_OK;
 }
 
 //
@@ -204,24 +290,24 @@ status_t App::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
     }
 
     if (fDebugMode) {
+        printf("got MIME attribute info:\n");
         mimeInfoMsg.PrintToStream();
     }
 
-    attr_info attrInfo;
-    result = node.GetAttrInfo(attrName, &attrInfo);
-    if (result != B_OK) {
-        printf("could not get attribute info for attribute %s of node %s: %s\n", attrName, ref->name, strerror(result));
-        return result;
-    }
+    // always add file name as fallback for title
+    attrMsg->AddString("name", ref->name);
 
+    attr_info attrInfo;
 	while (node.GetNextAttrName(attrName) == B_OK) {
-		if (! mimeInfoMsg.HasString(attrName)) {
-            // skip internal/undefined/custom attributes
+        int32 attrType = mimeInfoMsg.GetInt32(attrName, -1);
+		if (attrType < 0) {
+            // skip internal/custom attributes
+            printf("skipping internal/custom attribute %s.\n", attrName);
             continue;
         }
 
-        char* attrValue = new char[attrInfo.size + 1];
-        int32 attrType = mimeInfoMsg.GetInt32(attrName, B_STRING_TYPE);
+        node.GetAttrInfo(attrName, &attrInfo);
+        char attrValue[attrInfo.size + 1];
 
         ssize_t bytesRead = node.ReadAttr(
             attrName,
@@ -240,6 +326,8 @@ status_t App::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
 
         attrMsg->AddData(attrName, attrType, attrValue, bytesRead);
 	}
+
+    return B_OK;
 }
 
 status_t App::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg)
@@ -280,7 +368,7 @@ status_t App::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg)
     for (int32 info = 0; info < attrInfoMsg.CountNames(B_STRING_TYPE); info++) {
         const char* attrName = attrInfoMsg.GetString("attr:name", info, NULL);
         if (attrName == NULL) {
-            printf("MIME type DB is borked: could not get 'attr:name'! Aborting.\n");
+            printf("MIME type not in MIME DB: could not get 'attr:name'! Aborting.\n");
             return B_ERROR;
         }
         int32 typeCode = attrInfoMsg.GetInt32("attr:type", info, B_STRING_TYPE);
@@ -301,6 +389,49 @@ bool App::IsInternalAttr(BString* attrName)
            attrName->StartsWith("pe-info") ||
            attrName->StartsWith("PDF:") ||
            attrName->StartsWith("bepdf:");
+}
+
+/**
+* map well known entity attributes to service parameters
+*/
+status_t
+App::MapAttrsToServiceParams(BMessage *attrMsg, BMessage *serviceParamMsg)
+{
+    serviceParamMsg->AddString("isbn", attrMsg->GetString("Book:ISBN"));
+    // fall back to file name if no title given
+    serviceParamMsg->AddString("title", attrMsg->GetString("Media:Title", attrMsg->GetString("name")));
+    // map author(s) / contributors
+    BString authors = attrMsg->GetString("Book:Authors");
+    if (!authors.IsEmpty()) {
+        BString author;
+        BStringList authorNames;
+        authors.Split(",", true, authorNames);
+        if (authorNames.CountStrings() > 1) {
+            author = authorNames.First();
+            serviceParamMsg->AddString("contributor", authorNames.StringAt(1));
+            // LATER: support multiple contributors, if this is supported by OpenLibrary?
+        } else {
+            author = authors;
+        }
+        serviceParamMsg->AddString("author_name", author);
+    }
+    serviceParamMsg->AddString("publish_year", attrMsg->GetString("Media:Year"));
+    serviceParamMsg->AddString("publisher", attrMsg->GetString("Book:Publisher"));
+    // take first language if any
+    BString languages = attrMsg->GetString("Book:Languages");
+    if (!languages.IsEmpty()) {
+        BString language;
+        BStringList langs;
+        languages.Split(",", true, langs);
+        if (langs.CountStrings() > 1) {
+            language = langs.StringAt(0);
+        } else {
+            language = languages;
+        }
+        serviceParamMsg->AddString("language", language);
+    }
+
+    return B_OK;
 }
 
 status_t

@@ -28,7 +28,7 @@ resource file_types message {
 };
 
 /* LATER: schema to define aliases for full attribute names used for grabbing/enrichment
-resource(3, "SENSEI:attr_mapping") message {
+resource(2, "SENSEI:attr_mapping") message {
     "page" = "SEN:REL:docref:page"
 };
 */
