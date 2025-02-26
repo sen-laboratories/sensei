@@ -24,7 +24,6 @@ private:
     // query handling
     status_t            FetchAuthor(BMessage *msgQuery, BMessage *msgResult);
     status_t            FetchCover(BMessage *msgQuery, BMessage *msgResult);
-    status_t            MapAttrsToServiceParams(BMessage *attrMsg, BMessage *serviceParamMsg);
 
     void                PrintUsage(const char* errorMsg = NULL);
     bool                fDebugMode;

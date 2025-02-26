@@ -25,6 +25,15 @@ const char* kApplicationSignature = "application/x-vnd.sen-labs.bert";
 App::App() : BApplication(kApplicationSignature)
 {
     fBaseEnricher = new BaseEnricher();
+    // set up global mapping table (all Strings because it's only about names, not values!)
+    fBaseEnricher->AddMapping("Book:ISBN", "isbn");
+    fBaseEnricher->AddMapping("Book:Authors", "author_name");
+    fBaseEnricher->AddMapping("Book:Languages", "language");
+    fBaseEnricher->AddMapping("Book:Publisher", "publisher");
+    fBaseEnricher->AddMapping("Media:Title", "title");
+    fBaseEnricher->AddMapping("Media:Year", "first_publish_year");
+    // keep these for later to save another lookup query for relations
+    fBaseEnricher->AddMapping("OL:author_keys", "author_key");
 }
 
 App::~App()
@@ -100,7 +109,7 @@ void App::RefsReceived(BMessage *message)
     fDebugMode = message->GetBool("debug", false);
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
-    status_t result = FetchBookMetadata(const_cast<const entry_ref*>(&ref), &reply);
+    status_t result = FetchBookMetadata(&ref, &reply);
 
     if (result != B_OK) {
         BAlert* alert = new BAlert("Error launching SEN Book Enricher",
@@ -108,9 +117,11 @@ void App::RefsReceived(BMessage *message)
             "Oh no.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
         alert->Go();
+        Quit();
         return;
     }
     if (fDebugMode) {
+        printf("reply:\n");
         reply.PrintToStream();
     }
     // we don't expect a reply but run into a race condition with the app
@@ -122,27 +133,32 @@ void App::RefsReceived(BMessage *message)
 
 status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 {
+    status_t result;
+
     // gather attributes from ref to map and use as search params
     BMessage inputAttrsMsg;
-    status_t result = BaseEnricher::MapAttrsToMsg(ref, &inputAttrsMsg);
+    result = fBaseEnricher->MapAttrsToMsg(ref, &inputAttrsMsg);
     if (fDebugMode) {
+        printf("input msg from attrs:\n");
         inputAttrsMsg.PrintToStream();
     }
 
     BMessage paramsMsg;
-    result = MapAttrsToServiceParams(&inputAttrsMsg, &paramsMsg);
+    result = fBaseEnricher->MapAttrsToServiceParams(&inputAttrsMsg, &paramsMsg);
     if (result != B_OK) {
         printf("error mapping attributes to lookup parameters, aborting.\n");
         return result;
     }
 
     if (fDebugMode) {
-        printf("got service params:\n");
+        printf("service params msg:\n");
         paramsMsg.PrintToStream();
     }
 
     BUrl queryUrl("http://openlibrary.org/search.json");
-    result = fBaseEnricher->FetchByQuery(queryUrl, &paramsMsg, resultMsg);
+    BMessage queryResult;
+
+    result = fBaseEnricher->FetchByHttpQuery(queryUrl, &paramsMsg, &queryResult);
     if (result != B_OK) {
         printf("error in remote service call: %s\n", strerror(result));
         return result;
@@ -152,9 +168,9 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     BMessage books;
     double numFound = -1;
 
-    result = resultMsg->FindDouble("numFound", &numFound);
+    result = queryResult.FindDouble("num_found", &numFound);
     if (result == B_OK) {
-        result = resultMsg->FindMessage("docs", &books);
+        result = queryResult.FindMessage("docs", &books);
     }
     if (fDebugMode) {
         if (result == B_OK) {
@@ -163,18 +179,43 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         } else {
             printf("unexpected result format, could not find books in 'docs' list: %s\n", strerror(result));
             // print result msg as is for debugging purposes
-            resultMsg->PrintToStream();
+            queryResult.PrintToStream();
             return result;
         }
     }
 
     if (numFound > 1) {
         // user needs to select a result
-        printf("please select a book...");
+        printf("please select a book... TBI\n");
     }
 
     // map back result fields to attributes from input ref and write back to return *message
+    BMessage bookFound;
+    books.FindMessage("0", &bookFound);  // already error-checked above
+    if (fDebugMode) {
+        printf("book result:\n");
+        bookFound.PrintToStream();
+    }
 
+    BMessage resultAttrMsg;
+    BMessage resultBook;
+
+    // convert map values to arrays, they are always indexed by number!
+    BStringList valueMapKeys;
+    valueMapKeys.Add("author_name");
+    valueMapKeys.Add("author_key");
+    valueMapKeys.Add("language");
+    BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
+
+    result = fBaseEnricher->MapServiceParamsToAttrs(&resultBook, &resultAttrMsg);
+    if (result != B_OK) {
+        printf("error mapping back result: %s\n", strerror(result));
+        return result;
+    }
+    if (fDebugMode) {
+        printf("Got attribute result message:\n");
+        resultAttrMsg.PrintToStream();
+    }
     return B_OK;
 }
 
@@ -201,53 +242,6 @@ status_t App::FetchCover(BMessage *msgQuery, BMessage *msgResult)
         printf("error accessing remote API: %s", strerror(result));
         return result;
     }
-    return B_OK;
-}
-
-//
-// helper methods
-//
-
-/**
-* map well known entity attributes to service parameters
-*/
-status_t
-App::MapAttrsToServiceParams(BMessage *attrMsg, BMessage *serviceParamMsg)
-{
-    serviceParamMsg->AddString("isbn", attrMsg->GetString("Book:ISBN"));
-    // fall back to file name if no title given
-    serviceParamMsg->AddString("title", attrMsg->GetString("Media:Title", attrMsg->GetString("name")));
-    // map author(s) / contributors
-    BString authors = attrMsg->GetString("Book:Authors");
-    if (!authors.IsEmpty()) {
-        BString author;
-        BStringList authorNames;
-        authors.Split(",", true, authorNames);
-        if (authorNames.CountStrings() > 1) {
-            author = authorNames.First();
-            serviceParamMsg->AddString("contributor", authorNames.StringAt(1));
-            // LATER: support multiple contributors, if this is supported by OpenLibrary?
-        } else {
-            author = authors;
-        }
-        serviceParamMsg->AddString("author_name", author);
-    }
-    serviceParamMsg->AddString("publish_year", attrMsg->GetString("Media:Year"));
-    serviceParamMsg->AddString("publisher", attrMsg->GetString("Book:Publisher"));
-    // take first language if any
-    BString languages = attrMsg->GetString("Book:Languages");
-    if (!languages.IsEmpty()) {
-        BString language;
-        BStringList langs;
-        languages.Split(",", true, langs);
-        if (langs.CountStrings() > 1) {
-            language = langs.StringAt(0);
-        } else {
-            language = languages;
-        }
-        serviceParamMsg->AddString("language", language);
-    }
-
     return B_OK;
 }
 
