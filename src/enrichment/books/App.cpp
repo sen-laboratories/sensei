@@ -60,35 +60,72 @@ void App::ArgvReceived(int32 argc, char ** argv) {
         PrintUsage();
         return;
     }
-    if (strncmp(argv[1], "-h", 2) == 0 || strncmp(argv[1], "--help", 6) == 0) {
-        PrintUsage();
-        return;
-    }
 
     // real argument parsing
     int argIndex = 1;
     bool debug = false;
+    bool wipe = false;
+    BString inputPath;
+    BString outputPath;
 
-    if (strncmp(argv[1], "-d", 2) == 0 || strncmp(argv[1], "--debug", 7) == 0) {
+    while (argIndex < argc) {   // last argument is always input file
+        const char* arg = argv[argIndex];
+        printf("handling argument #%d: '%s'...\n", argIndex, arg);
+
+        if (strncmp(arg, "-h", 2) == 0 || strncmp(arg, "--help", 6) == 0) {
+            PrintUsage();
+            exit(1);
+        } else if (strncmp(arg, "-d", 2) == 0 || strncmp(arg, "--debug", 7) == 0) {
+            debug = true;
+        } else if (strncmp(arg, "-w", 2) == 0 || strncmp(arg, "--wipe", 6) == 0) {
+            wipe = true;
+        } else if (strncmp(arg, "-o", 2) == 0 || strncmp(arg, "--output", 8) == 0) {
+            argIndex++; // advance to next argument after option switch
+            outputPath = argv[argIndex];
+        } else {
+            if (strncmp(arg, "-", 1) == 0 ) {
+                BString errorMsg("unknown parameter ");
+                errorMsg.Append(arg);
+                PrintUsage(errorMsg.String());
+
+                exit(1);
+            }
+            inputPath = arg;
+        }
+
         argIndex++;
-        debug = true;
     }
 
-    if (argIndex > argc+1) {
+    if (inputPath.IsEmpty()) {
         PrintUsage("Missing input file." );
-        return;
+        exit(1);
     }
 
     BMessage refsMsg(B_REFS_RECEIVED);
-    BEntry entry(argv[argIndex]);
-
+    BEntry inputEntry(inputPath);
     entry_ref ref;
-    entry.GetRef(&ref);
+
+    inputEntry.GetRef(&ref);
     refsMsg.AddRef("refs", &ref);
+
+    if (outputPath != NULL) {
+        BEntry outputEntry(outputPath);
+        entry_ref outputRef;
+        outputEntry.GetRef(&outputRef);
+
+        refsMsg.AddRef("outRefs", &outputRef);
+    }
 
     if (debug) {
         refsMsg.AddBool("debug", true);
     }
+    if (wipe) {
+        refsMsg.AddBool("wipe", true);
+    }
+
+    //TEST
+    printf("constructed refs msg:\n");
+    refsMsg.PrintToStream();
 
     RefsReceived(&refsMsg);
 }
@@ -107,6 +144,7 @@ void App::RefsReceived(BMessage *message)
     }
 
     fDebugMode = message->GetBool("debug", false);
+    fOverwrite = message->GetBool("wipe", false);
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = FetchBookMetadata(&ref, &reply);
@@ -117,13 +155,54 @@ void App::RefsReceived(BMessage *message)
             "Oh no.");
         alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
         alert->Go();
-        Quit();
-        return;
+        exit(1);
     }
     if (fDebugMode) {
         printf("reply:\n");
         reply.PrintToStream();
     }
+
+    // write back enriched result
+    entry_ref resultRef, outRef;
+    result = message->FindRef("outRefs", &outRef);
+    if (result != B_OK) {
+        resultRef = ref;
+    } else {
+        // create empty output file for result metadata in attributes
+        BFile outputFile(&outRef, B_CREATE_FILE | B_READ_WRITE);
+        outputFile.Sync();
+
+        BNode node(&outRef);
+        BNodeInfo nodeInfo(&node);
+        char type[B_MIME_TYPE_LENGTH];
+
+        result = nodeInfo.GetType(type);
+        if (fOverwrite || (result != B_OK)) {
+            if (fOverwrite || (result == B_ENTRY_NOT_FOUND)) {
+                result = nodeInfo.SetType("entity/book");
+            }
+            if (result != B_OK) {
+                BAlert* alert = new BAlert("Error in SEN Book Enricher",
+                    "Failed to write back metadata.",
+                    "Oh no.");
+                alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+                alert->Go();
+                exit(1);
+            }
+        }
+        resultRef = outRef;
+    }
+
+    result = fBaseEnricher->MapMsgToAttrs(&reply, &resultRef, fOverwrite);
+    if (result != B_OK) {
+        BAlert* alert = new BAlert("Error in SEN Book Enricher",
+            "Failed to write back metadata.",
+            "Oh no.");
+        alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+        alert->Go();
+        exit(1);
+    }
+
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
     message->SendReply(&reply, this);
@@ -197,7 +276,6 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         bookFound.PrintToStream();
     }
 
-    BMessage resultAttrMsg;
     BMessage resultBook;
 
     // convert map values to arrays, they are always indexed by number!
@@ -207,14 +285,14 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     valueMapKeys.Add("language");
     BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
 
-    result = fBaseEnricher->MapServiceParamsToAttrs(&resultBook, &resultAttrMsg);
+    result = fBaseEnricher->MapServiceParamsToAttrs(&resultBook, resultMsg);
     if (result != B_OK) {
         printf("error mapping back result: %s\n", strerror(result));
         return result;
     }
     if (fDebugMode) {
         printf("Got attribute result message:\n");
-        resultAttrMsg.PrintToStream();
+        resultMsg->PrintToStream();
     }
     return B_OK;
 }

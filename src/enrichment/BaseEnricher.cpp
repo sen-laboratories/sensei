@@ -131,8 +131,10 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* ref, bo
 
     result = node.InitCheck();
 	if (result != B_OK) {
-        printf("failed to open input file for writing %s: %s\n", ref->name, strerror(result));
+        printf("failed to open output file '%s' for writing: %s\n", ref->name, strerror(result));
 		return result;
+    } else {
+        printf("writing metadata to fs attributes of output file '%s'...\n", ref->name);
     }
 
     // go through all message data and write to attributes with respective name and type from message key/type
@@ -144,13 +146,13 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* ref, bo
         if (result == B_OK) {
             const void* data;
             ssize_t dataSize;
-            result = attrMsg->FindData(reinterpret_cast<const char*>(key), type, i, &data, &dataSize);
+            result = attrMsg->FindData(key, type, &data, &dataSize);
 
             if (result == B_OK && dataSize > 0) {
                 attr_info attrInfo;
                 result = node.GetAttrInfo(key, &attrInfo);
-                if (result != B_ENTRY_NOT_FOUND) {  // attribute not there yet, this is OK
-                    if (result != B_OK) {           // another error, not OK
+                if (result != B_OK) {
+                    if (result != B_ENTRY_NOT_FOUND) {
                         printf("error inspecting attribute '%s' of file %s: %s\n", key, ref->name, strerror(result));
                         return result;
                     }
@@ -158,6 +160,7 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* ref, bo
                     if (! overwrite) {
                         printf("skipping existing attribute '%s' of file %s: use flag 'overwrite' to force replace.\n",
                             key, ref->name);
+                        continue;
                     }
                 }
                 ssize_t attrSize = node.WriteAttr(key, type, 0, data, dataSize);
