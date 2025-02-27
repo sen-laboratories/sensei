@@ -15,10 +15,10 @@ using namespace BPrivate::Network;
 class BaseEnricher {
 
 public:
-    BaseEnricher();
+    BaseEnricher(entry_ref* sourceRef);
     virtual ~BaseEnricher();
 
-    /**
+    /*
     * high level mapping
     */
     status_t AddMapping(const char* source, const char* target, bool bidir = true);
@@ -34,8 +34,11 @@ public:
     * with respective types, using message keys as attribute names.
     * Optionally overwrites existing attributes.
     */
-    status_t MapMsgToAttrs(const BMessage *attrMsg, entry_ref* ref, bool overwrite = false);
+    status_t MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetRef, bool overwrite = false);
 
+    /*
+    * conversion
+    */
     static status_t ConvertMessageMapsToArray(const BMessage* mapMessage, BMessage* resultMsg, BStringList* keys = NULL);
     static status_t ConvertSingleMessageMapToArray(const BMessage* msg, const char* originalKey, BMessage* resultMsg);
 
@@ -50,4 +53,5 @@ public:
 private:
     BHttpSession*       fHttpSession;
     BMessage*           fMappingTable;
+    entry_ref*          fSourceRef;
 };

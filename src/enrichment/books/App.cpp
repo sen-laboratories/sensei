@@ -24,21 +24,13 @@ const char* kApplicationSignature = "application/x-vnd.sen-labs.bert";
 
 App::App() : BApplication(kApplicationSignature)
 {
-    fBaseEnricher = new BaseEnricher();
-    // set up global mapping table (all Strings because it's only about names, not values!)
-    fBaseEnricher->AddMapping("Book:ISBN", "isbn");
-    fBaseEnricher->AddMapping("Book:Authors", "author_name");
-    fBaseEnricher->AddMapping("Book:Languages", "language");
-    fBaseEnricher->AddMapping("Book:Publisher", "publisher");
-    fBaseEnricher->AddMapping("Media:Title", "title");
-    fBaseEnricher->AddMapping("Media:Year", "first_publish_year");
-    // keep these for later to save another lookup query for relations
-    fBaseEnricher->AddMapping("OL:author_keys", "author_key");
 }
 
 App::~App()
 {
-    delete fBaseEnricher;
+    if (fBaseEnricher) {
+        delete fBaseEnricher;
+    }
 }
 
 int main()
@@ -123,10 +115,6 @@ void App::ArgvReceived(int32 argc, char ** argv) {
         refsMsg.AddBool("wipe", true);
     }
 
-    //TEST
-    printf("constructed refs msg:\n");
-    refsMsg.PrintToStream();
-
     RefsReceived(&refsMsg);
 }
 
@@ -145,6 +133,18 @@ void App::RefsReceived(BMessage *message)
 
     fDebugMode = message->GetBool("debug", false);
     fOverwrite = message->GetBool("wipe", false);
+
+    fBaseEnricher = new BaseEnricher(&ref);
+
+    // set up global mapping table (all Strings because it's only about names, not values!)
+    fBaseEnricher->AddMapping("Book:ISBN", "isbn");
+    fBaseEnricher->AddMapping("Book:Authors", "author_name");
+    fBaseEnricher->AddMapping("Book:Languages", "language");
+    fBaseEnricher->AddMapping("Book:Publisher", "publisher");
+    fBaseEnricher->AddMapping("Media:Title", "title");
+    fBaseEnricher->AddMapping("Media:Year", "first_publish_year");
+    // keep these for later to save another lookup query for relations
+    fBaseEnricher->AddMapping("OL:author_keys", "author_key");
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = FetchBookMetadata(&ref, &reply);
@@ -170,25 +170,23 @@ void App::RefsReceived(BMessage *message)
     } else {
         // create empty output file for result metadata in attributes
         BFile outputFile(&outRef, B_CREATE_FILE | B_READ_WRITE);
-        outputFile.Sync();
+        outputFile.Sync();  // ensure file is created so we can access up-to-date attributes below
+
+        // ensure all input attributes are writte to new file
+        fOverwrite = true;
 
         BNode node(&outRef);
         BNodeInfo nodeInfo(&node);
-        char type[B_MIME_TYPE_LENGTH];
 
-        result = nodeInfo.GetType(type);
-        if (fOverwrite || (result != B_OK)) {
-            if (fOverwrite || (result == B_ENTRY_NOT_FOUND)) {
-                result = nodeInfo.SetType("entity/book");
-            }
-            if (result != B_OK) {
-                BAlert* alert = new BAlert("Error in SEN Book Enricher",
-                    "Failed to write back metadata.",
-                    "Oh no.");
-                alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
-                alert->Go();
-                exit(1);
-            }
+        // always ensure to set correct file type
+        result = nodeInfo.SetType("entity/book");
+        if (result != B_OK) {
+            BAlert* alert = new BAlert("Error in SEN Book Enricher",
+                "Failed to write back metadata.",
+                "Oh no.");
+            alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+            alert->Go();
+            exit(1);
         }
         resultRef = outRef;
     }
@@ -265,6 +263,8 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 
     if (numFound > 1) {
         // user needs to select a result
+        // todo: implement columnlistview with attributes/params as columns and results in rows
+        //       let the user select one *or more* results, so we can gather an entire result set.
         printf("please select a book... TBI\n");
     }
 
@@ -284,6 +284,9 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     valueMapKeys.Add("author_key");
     valueMapKeys.Add("language");
     BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
+
+    // always use input attributes as base for result so they get updated and type converted below!
+    resultMsg->Append(inputAttrsMsg);
 
     result = fBaseEnricher->MapServiceParamsToAttrs(&resultBook, resultMsg);
     if (result != B_OK) {

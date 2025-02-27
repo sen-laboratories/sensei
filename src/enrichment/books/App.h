@@ -7,6 +7,8 @@
 #include <Application.h>
 #include "../BaseEnricher.h"
 
+#define BOOK_MIME_TYPE "entity/book"
+
 class App : public BApplication
 {
 public:
