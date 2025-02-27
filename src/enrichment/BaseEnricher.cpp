@@ -5,16 +5,21 @@
 
 #include "BaseEnricher.h"
 
+#include <DataIO.h>
 #include <MimeType.h>
 #include <NodeInfo.h>
 #include <String.h>
+#include <SupportKit.h>
+#include <TranslationUtils.h>
 #include <Url.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fs_attr.h>
-#include <iostream>
+#include <stdexcept>
 #include <string.h>
+
 #include <private/netservices2/ExclusiveBorrow.h>
 #include <private/netservices2/HttpFields.h>
 #include <private/netservices2/HttpRequest.h>
@@ -29,8 +34,8 @@ BaseEnricher::BaseEnricher(entry_ref* srcRef)
 {
     fHttpSession = new BHttpSession();
     fMappingTable = new BMessage('SEmt');
-    // by default, we provide a simple mapping for the file name as parameter "name" under the special key BEOS:NAME
-    AddMapping("BEOS:NAME", "name");
+    // by default, we provide a simple mapping for the file name as parameter "name" under the special key SENSEI:NAME
+    AddMapping(SENSEI_NAME_ATTR, "name");
     fSourceRef = srcRef;
 }
 
@@ -117,7 +122,7 @@ status_t BaseEnricher::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
 	}
 
     // always add file name as pseudo internal attribute to use if needed
-    attrMsg->AddString("BEOS:NAME", ref->name);
+    attrMsg->AddString(SENSEI_NAME_ATTR, ref->name);
 
     return B_OK;
 }
@@ -150,6 +155,11 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetR
             result = attrMsg->FindData(key, type, &data, &dataSize);
 
             if (result == B_OK && dataSize > 0) {
+                // skip internal file name attribute (only provided for service impl)
+                if (strncmp(key, SENSEI_NAME_ATTR, strlen(SENSEI_NAME_ATTR)) == 0) {
+                    continue;
+                }
+
                 // check if attribute is already present
                 attr_info attrInfo;
 
@@ -307,7 +317,6 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                 // get attribute type for mapped key
                 attrType = mimeAttrs.GetInt32(key, B_STRING_TYPE);
                 void* value = NULL;
-                int32 valueInt32;
 
                 // convert values if necessary
                 if (type != attrType) {
@@ -317,19 +326,26 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                     switch(type) {
                         case B_DOUBLE_TYPE: {
                             double val = std::floor(*(reinterpret_cast<const double*>(data)));
-                            valueInt32 = static_cast<int32>(val);
+                            int32 intVal = static_cast<int32>(val);
 
-                            value = reinterpret_cast<void*> (&valueInt32);
-                            printf("converted input value %f to int32: %u\n", val, valueInt32);
-
+                            switch(attrType) {
+                                case B_INT32_TYPE:
+                                    attrMsg->AddInt32(key, intVal);
+                                    break;
+                                case B_STRING_TYPE:
+                                    attrMsg->AddString(key, std::to_string(intVal).c_str());
+                                    break;
+                                default:
+                                    printf("unsupported conversion, skipping.\n");
+                            }
                             break;
                         }
                         default: {
                             printf("not covered, falling back to system method.\n");
+                            attrMsg->AddData(key, attrType, (value != NULL) ? value : data, dataSize, false);
                         }
                     }
                 }
-                attrMsg->AddData(key, attrType, (value != NULL) ? value : data, dataSize, false);
             }
         }
     }
@@ -499,6 +515,39 @@ bool BaseEnricher::IsInternalAttr(BString* attrName)
 }
 
 // HTTP query support
+
+status_t BaseEnricher::CreateHttpApiUrl(const char* apiUrlPattern, const BMessage* apiParamMapping, BUrl* resultUrl)
+{
+    BString resultStr(apiUrlPattern);
+
+    // replace placeholders using translation table provided
+    char        *variable;
+    const char  *value;
+    type_code   type;
+    status_t    result;
+
+    for (int32 i = 0; i < apiParamMapping->CountNames(B_STRING_TYPE); i++) {
+        result = apiParamMapping->GetInfo(B_STRING_TYPE, i, &variable, &type);
+        if (result != B_OK) {
+            printf("cannot process argument mapping: %s\n", strerror(result));
+            return result;
+        }
+        // replace variable with provided value
+        value = apiParamMapping->GetString(variable);
+        if (value == NULL) {
+            printf("argument mapping is missing parameter '%s'.\n", variable);
+            return B_BAD_DATA;
+        }
+        BString placeholder(variable);
+        placeholder.Prepend("$");       // replace entire placeholder, not just variable name
+        resultStr.ReplaceAll(placeholder.String(), value);
+    }
+
+    *resultUrl = resultStr;
+
+    return B_OK;
+}
+
 status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQuery, BMessage *msgResult)
 {
     BString request;
@@ -560,8 +609,31 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
     return BJson::Parse(resultBody.c_str(), *msgResult);
 }
 
-status_t
-BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody)
+status_t BaseEnricher::FetchRemoteImage(const BUrl& httpUrl, BBitmap* resultImage, size_t* imageSize)
+{
+    std::string imageData;
+
+    status_t result = FetchRemoteContent(httpUrl, &imageData);
+    if (result != B_OK) {
+        printf("could not access remote Url %s: %s.\n", httpUrl.UrlString().String(), strerror(result));
+        return result;
+    }
+
+    *imageSize = imageData.length();
+    printf("fetched image data (%zu bytes), translating...\n", *imageSize);
+
+    BMemoryIO memBuffer(imageData.c_str(), *imageSize);
+    resultImage = BTranslationUtils::GetBitmap(&memBuffer);
+
+    if (resultImage == NULL || !resultImage->IsValid()) {
+        printf("could not handle image from %s\n", httpUrl.UrlString().String());
+        return B_BAD_DATA;
+    }
+
+    return B_OK;
+}
+
+status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody)
 {
     auto request = BHttpRequest(httpUrl);
     request.SetTimeout(3000 /*ms*/);
@@ -591,13 +663,11 @@ BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody)
             *resultBody = bodyContent;
             printf("got HTTP result with BODY length %d\n", body->BufferLength());
          } catch (const BPrivate::Network::BBorrowError& err) {
-            std::cout << "  BorrowError: " << err.Message() << ", origin: " << err.Origin() << std::endl;
             return B_ERROR;
          }
     } else {
-        std::cout << "  HTTP error " << status.code
-                  << " reading from URL " << httpUrl << " - "
-                  << status.text << std::endl;
+        printf("HTTP error %d reading from URL %s: %s\n",
+            status.code, httpUrl.UrlString().String(), status.text.String());
         return B_ERROR;
     }
     return B_OK;

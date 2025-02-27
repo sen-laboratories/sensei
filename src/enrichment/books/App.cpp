@@ -145,6 +145,7 @@ void App::RefsReceived(BMessage *message)
     fBaseEnricher->AddMapping("Media:Year", "first_publish_year");
     // keep these for later to save another lookup query for relations
     fBaseEnricher->AddMapping("OL:author_keys", "author_key");
+    fBaseEnricher->AddMapping("OL:cover_key", "cover_i");
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = FetchBookMetadata(&ref, &reply);
@@ -179,7 +180,7 @@ void App::RefsReceived(BMessage *message)
         BNodeInfo nodeInfo(&node);
 
         // always ensure to set correct file type
-        result = nodeInfo.SetType("entity/book");
+        result = nodeInfo.SetType(BOOK_MIME_TYPE);
         if (result != B_OK) {
             BAlert* alert = new BAlert("Error in SEN Book Enricher",
                 "Failed to write back metadata.",
@@ -200,6 +201,60 @@ void App::RefsReceived(BMessage *message)
         alert->Go();
         exit(1);
     }
+
+    // fetch cover image
+    const char* coverId = reply.GetString("OL:cover_key");
+    if (coverId != NULL) {
+        BBitmap* coverImage;
+        size_t   coverImageSize;
+
+        result = FetchCover(coverId, coverImage, &coverImageSize);
+        if (result == B_OK) {
+            printf("successfully retrieved cover image, writing to thumbnail...\n");
+
+            // write image to thumbnail attribute
+            BNode outputNode(&resultRef);
+            if ((result = outputNode.InitCheck()) == B_OK) {
+                ssize_t size = outputNode.WriteAttr(THUMBNAIL_ATTR_NAME, B_RAW_TYPE, 0, coverImage, coverImageSize);
+                if (size < coverImageSize) {
+                    printf("error writing thumbnail to file %s: %s\n", resultRef.name, strerror(-size));
+                } else {
+                    // set thumbnail creation time so it doesn't get removed, use modification time from node
+                    time_t modtime;
+                    result = outputNode.GetModificationTime(&modtime);
+                    if (result == B_OK) {
+                        printf("writing thumbnail modification time...\n");
+                        size = outputNode.WriteAttr(THUMBNAIL_CREATION_TIME, B_TIME_TYPE, 0, &modtime, sizeof(time_t));
+                        if (size < 0 ) {
+                            result = -size;
+                        }
+                    }
+                    if (result != B_OK) {
+                        printf("error writing thumbnail to %s: %s\n", resultRef.name, strerror(result));
+                    }
+                }
+                if (result == B_OK) {
+                    printf("Cover image written to thumbnail successfully.\n");
+                    outputNode.Sync();
+                }
+            } else {
+                printf("error opening output file %s: %s\n", resultRef.name, strerror(result));
+            }
+        } else {
+            printf("error fetching cover image, skipping.\n");
+        }
+    } else {
+        printf("could not get cover image ID from result, skipping.\n");
+    }
+
+    if (result == B_OK) {
+        printf("All Book data retrieved successfully, done.\n");
+    }
+
+    reply.AddInt32("resultCode", result);
+
+    printf("reply message:\n");
+    reply.PrintToStream();
 
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
@@ -232,7 +287,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         paramsMsg.PrintToStream();
     }
 
-    BUrl queryUrl("http://openlibrary.org/search.json");
+    BUrl queryUrl(API_BASE_URL "search.json");
     BMessage queryResult;
 
     result = fBaseEnricher->FetchByHttpQuery(queryUrl, &paramsMsg, &queryResult);
@@ -300,11 +355,11 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     return B_OK;
 }
 
+// todo: make this on demand and bind to filetype application/x-person
 status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
 {
     std::string resultBody;
-    status_t result = fBaseEnricher->FetchRemoteContent(
-        BUrl("http://openlibrary.org/authors/OL1A.json"), &resultBody);
+    status_t result = fBaseEnricher->FetchRemoteContent(BUrl(API_AUTHORS_URL), &resultBody);
 
     if (result != B_OK) {
         printf("error accessing remote API: %s", strerror(result));
@@ -313,16 +368,26 @@ status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
     return B_OK;
 }
 
-status_t App::FetchCover(BMessage *msgQuery, BMessage *msgResult)
+status_t App::FetchCover(const char* coverId, BBitmap* coverImage, size_t* imageSize)
 {
-    std::string resultBody;
-    status_t result = fBaseEnricher->FetchRemoteContent(
-        BUrl("http://openlibrary.org/search.json?isbn=9783866476158"), &resultBody);
+    BUrl queryUrl;
+    BMessage queryParams;
+    queryParams.AddString("key", "ID");
+    queryParams.AddString("value", coverId);
+    queryParams.AddString("size", "M");
 
+    status_t result = fBaseEnricher->CreateHttpApiUrl(API_COVER_URL, &queryParams, &queryUrl);
     if (result != B_OK) {
-        printf("error accessing remote API: %s", strerror(result));
+        printf("error in constructing service call: %s\n", strerror(result));
         return result;
     }
+
+    result = fBaseEnricher->FetchRemoteImage(queryUrl, coverImage, imageSize);
+    if (result != B_OK) {
+        printf("error executing remote service call: %s\n", strerror(result));
+        return result;
+    }
+
     return B_OK;
 }
 

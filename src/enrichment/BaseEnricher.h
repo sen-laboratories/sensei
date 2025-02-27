@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <Bitmap.h>
 #include <Entry.h>
 #include <Message.h>
 #include <SupportDefs.h>
@@ -11,6 +12,8 @@
 #include <private/netservices2/HttpSession.h>
 
 using namespace BPrivate::Network;
+
+#define SENSEI_NAME_ATTR "SENSEI:NAME"
 
 class BaseEnricher {
 
@@ -34,7 +37,7 @@ public:
     * with respective types, using message keys as attribute names.
     * Optionally overwrites existing attributes.
     */
-    status_t MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetRef, bool overwrite = false);
+    status_t MapMsgToAttrs(const BMessage* attrMsg, entry_ref* targetRef, bool overwrite = false);
 
     /*
     * conversion
@@ -45,8 +48,10 @@ public:
     static status_t GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg);
     static bool IsInternalAttr(BString* attrName);
 
+    status_t CreateHttpApiUrl(const char* apiUrlPattern, const BMessage* apiParamMapping, BUrl* resultUrl);
     // these need a valid HTTP session and are bound to the lifecycle of this class
-    status_t FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQuery, BMessage *msgResult);
+    status_t FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage* msgQuery, BMessage* msgResult);
+    status_t FetchRemoteImage(const BUrl& httpUrl, BBitmap* resultImage, size_t* imageSize);
     // Note: std::string will not alter binary content unlike BString does.
     status_t FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody);
 
