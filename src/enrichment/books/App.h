@@ -32,7 +32,7 @@ public:
 private:
     // query handling
     status_t            FetchAuthor(BMessage *msgQuery, BMessage *msgResult);
-    status_t            FetchCover(const char* coverId, BBitmap* coverImage, size_t* imageSize);
+    status_t            FetchCover(const char* coverId, std::string* coverImage);
 
     void                PrintUsage(const char* errorMsg = NULL);
     bool                fDebugMode;

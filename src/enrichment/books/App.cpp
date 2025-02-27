@@ -205,23 +205,25 @@ void App::RefsReceived(BMessage *message)
     // fetch cover image
     const char* coverId = reply.GetString("OL:cover_key");
     if (coverId != NULL) {
-        BBitmap* coverImage;
-        size_t   coverImageSize;
+        std::string coverImage;
 
-        result = FetchCover(coverId, coverImage, &coverImageSize);
-        if (result == B_OK) {
+        result = FetchCover(coverId, &coverImage);
+        if (result == B_OK && coverImage.length() > 0) {
             printf("successfully retrieved cover image, writing to thumbnail...\n");
 
             // write image to thumbnail attribute
             BNode outputNode(&resultRef);
             if ((result = outputNode.InitCheck()) == B_OK) {
-                ssize_t size = outputNode.WriteAttr(THUMBNAIL_ATTR_NAME, B_RAW_TYPE, 0, coverImage, coverImageSize);
-                if (size < coverImageSize) {
+                ssize_t size = outputNode.WriteAttr(THUMBNAIL_ATTR_NAME, B_RAW_TYPE, 0, coverImage.c_str(), coverImage.length());
+
+                if (size < coverImage.length()) {
                     printf("error writing thumbnail to file %s: %s\n", resultRef.name, strerror(-size));
                 } else {
                     // set thumbnail creation time so it doesn't get removed, use modification time from node
                     time_t modtime;
                     result = outputNode.GetModificationTime(&modtime);
+                    modtime++;  // thumbnail creation time needs to be after file change time to be kept.
+
                     if (result == B_OK) {
                         printf("writing thumbnail modification time...\n");
                         size = outputNode.WriteAttr(THUMBNAIL_CREATION_TIME, B_TIME_TYPE, 0, &modtime, sizeof(time_t));
@@ -368,7 +370,7 @@ status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
     return B_OK;
 }
 
-status_t App::FetchCover(const char* coverId, BBitmap* coverImage, size_t* imageSize)
+status_t App::FetchCover(const char* coverId, std::string* coverImage)
 {
     BUrl queryUrl;
     BMessage queryParams;
@@ -382,7 +384,7 @@ status_t App::FetchCover(const char* coverId, BBitmap* coverImage, size_t* image
         return result;
     }
 
-    result = fBaseEnricher->FetchRemoteImage(queryUrl, coverImage, imageSize);
+    result = fBaseEnricher->FetchRemoteContent(queryUrl, coverImage);
     if (result != B_OK) {
         printf("error executing remote service call: %s\n", strerror(result));
         return result;
