@@ -34,8 +34,6 @@ BaseEnricher::BaseEnricher(entry_ref* srcRef)
 {
     fHttpSession = new BHttpSession();
     fMappingTable = new BMessage('SEmt');
-    // by default, we provide a simple mapping for the file name as parameter "name" under the special key SENSEI:NAME
-    AddMapping(SENSEI_NAME_ATTR, "name");
     fSourceRef = srcRef;
 }
 
@@ -156,6 +154,7 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetR
 
             if (result == B_OK && dataSize > 0) {
                 // skip internal file name attribute (only provided for service impl)
+                // todo: or rename file if wanted
                 if (strncmp(key, SENSEI_NAME_ATTR, strlen(SENSEI_NAME_ATTR)) == 0) {
                     continue;
                 }
@@ -196,6 +195,9 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
         printf("no mappings defined!\n");
         return B_NOT_INITIALIZED;
     }
+    // DEBUG
+    printf("mappings:\n");
+    fMappingTable->PrintToStream();
 
     // map all message data using mapping table for names and source types for values
     char *key;
@@ -320,7 +322,7 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
 
                 // convert values if necessary
                 if (type != attrType) {
-                    printf("conflicting types %d (service) vs %d (attr)... ", type, attrType);
+                    printf("conflicting types for key %s: %d (service) vs %d (attr)...\n", key, type, attrType);
 
                     // todo: naive quick solution for current pain points, see also https://dev.haiku-os.org/ticket/19444
                     switch(type) {
@@ -331,17 +333,21 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                             switch(attrType) {
                                 case B_INT32_TYPE:
                                     attrMsg->AddInt32(key, intVal);
+                                    printf("  successfully converted Double to Int32: %u\n", intVal);
                                     break;
-                                case B_STRING_TYPE:
-                                    attrMsg->AddString(key, std::to_string(intVal).c_str());
+                                case B_STRING_TYPE: {
+                                    std::string strVal = std::to_string(intVal).c_str();
+                                    attrMsg->AddString(key, strVal.c_str());
+                                    printf("  successfully converted Double to String: %s\n", strVal.c_str());
                                     break;
+                                }
                                 default:
-                                    printf("unsupported conversion, skipping.\n");
+                                    printf("  unsupported conversion, skipping.\n");
                             }
                             break;
                         }
                         default: {
-                            printf("not covered, falling back to system method.\n");
+                            printf("  not covered, falling back to system method.\n");
                             attrMsg->AddData(key, attrType, (value != NULL) ? value : data, dataSize, false);
                         }
                     }
@@ -558,13 +564,33 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
     for (int32 i = 0; i < msgQuery->CountNames(B_ANY_TYPE); i++) {
         char *key;
         uint32 type;
-        result = msgQuery->GetInfo(B_ANY_TYPE, i, &key, &type);
+        int32  count;
+        result = msgQuery->GetInfo(B_ANY_TYPE, i, &key, &type, &count);
 
         if (result == B_OK) {
+            // take first non-empty valid value (supports fallback mappings)
             const void* data;
             ssize_t dataSize;
-            result = msgQuery->FindData(key, type, 0, &data, &dataSize);
+            int32 valIndex = 0;
+
+            //DEBUG
+            if (count > 1) {
+                printf("got %d values for key %s, taking first non-empty valid value...\n", count, key);
+            }
+            bool valFound = false;
+            while (!valFound && valIndex < count) {
+                result = msgQuery->FindData(key, type, valIndex, &data, &dataSize);
+                if (result != B_OK || dataSize == 0) {
+                    valIndex++;
+                } else {
+                    valFound = true;
+                }
+            }
+
             if (result == B_OK) {
+                if (count > 1) {
+                    printf("got value %s at index %d\n", (const char*)data, valIndex);
+                }
                 if (! request.IsEmpty()) {
                     request << "&";
                 }

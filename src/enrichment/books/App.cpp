@@ -142,7 +142,9 @@ void App::RefsReceived(BMessage *message)
     fBaseEnricher->AddMapping("Book:Languages", "language");
     fBaseEnricher->AddMapping("Book:Publisher", "publisher");
     fBaseEnricher->AddMapping("Media:Title", "title");
+    fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Media:Title is empty
     fBaseEnricher->AddMapping("Media:Year", "first_publish_year");
+
     // keep these for later to save another lookup query for relations
     fBaseEnricher->AddMapping("OL:author_keys", "author_key");
     fBaseEnricher->AddMapping("OL:cover_key", "cover_i");
@@ -284,6 +286,12 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         return result;
     }
 
+    // FIXME: quick workaround to use public API query params instead of internal Solr field names
+    paramsMsg.Rename("author_name", "author");
+
+    // add ISBN to result
+    paramsMsg.AddString("fields", "*,isbn");
+
     if (fDebugMode) {
         printf("service params msg:\n");
         paramsMsg.PrintToStream();
@@ -340,6 +348,8 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     valueMapKeys.Add("author_name");
     valueMapKeys.Add("author_key");
     valueMapKeys.Add("language");
+    valueMapKeys.Add("isbn");
+
     BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
 
     // always use input attributes as base for result so they get updated and type converted below!
