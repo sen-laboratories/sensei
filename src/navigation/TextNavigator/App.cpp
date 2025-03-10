@@ -9,7 +9,7 @@
 #include <Roster.h>
 
 #include "App.h"
-#include "../../Sen.h"
+#include "Sen.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.TextNavigator";
 
