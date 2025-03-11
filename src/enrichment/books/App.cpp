@@ -148,8 +148,8 @@ message->PrintToStream();
     fBaseEnricher->AddMapping("Book:Subjects", "subject");
     fBaseEnricher->AddMapping("Book:Class", "lcc");
     fBaseEnricher->AddMapping("Book:Pages", "number_of_pages_median");
-    fBaseEnricher->AddMapping("Media:Title", "title");
-    fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Media:Title is empty
+    fBaseEnricher->AddMapping("Book:Title", "title");
+    fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Book:Title is empty
     fBaseEnricher->AddMapping("Book:Year", "publish_year");
 
     // keep these for later to save another lookup query for relations

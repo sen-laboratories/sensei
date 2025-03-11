@@ -598,6 +598,9 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
                 switch(type){
                     case B_STRING_TYPE: {
                         value << (const char*) data;
+                        // omit empty values
+                        if (value.IsEmpty())
+                        	continue;
                         // omit collections and just take first value
                         if (value.FindFirst(";") > 0) { // if separator is first char, maybe it's significant
                             printf("value list %s split to ", value.String());
