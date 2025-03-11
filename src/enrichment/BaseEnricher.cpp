@@ -227,13 +227,13 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
             continue;
         }
 
-        // handle collection values for Strings (separated by ",")
+        // handle collection values for Strings (separated by ";" because "," is often used in external APIs)
         if (type == B_STRING_TYPE) {
             BString valueStr(reinterpret_cast<const char*>(data), dataSize);
 
             if (! valueStr.IsEmpty()) {
                 BStringList valueList;
-                valueStr.Split(",", true, valueList);
+                valueStr.Split(";", true, valueList);
                 for (int i = 0; i < valueList.CountStrings(); i++) {
                     serviceParamMsg->AddString(paramName, valueList.StringAt(i));
                 }
@@ -304,13 +304,14 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                 printf("message mapping not supported here, try with ConvertMessageToArray().\n");
                 break;
             }
-            // handle collection values for Strings (stored as list in service msg but as comma separated list in attrs)
+            // handle collection values for Strings (stored as list
+            // in service msg but as semicolon separated list in attrs)
             case B_STRING_TYPE: {
                 BStringList values;
                 for (int i = 0; i < count; i++) {
                     values.Add(serviceParamMsg->GetString(paramName, i, NULL));
                 }
-                BString value = values.Join(",", B_ATTR_NAME_LENGTH);
+                BString value = values.Join(";", B_ATTR_NAME_LENGTH);
                 attrMsg->AddString(key, value);
 
                 break;
@@ -573,7 +574,6 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
             ssize_t dataSize;
             int32 valIndex = 0;
 
-            //DEBUG
             if (count > 1) {
                 printf("got %d values for key %s, taking first non-empty valid value...\n", count, key);
             }
@@ -596,9 +596,20 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
                 }
                 BString value;
                 switch(type){
-                    case B_STRING_TYPE:
+                    case B_STRING_TYPE: {
                         value << (const char*) data;
+                        // omit collections and just take first value
+                        if (value.FindFirst(";") > 0) { // if separator is first char, maybe it's significant
+                            printf("value list %s split to ", value.String());
+
+                            BStringList vals;
+                            value.Split(";", true, vals);
+                            value = vals.StringAt(0);
+
+                            printf("%s\n", value.String());
+                        }
                         break;
+                    }
                     case B_INT32_TYPE:
                         value << (*(const int32*) data);
                         break;

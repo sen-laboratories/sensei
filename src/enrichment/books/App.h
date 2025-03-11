@@ -16,6 +16,9 @@
 #define API_AUTHOR_IMG_URL      "https://covers.openlibrary.org/a/olid/$olid-$size.jpg"
 #define API_COVER_URL           "https://covers.openlibrary.org/b/$key/$value-$size.jpg"
 
+#define OPENLIBRARY_API_AUTHOR_KEY  "OPENLIB:author_keys"
+#define OPENLIBRARY_API_COVER_KEY   "OPENLIB:cover_key"
+
 class App : public BApplication
 {
 public:

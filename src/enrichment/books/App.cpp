@@ -131,8 +131,11 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
+printf("BERT: got refs msg:\n");
+message->PrintToStream();
+
     fDebugMode = message->GetBool("debug", false);
-    fOverwrite = message->GetBool("wipe", false);
+    fOverwrite = message->GetBool("wipe", true);
 
     fBaseEnricher = new BaseEnricher(&ref);
 
@@ -141,13 +144,17 @@ void App::RefsReceived(BMessage *message)
     fBaseEnricher->AddMapping("Book:Authors", "author_name");
     fBaseEnricher->AddMapping("Book:Languages", "language");
     fBaseEnricher->AddMapping("Book:Publisher", "publisher");
+    fBaseEnricher->AddMapping("Book:Format", "format");
+    fBaseEnricher->AddMapping("Book:Subjects", "subject");
+    fBaseEnricher->AddMapping("Book:Class", "lcc");
+    fBaseEnricher->AddMapping("Book:Pages", "number_of_pages_median");
     fBaseEnricher->AddMapping("Media:Title", "title");
     fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Media:Title is empty
-    fBaseEnricher->AddMapping("Media:Year", "first_publish_year");
+    fBaseEnricher->AddMapping("Book:Year", "publish_year");
 
     // keep these for later to save another lookup query for relations
-    fBaseEnricher->AddMapping("OL:author_keys", "author_key");
-    fBaseEnricher->AddMapping("OL:cover_key", "cover_i");
+    fBaseEnricher->AddMapping(OPENLIBRARY_API_AUTHOR_KEY, "author_key");
+    fBaseEnricher->AddMapping(OPENLIBRARY_API_COVER_KEY, "cover_i");
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = FetchBookMetadata(&ref, &reply);
@@ -161,7 +168,7 @@ void App::RefsReceived(BMessage *message)
         exit(1);
     }
     if (fDebugMode) {
-        printf("reply:\n");
+        printf("BERT: metadata reply:\n");
         reply.PrintToStream();
     }
 
@@ -205,7 +212,7 @@ void App::RefsReceived(BMessage *message)
     }
 
     // fetch cover image
-    const char* coverId = reply.GetString("OL:cover_key");
+    const char* coverId = reply.GetString(OPENLIBRARY_API_COVER_KEY);
     if (coverId != NULL) {
         std::string coverImage;
 
@@ -289,8 +296,8 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     // FIXME: quick workaround to use public API query params instead of internal Solr field names
     paramsMsg.Rename("author_name", "author");
 
-    // add ISBN to result
-    paramsMsg.AddString("fields", "*,isbn");
+    // add advanced fields to result, esp. ISBN, number of pages and lcc classification
+    paramsMsg.AddString("fields", "*");
 
     if (fDebugMode) {
         printf("service params msg:\n");
@@ -344,11 +351,17 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     BMessage resultBook;
 
     // convert map values to arrays, they are always indexed by number!
+    // TODO: automate this when keys are numbers and values are strings
     BStringList valueMapKeys;
     valueMapKeys.Add("author_name");
     valueMapKeys.Add("author_key");
+    valueMapKeys.Add("publisher");
+    valueMapKeys.Add("publish_year");
     valueMapKeys.Add("language");
+    valueMapKeys.Add("format");
     valueMapKeys.Add("isbn");
+    valueMapKeys.Add("llc");
+    valueMapKeys.Add("subject");
 
     BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
 
