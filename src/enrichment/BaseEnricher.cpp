@@ -153,9 +153,23 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetR
             result = attrMsg->FindData(key, type, &data, &dataSize);
 
             if (result == B_OK && dataSize > 0) {
-                // skip internal file name attribute (only provided for service impl)
-                // todo: or rename file if wanted
+                // check for internal file name attribute and rename file if different
                 if (strncmp(key, SENSEI_NAME_ATTR, strlen(SENSEI_NAME_ATTR)) == 0) {
+                	BString fileName;
+                	fileName << (const char*) data;
+                	if (! fileName.Trim().IsEmpty()) {
+                		BEntry targetEntry(targetRef);
+                		// overewriting existing name is not checked again here, has to be
+                		// one by specific enricher based on its settings and other logic.
+                		if (targetEntry.InitCheck() == B_OK) {
+                			result = targetEntry.Rename(fileName.String());
+                			if (result != B_OK) {
+                				printf("error renaming outupt file '%s' to '%s', ignoring: %s\n",
+                						targetRef->name, fileName.String(), strerror(result));
+                			}
+                		}
+                	}
+                	// done
                     continue;
                 }
 
@@ -308,8 +322,13 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
             // in service msg but as semicolon separated list in attrs)
             case B_STRING_TYPE: {
                 BStringList values;
+                BString val;
+                
                 for (int i = 0; i < count; i++) {
-                    values.Add(serviceParamMsg->GetString(paramName, i, NULL));
+                	val = serviceParamMsg->GetString(paramName, i, "");
+                	if (! val.Trim().IsEmpty()) {
+	                    values.Add(val);
+                	}
                 }
                 BString value = values.Join(";", B_ATTR_NAME_LENGTH);
                 attrMsg->AddString(key, value);
@@ -599,7 +618,7 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
                     case B_STRING_TYPE: {
                         value << (const char*) data;
                         // omit empty values
-                        if (value.IsEmpty())
+                        if (value.Trim().IsEmpty())
                         	continue;
                         // omit collections and just take first value
                         if (value.FindFirst(";") > 0) { // if separator is first char, maybe it's significant

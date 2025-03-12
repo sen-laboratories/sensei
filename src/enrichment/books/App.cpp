@@ -131,11 +131,8 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-printf("BERT: got refs msg:\n");
-message->PrintToStream();
-
     fDebugMode = message->GetBool("debug", false);
-    fOverwrite = message->GetBool("wipe", true);
+    fOverwrite = message->GetBool("wipe", true);	// todo: keep this after the demo?
 
     fBaseEnricher = new BaseEnricher(&ref);
 
@@ -148,8 +145,8 @@ message->PrintToStream();
     fBaseEnricher->AddMapping("Book:Subjects", "subject");
     fBaseEnricher->AddMapping("Book:Class", "lcc");
     fBaseEnricher->AddMapping("Book:Pages", "number_of_pages_median");
-    fBaseEnricher->AddMapping("Book:Title", "title");
-    fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Book:Title is empty
+    fBaseEnricher->AddMapping("Media:Title", "title");
+    fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Media:Title is empty
     fBaseEnricher->AddMapping("Book:Year", "publish_year");
 
     // keep these for later to save another lookup query for relations
@@ -337,7 +334,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         // user needs to select a result
         // todo: implement columnlistview with attributes/params as columns and results in rows
         //       let the user select one *or more* results, so we can gather an entire result set.
-        printf("please select a book... TBI\n");
+        printf("got %f books, please select... TBI\n", numFound);
     }
 
     // map back result fields to attributes from input ref and write back to return *message
@@ -360,14 +357,17 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     valueMapKeys.Add("language");
     valueMapKeys.Add("format");
     valueMapKeys.Add("isbn");
-    valueMapKeys.Add("llc");
+    valueMapKeys.Add("lcc");
     valueMapKeys.Add("subject");
 
     BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
 
-    // always use input attributes as base for result so they get updated and type converted below!
-    resultMsg->Append(inputAttrsMsg);
-
+	if (!fOverwrite) {
+	   // use input attributes as base for result so they get updated and type converted below
+	   // todo: we need to merge same values here!
+	   resultMsg->Append(inputAttrsMsg);
+	}
+	
     result = fBaseEnricher->MapServiceParamsToAttrs(&resultBook, resultMsg);
     if (result != B_OK) {
         printf("error mapping back result: %s\n", strerror(result));
@@ -376,6 +376,19 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     if (fDebugMode) {
         printf("Got attribute result message:\n");
         resultMsg->PrintToStream();
+    }
+    
+    // update empty or default file name if we may overwrite
+    // todo: find a better (i.e. translation safe!) way to determine the default file name
+    if (fOverwrite) {
+    	// update empty file name with title if exists
+    	BString fileName = inputAttrsMsg.GetString(SENSEI_NAME_ATTR, "");
+    	if (fileName.Trim().IsEmpty() || fileName == "New Book") {
+    		BString title = resultMsg->GetString("Media:Title", "");
+    		if (!title.IsEmpty()) {
+    			resultMsg->AddString(SENSEI_NAME_ATTR, title);
+    		}
+    	}
     }
     return B_OK;
 }
