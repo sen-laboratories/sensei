@@ -6,7 +6,7 @@
 
 # The name of the binary.
 NAME = SenPdfExtractor
-TARGET_DIR = .
+TARGET_DIR = bin
 
 # The type of binary, must be one of:
 #	APP:	Application
@@ -73,7 +73,7 @@ SYSTEM_INCLUDE_PATHS = include
 #	Additional paths paths to look for local headers. These use the form
 #	#include "header". Directories that contain the files in SRCS are
 #	automatically included.
-LOCAL_INCLUDE_PATHS = include
+LOCAL_INCLUDE_PATHS = include $(HOME)/config/non-packaged/include/sen
 
 #	Specify the level of optimization that you want. Specify either NONE (O0),
 #	SOME (O1), FULL (O2), or leave blank (for the default optimization level).

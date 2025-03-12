@@ -64,6 +64,8 @@ void App::RefsReceived(BMessage *message)
         reply.AddString("result", strerror(result));
     }
 
+    printf("after ExtractIncludes\n");
+
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
     message->SendReply(&reply, this);
@@ -76,9 +78,10 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
     BPath inputPath(ref);
 
     try {
-        ClangWrapper* clangWrapper = new ClangWrapper(inputPath.Path());
-        int result = clangWrapper->run(reply);
-        delete clangWrapper;
+        ClangWrapper clangWrapper(inputPath.Path());
+        int result = clangWrapper.run(reply);
+
+        printf("after clangWrapper.run()\n");
 
         switch(result) {
             case 0: return B_OK;
@@ -97,11 +100,10 @@ status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
 
 int main()
 {
-	App* app = new App();
-    if (app->InitCheck() != B_OK) {
+	App app;
+    if (app.InitCheck() != B_OK) {
         return 1;
     }
-	app->Run();
-	delete app;
+	app.Run();
 	return 0;
 }

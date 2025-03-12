@@ -40,6 +40,7 @@ ClangWrapper::ClangWrapper(const char* filePath) {
 
 ClangWrapper::~ClangWrapper() {
     delete fSourcePath;
+    printf("ClangWrapper d'tor.\n");
 }
 
 int ClangWrapper::run(BMessage *reply) {
@@ -60,16 +61,16 @@ int ClangWrapper::run(BMessage *reply) {
         optionsParser.getCompilations(),
         optionsParser.getSourcePathList());
 
-    IncludeFinder *includeFinder = new IncludeFinder();
-    int result = tool.run(customFrontendActionFactory(includeFinder).get());
+    IncludeFinder includeFinder;
+    int result = tool.run(customFrontendActionFactory(&includeFinder).get());
 
     // prepare result
-    std::vector<IncludeInfo*> includes = includeFinder->GetIncludes();
+    std::vector<IncludeInfo*>* includes = includeFinder.GetIncludes();
     std::vector<IncludeInfo*>::iterator it;
     BMessage item;
     int32 msgIndex = 0;
 
-    for (it = includes.begin(); it != includes.end(); ++it, msgIndex++) {
+    for (it = includes->begin(); it != includes->end(); ++it, msgIndex++) {
         unsigned int lineNum =    (*it)->lineNum;
         std::string  hdrPath =    (*it)->fileName;
         std::string  searchPath = (*it)->filePath;
@@ -88,6 +89,6 @@ int ClangWrapper::run(BMessage *reply) {
     }
     reply->AddMessage("item", new BMessage(item));
 
-    delete includeFinder;
+    printf("in ClangWrapper, end of run.\n");
     return result;
 }

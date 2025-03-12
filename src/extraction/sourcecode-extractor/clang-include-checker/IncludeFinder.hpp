@@ -21,15 +21,16 @@ struct IncludeInfo {
 class IncludeFinder : private PPCallbacks
 {
 public:
-    IncludeFinder() {};
+    IncludeFinder();
+    virtual ~IncludeFinder();
 
     void SetCompilerInstance(clang::CompilerInstance* compilerInstance) {
         this->compiler = compilerInstance;
     };
 
-    std::vector<IncludeInfo*>     GetIncludes() { return includes;};
+    std::vector<IncludeInfo*>*    GetIncludes() { return includes;};
 
-    std::unique_ptr<PPCallbacks> createPreprocessorCallbacks();
+    std::unique_ptr<PPCallbacks>  createPreprocessorCallbacks();
 
     virtual void EndOfMainFile();
 
@@ -45,6 +46,6 @@ public:
                                   SrcMgr::CharacteristicKind FileType);
 
 private:
-    std::vector<IncludeInfo*>     includes;
+    std::vector<IncludeInfo*>    *includes;
     clang::CompilerInstance      *compiler;
 };

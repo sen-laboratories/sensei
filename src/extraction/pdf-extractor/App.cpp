@@ -14,8 +14,8 @@
 #include <cstring>
 
 #include "App.h"
-#include "../../Sen.h"
-#include "../../Sensei.h"
+#include "Sen.h"
+#include "Sensei.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.PdfExtractor";
 static std::map<QPDFObjGen, int> page_map;
