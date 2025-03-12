@@ -4,7 +4,7 @@
 # adds some needed attributes from the resource, since we need to query for the SEN:TYPE.
 make && \
 rc Resources.rdef && \
-resattr -o SenCodeExtractor Resources.rsrc && \
+resattr -o bin/SenCodeExtractor Resources.rsrc && \
 
 # in any case, clean up
 rm Resources.rsrc

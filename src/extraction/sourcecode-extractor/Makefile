@@ -109,7 +109,7 @@ SYMBOLS := TRUE
 DEBUGGER := TRUE
 
 #	Specify any additional compiler flags to be used.
-COMPILER_FLAGS = -std=c++20 -fPIC -fsanitize=leak
+COMPILER_FLAGS = -std=c++20 -fPIC
 
 #	Specify any additional linker flags to be used.
 LINKER_FLAGS =

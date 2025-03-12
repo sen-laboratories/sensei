@@ -39,15 +39,13 @@ ClangWrapper::ClangWrapper(const char* filePath) {
 }
 
 ClangWrapper::~ClangWrapper() {
-    delete fSourcePath;
-    printf("ClangWrapper d'tor.\n");
 }
 
 int ClangWrapper::run(BMessage *reply) {
     const char* argv[3];
     argv[0] = "clang++";
     argv[1] = fSourcePath;
-    argv[2] = "--";
+    argv[2] = "--";		// this is important, else clang-tools won't run!
     int argc = 3;
 
     llvm::Expected<CommonOptionsParser> optionsParserOpt = CommonOptionsParser::create(argc, argv, toolCategory);
@@ -61,16 +59,22 @@ int ClangWrapper::run(BMessage *reply) {
         optionsParser.getCompilations(),
         optionsParser.getSourcePathList());
 
-    IncludeFinder includeFinder;
-    int result = tool.run(customFrontendActionFactory(&includeFinder).get());
+    IncludeFinder *includeFinder = new IncludeFinder();
+    int result = tool.run(customFrontendActionFactory(includeFinder).get());
+
+    if (result != 0) {
+        printf("there were errors scanning path '%s' for includes.\n", fSourcePath);
+    }
 
     // prepare result
-    std::vector<IncludeInfo*>* includes = includeFinder.GetIncludes();
+    auto includes = includeFinder->GetIncludes();
     std::vector<IncludeInfo*>::iterator it;
     BMessage item;
     int32 msgIndex = 0;
 
-    for (it = includes->begin(); it != includes->end(); ++it, msgIndex++) {
+    printf("got %zu includes for path %s:\n", includes.size(), fSourcePath);
+
+    for (it = includes.begin(); it != includes.end(); ++it, msgIndex++) {
         unsigned int lineNum =    (*it)->lineNum;
         std::string  hdrPath =    (*it)->fileName;
         std::string  searchPath = (*it)->filePath;
@@ -89,6 +93,5 @@ int ClangWrapper::run(BMessage *reply) {
     }
     reply->AddMessage("item", new BMessage(item));
 
-    printf("in ClangWrapper, end of run.\n");
     return result;
 }

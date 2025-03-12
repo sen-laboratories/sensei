@@ -4,21 +4,6 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include "IncludeFinder.hpp"
 
-IncludeFinder::IncludeFinder() {
-    includes = new std::vector<IncludeInfo*>();
-}
-
-IncludeFinder::~IncludeFinder() {
-    printf("IncludeFinder d'tor.\n");
-
-    if (includes != NULL) {
-        for (auto includeRef : *includes) {
-            if (includeRef) delete includeRef;
-        }
-        delete includes;
-    }
-}
-
 std::unique_ptr<PPCallbacks>
 IncludeFinder::createPreprocessorCallbacks()
 {
@@ -38,11 +23,16 @@ IncludeFinder::InclusionDirective(SourceLocation HashLoc,
                                   SrcMgr::CharacteristicKind FileType)
 {
     const unsigned int lineNum = compiler->getSourceManager().getSpellingLineNumber(HashLoc);
-    includes->push_back(new IncludeInfo{lineNum, FileName.str(), SearchPath.str(), IsAngled});
+
+	#ifdef DEBUG
+    printf("adding include: file %s with line %d and path %s\n",
+        FileName.str().c_str(), lineNum, SearchPath.str().c_str());
+	#endif
+    includes.push_back(new IncludeInfo{lineNum, FileName.str(), SearchPath.str(), IsAngled});
 }
 
 void
 IncludeFinder::EndOfMainFile()
 {
-    std::cout << "*** end of main file reached, found " << includes->size() << " includes." << std::endl;
+    std::cout << "*** end of main file reached, found " << includes.size() << " includes." << std::endl;
 }
