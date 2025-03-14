@@ -132,7 +132,7 @@ void App::RefsReceived(BMessage *message)
     }
 
     fDebugMode = message->GetBool("debug", false);
-    fOverwrite = message->GetBool("wipe", true);	// todo: keep this after the demo?
+    fOverwrite = message->GetBool("wipe", true);
 
     fBaseEnricher = new BaseEnricher(&ref);
 
@@ -189,7 +189,7 @@ void App::RefsReceived(BMessage *message)
         result = nodeInfo.SetType(BOOK_MIME_TYPE);
         if (result != B_OK) {
             BAlert* alert = new BAlert("Error in SEN Book Enricher",
-                "Failed to write back metadata.",
+                "Failed to create book.",
                 "Oh no.");
             alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
             alert->Go();
@@ -259,6 +259,99 @@ void App::RefsReceived(BMessage *message)
         printf("All Book data retrieved successfully, done.\n");
     }
 
+    // fetch author - todo: demo, outfactor later
+    const char* authorId = reply.GetString(OPENLIBRARY_API_AUTHOR_KEY);
+    BMessage authorResult;
+
+    result = FetchAuthor(authorId, &authorResult);
+
+    if (result == B_OK) {
+        // create output file for result metadata in attributes
+        BString name = authorResult.GetString("META:name", "Unknown Author");
+        printf("creating Author with name '%s'...\n", name.String());
+
+        BFile outputFile(name.String(), B_CREATE_FILE | B_READ_WRITE);
+        BEntry entry(name);
+
+        entry_ref authorRef;
+        entry.GetRef(&authorRef);
+
+        result = entry.InitCheck();
+        if (result != B_OK) {
+            printf("could not create author file %s: %s\n", name.String(), strerror(result));
+            exit(1);
+        }
+
+        BaseEnricher authorEnricher(&authorRef);
+        outputFile.Sync();  // ensure file is created so we can access up-to-date attributes below
+
+        // ensure all input attributes are writte to new file
+        fOverwrite = true;
+        BNode node(&authorRef);
+        BNodeInfo nodeInfo(&node);
+        result = nodeInfo.InitCheck();
+
+        // always ensure to set correct file type
+        if (result == B_OK) result = nodeInfo.SetType(AUTHOR_MIME_TYPE);
+        if (result != B_OK) {
+            BAlert* alert = new BAlert("Error in SEN Book Enricher",
+                "Failed to write back metadata for author.",
+                "Oh no.");
+            alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+            alert->Go();
+            exit(1);
+        }
+        // write info to attrs
+        result = authorEnricher.MapMsgToAttrs(&authorResult, &authorRef, true);  // TODO: fOverwrite
+
+        // fetch author photo
+        const char* photoId = authorResult.GetString(OPENLIBRARY_API_COVER_KEY);
+        if (photoId != NULL) {
+            std::string photo;
+
+            result = FetchPhoto(photoId, &photo);
+            if (result == B_OK && photo.length() > 0) {
+                printf("successfully retrieved cover image, writing to thumbnail...\n");
+
+                // write image to thumbnail attribute
+                BNode outputNode(&authorRef);
+                if ((result = outputNode.InitCheck()) == B_OK) {
+                    ssize_t size = outputNode.WriteAttr(THUMBNAIL_ATTR_NAME, B_RAW_TYPE, 0, photo.c_str(), photo.length());
+
+                    if (size < photo.length()) {
+                        printf("error writing thumbnail to file %s: %s\n", authorRef.name, strerror(-size));
+                    } else {
+                        // set thumbnail creation time so it doesn't get removed, use modification time from node
+                        time_t modtime;
+                        result = outputNode.GetModificationTime(&modtime);
+                        modtime++;  // thumbnail creation time needs to be after file change time to be kept.
+
+                        if (result == B_OK) {
+                            printf("writing thumbnail modification time...\n");
+                            size = outputNode.WriteAttr(THUMBNAIL_CREATION_TIME, B_TIME_TYPE, 0, &modtime, sizeof(time_t));
+                            if (size < 0 ) {
+                                result = -size;
+                            }
+                        }
+                        if (result != B_OK) {
+                            printf("error writing thumbnail to %s: %s\n", authorRef.name, strerror(result));
+                        }
+                    }
+                    if (result == B_OK) {
+                        printf("Cover image written to thumbnail successfully.\n");
+                        outputNode.Sync();
+                    }
+                } else {
+                    printf("error opening output file %s: %s\n", authorRef.name, strerror(result));
+                }
+            } else {
+                printf("error fetching cover image, skipping.\n");
+            }
+        } else {
+            printf("could not get cover image ID from result, skipping.\n");
+        }
+    }
+
     reply.AddInt32("resultCode", result);
 
     printf("reply message:\n");
@@ -289,9 +382,6 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         printf("error mapping attributes to lookup parameters, aborting.\n");
         return result;
     }
-
-    // FIXME: quick workaround to use public API query params instead of internal Solr field names
-    paramsMsg.Rename("author_name", "author");
 
     // add advanced fields to result, esp. ISBN, number of pages and lcc classification
     paramsMsg.AddString("fields", "*");
@@ -367,7 +457,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 	   // todo: we need to merge same values here!
 	   resultMsg->Append(inputAttrsMsg);
 	}
-	
+
     result = fBaseEnricher->MapServiceParamsToAttrs(&resultBook, resultMsg);
     if (result != B_OK) {
         printf("error mapping back result: %s\n", strerror(result));
@@ -377,7 +467,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         printf("Got attribute result message:\n");
         resultMsg->PrintToStream();
     }
-    
+
     // update empty or default file name if we may overwrite
     // todo: find a better (i.e. translation safe!) way to determine the default file name
     if (fOverwrite) {
@@ -394,24 +484,79 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 }
 
 // todo: make this on demand and bind to filetype application/x-person
-status_t App::FetchAuthor(BMessage *msgQuery, BMessage *msgResult)
+status_t App::FetchAuthor(const char* authorId, BMessage *resultMsg)
 {
-    std::string resultBody;
-    status_t result = fBaseEnricher->FetchRemoteContent(BUrl(API_AUTHORS_URL), &resultBody);
+    // add author attribute mapping
+    fBaseEnricher->AddMapping("META:name", "name");
+    fBaseEnricher->AddMapping("META:birthdate", "birth_date");
+    fBaseEnricher->AddMapping(OPENLIBRARY_API_COVER_KEY, "photos");
+
+    BUrl queryUrl;
+    BMessage queryParams;
+    queryParams.AddString("id", authorId);
+
+    status_t result = fBaseEnricher->CreateHttpApiUrl(API_AUTHORS_URL, &queryParams, &queryUrl);
+    if (result != B_OK) {
+        printf("error in constructing service call: %s\n", strerror(result));
+        return result;
+    }
+
+    BMessage authorResult;
+    result = fBaseEnricher->FetchRemoteJson(queryUrl, authorResult);
 
     if (result != B_OK) {
         printf("error accessing remote API: %s", strerror(result));
         return result;
     }
+
+    printf("got author result:\n");
+    authorResult.PrintToStream();
+
+    BMessage author;
+    BStringList valueMapKeys;
+    valueMapKeys.Add("photos");
+
+    BaseEnricher::ConvertMessageMapsToArray(&authorResult, &author, &valueMapKeys);
+
+	if (!fOverwrite) {
+	   // use input attributes as base for result so they get updated and type converted below
+	   // todo: we need to merge same values here!
+	  // resultMsg->Append(inputAttrsMsg);
+	}
+
+    result = fBaseEnricher->MapServiceParamsToAttrs(&author, resultMsg);
+    if (result != B_OK) {
+        printf("error mapping back result: %s\n", strerror(result));
+        return result;
+    }
+    if (fDebugMode) {
+        printf("Got attribute result message:\n");
+        resultMsg->PrintToStream();
+    }
+
+    // update empty or default file name if we may overwrite
+    // todo: find a better (i.e. translation safe!) way to determine the default file name
+    if (fOverwrite) {
+    	// update empty file name with title if exists
+    	// todo: check BString fileName = inputAttrsMsg.GetString(SENSEI_NAME_ATTR, "");
+    	//       if (fileName.Trim().IsEmpty() || fileName == "New Book") {
+    		BString personName = resultMsg->GetString("META:name", "");
+    		if (!personName.IsEmpty()) {
+    			resultMsg->AddString(SENSEI_NAME_ATTR, personName);
+    		}
+    	//}
+    }
+
     return B_OK;
 }
 
 status_t App::FetchCover(const char* coverId, std::string* coverImage)
 {
+    return B_OK;    //TEST
+
     BUrl queryUrl;
     BMessage queryParams;
-    queryParams.AddString("key", "ID");
-    queryParams.AddString("value", coverId);
+    queryParams.AddString("coverId", coverId);
     queryParams.AddString("size", "M");
 
     status_t result = fBaseEnricher->CreateHttpApiUrl(API_COVER_URL, &queryParams, &queryUrl);
@@ -421,6 +566,28 @@ status_t App::FetchCover(const char* coverId, std::string* coverImage)
     }
 
     result = fBaseEnricher->FetchRemoteContent(queryUrl, coverImage);
+    if (result != B_OK) {
+        printf("error executing remote service call: %s\n", strerror(result));
+        return result;
+    }
+
+    return B_OK;
+}
+
+status_t App::FetchPhoto(const char* photoId, std::string* image)
+{
+    BUrl queryUrl;
+    BMessage queryParams;
+    queryParams.AddString("photoId", photoId);
+    queryParams.AddString("size", "M");
+
+    status_t result = fBaseEnricher->CreateHttpApiUrl(API_AUTHOR_IMG_URL, &queryParams, &queryUrl);
+    if (result != B_OK) {
+        printf("error in constructing service call: %s\n", strerror(result));
+        return result;
+    }
+
+    result = fBaseEnricher->FetchRemoteContent(queryUrl, image);
     if (result != B_OK) {
         printf("error executing remote service call: %s\n", strerror(result));
         return result;

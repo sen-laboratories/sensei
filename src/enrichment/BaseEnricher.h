@@ -50,6 +50,7 @@ public:
 
     status_t CreateHttpApiUrl(const char* apiUrlPattern, const BMessage* apiParamMapping, BUrl* resultUrl);
     // these need a valid HTTP session and are bound to the lifecycle of this class
+    status_t FetchRemoteJson(const BUrl& httpUrl, BMessage& jsonMsgResult);
     status_t FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage* msgQuery, BMessage* msgResult);
     status_t FetchRemoteImage(const BUrl& httpUrl, BBitmap* resultImage, size_t* imageSize);
     // Note: std::string will not alter binary content unlike BString does.

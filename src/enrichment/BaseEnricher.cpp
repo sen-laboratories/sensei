@@ -323,7 +323,7 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
             case B_STRING_TYPE: {
                 BStringList values;
                 BString val;
-                
+
                 for (int i = 0; i < count; i++) {
                 	val = serviceParamMsg->GetString(paramName, i, "");
                 	if (! val.Trim().IsEmpty()) {
@@ -534,6 +534,7 @@ bool BaseEnricher::IsInternalAttr(BString* attrName)
            attrName->StartsWith("BEOS:") ||
            attrName->StartsWith("META:") ||
            attrName->StartsWith("_trk/") ||
+           attrName->StartsWith("Media:Thumbnail") ||
            // application specific metadata
            attrName->StartsWith("pe-info") ||
            attrName->StartsWith("PDF:") ||
@@ -655,17 +656,23 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
             }
         }
     }
+
     queryUrl.SetRequest(request);
 
+    return FetchRemoteJson(queryUrl, *msgResult);
+}
+
+status_t BaseEnricher::FetchRemoteJson(const BUrl& httpUrl, BMessage& jsonMsgResult)
+{
     std::string resultBody;
-    result = FetchRemoteContent(queryUrl, &resultBody);
+    status_t result = FetchRemoteContent(httpUrl, &resultBody);
 
     if (result != B_OK) {
         printf("error accessing remote API: %s", strerror(result));
         return result;
     }
 
-    return BJson::Parse(resultBody.c_str(), *msgResult);
+    return BJson::Parse(resultBody.c_str(), jsonMsgResult);
 }
 
 status_t BaseEnricher::FetchRemoteImage(const BUrl& httpUrl, BBitmap* resultImage, size_t* imageSize)
