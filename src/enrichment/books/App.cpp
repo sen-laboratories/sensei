@@ -383,6 +383,17 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         return result;
     }
 
+    // if the title was taken from the file name, we need to send it as a defined API query parameter "q"
+    // because it may contain anything from author name to book title to year
+    if (paramsMsg.HasString("title")) {
+        BString title;
+        if ((title = paramsMsg.GetString("title")) == inputAttrsMsg.GetString(SENSEI_NAME_ATTR)) {
+            printf("sending file name '%s' as query param 'q'.\n", title.String());
+            paramsMsg.RemoveData("title");
+            paramsMsg.AddString("q", title);
+        }
+    }
+
     // add advanced fields to result, esp. ISBN, number of pages and lcc classification
     paramsMsg.AddString("fields", "*");
 
@@ -552,8 +563,6 @@ status_t App::FetchAuthor(const char* authorId, BMessage *resultMsg)
 
 status_t App::FetchCover(const char* coverId, std::string* coverImage)
 {
-    return B_OK;    //TEST
-
     BUrl queryUrl;
     BMessage queryParams;
     queryParams.AddString("coverId", coverId);

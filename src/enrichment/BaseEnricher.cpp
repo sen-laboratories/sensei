@@ -241,7 +241,7 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
             continue;
         }
 
-        // handle collection values for Strings (separated by ";" because "," is often used in external APIs)
+        // todo: handle collection values for Strings (similar to CSV with "," and enclosing values with "," in quotes)
         if (type == B_STRING_TYPE) {
             BString valueStr(reinterpret_cast<const char*>(data), dataSize);
 
@@ -536,9 +536,10 @@ bool BaseEnricher::IsInternalAttr(BString* attrName)
            attrName->StartsWith("_trk/") ||
            attrName->StartsWith("Media:Thumbnail") ||
            // application specific metadata
+           attrName->StartsWith("bepdf:") ||
            attrName->StartsWith("pe-info") ||
            attrName->StartsWith("PDF:") ||
-           attrName->StartsWith("bepdf:");
+           attrName->StartsWith("StyledEdit");
 }
 
 // HTTP query support
@@ -668,7 +669,7 @@ status_t BaseEnricher::FetchRemoteJson(const BUrl& httpUrl, BMessage& jsonMsgRes
     status_t result = FetchRemoteContent(httpUrl, &resultBody);
 
     if (result != B_OK) {
-        printf("error accessing remote API: %s", strerror(result));
+        printf("error accessing remote API: %s\n", strerror(result));
         return result;
     }
 
