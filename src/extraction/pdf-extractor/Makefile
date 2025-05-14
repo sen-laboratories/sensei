@@ -63,17 +63,17 @@ LIBS =  be $(STDCPPLIBS) qpdf
 #	to the Makefile. The paths included are not parsed recursively, so
 #	include all of the paths where libraries must be found. Directories where
 #	source files were specified are	automatically included.
-LIBPATHS = lib
+LIBPATHS = lib $(HOME)/config/non-packaged/lib
 
 #	Additional paths to look for system headers. These use the form
 #	"#include <header>". Directories that contain the files in SRCS are
 #	NOT auto-included here.
-SYSTEM_INCLUDE_PATHS = include
+SYSTEM_INCLUDE_PATHS = include $(HOME)/config/non-packaged/include
 
 #	Additional paths paths to look for local headers. These use the form
 #	#include "header". Directories that contain the files in SRCS are
 #	automatically included.
-LOCAL_INCLUDE_PATHS = include $(HOME)/config/non-packaged/include/sen
+LOCAL_INCLUDE_PATHS =
 
 #	Specify the level of optimization that you want. Specify either NONE (O0),
 #	SOME (O1), FULL (O2), or leave blank (for the default optimization level).
@@ -106,7 +106,7 @@ SYMBOLS :=
 DEBUGGER :=
 
 #	Specify any additional compiler flags to be used.
-COMPILER_FLAGS =
+COMPILER_FLAGS = -std=c++20
 
 #	Specify any additional linker flags to be used.
 LINKER_FLAGS =

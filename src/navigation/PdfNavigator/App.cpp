@@ -1,5 +1,5 @@
 /*
- * Copyright 2024, Gregor B. Rosenauer <gregor.rosenauer@gmail.com>
+ * Copyright 2024-2025, Gregor B. Rosenauer <gregor.rosenauer@gmail.com>
  * All rights reserved. Distributed under the terms of the MIT license.
  */
 
@@ -11,7 +11,7 @@
 #include <Roster.h>
 
 #include "App.h"
-#include "../../Sen.h"
+#include "Sen.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.PdfNavigator";
 

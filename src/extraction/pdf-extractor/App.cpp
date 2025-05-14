@@ -14,11 +14,11 @@
 #include <cstring>
 
 #include "App.h"
-#include "Sen.h"
-#include "Sensei.h"
+#include <sen/Sen.h>
+#include <sen/Sensei.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.PdfExtractor";
-static std::map<QPDFObjGen, int> page_map;
+static std::map<QPDFObjGen, int32> page_map;
 
 App::App() : BApplication(kApplicationSignature)
 {
@@ -119,14 +119,12 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
 {
     int32 targetPage = 0;
     QPDFObjectHandle dest_page = outline.getDestPage();
-    if (!dest_page.isNull()) {
-        QPDFObjGen og = dest_page.getObjGen();
-        if (page_map.count(og)) {
-            targetPage = page_map[og];
+    if (dest_page.getObjectPtr() != NULL) {
+        if (page_map.contains(dest_page.getObjGen())) {
+            targetPage = page_map[dest_page.getObjGen()];
         }
     }
-    BString bookmark(outline.getTitle().c_str());
-    msg->AddString("label", bookmark.String());
+    msg->AddString("label", outline.getTitle().c_str());
     msg->AddInt32("page", targetPage);
 
     return msg;
