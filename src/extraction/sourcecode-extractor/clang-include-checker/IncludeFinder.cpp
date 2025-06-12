@@ -2,11 +2,13 @@
 #include <vector>
 
 #include <clang/Frontend/CompilerInstance.h>
+
 #include "IncludeFinder.hpp"
 
 std::unique_ptr<PPCallbacks>
 IncludeFinder::createPreprocessorCallbacks()
 {
+    std::cout << "createPreprocessorCallbacks\n";
     return std::unique_ptr<PPCallbacks>(this);
 }
 
@@ -19,15 +21,15 @@ IncludeFinder::InclusionDirective(SourceLocation HashLoc,
                                   OptionalFileEntryRef File,
                                   StringRef SearchPath,
                                   StringRef RelativePath,
-                                  const Module *Imported,
+                                  const Module *SuggestedModule,
+                                  bool ModuleImported,
                                   SrcMgr::CharacteristicKind FileType)
 {
     const unsigned int lineNum = compiler->getSourceManager().getSpellingLineNumber(HashLoc);
 
-	#ifdef DEBUG
-    printf("adding include: file %s with line %d and path %s\n",
-        FileName.str().c_str(), lineNum, SearchPath.str().c_str());
-	#endif
+	std::cout << "adding include: file " << FileName.str() << " with line " << lineNum
+              << " and path " << SearchPath.str() << std::endl;
+
     includes.push_back(new IncludeInfo{lineNum, FileName.str(), SearchPath.str(), IsAngled});
 }
 

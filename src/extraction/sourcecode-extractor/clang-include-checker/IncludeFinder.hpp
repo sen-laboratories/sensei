@@ -41,7 +41,8 @@ public:
                                   OptionalFileEntryRef File,
                                   StringRef SearchPath,
                                   StringRef RelativePath,
-                                  const Module *Imported,
+                                  const Module *SuggestedModule,
+                                  bool ModuleImported,
                                   SrcMgr::CharacteristicKind FileType);
 
 private:

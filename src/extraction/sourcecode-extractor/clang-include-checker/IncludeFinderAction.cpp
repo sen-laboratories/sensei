@@ -19,6 +19,7 @@ IncludeFinderAction::ExecuteAction()
     // only parse a single file and don't follow dependency chain
     getCompilerInstance().getPreprocessor().getPreprocessorOpts().SingleFileParseMode = true;
 
+    std::cout << "calling executeAction\n";
     PreprocessOnlyAction::ExecuteAction();
 }
 

@@ -7,6 +7,14 @@
 # The name of the binary.
 NAME = SenCodeExtractor
 TARGET_DIR = bin
+BUILD_WITH_CLANG ?= 1
+
+ifeq ($(BUILD_WITH_CLANG), 1)
+	# clang build
+	CC  := clang
+	CXX := clang++
+	LD  := clang++
+endif
 
 # The type of binary, must be one of:
 #	APP:	Application
@@ -16,8 +24,7 @@ TARGET_DIR = bin
 TYPE = APP
 
 # 	If you plan to use localization, specify the application's MIME signature.
-
-APP_MIME_SIG = application/x-vnd.sen-labs.CodeExtractor
+APP_MIME_SIG = application/x-vnd.sen-labs.SourceCodeExtractor
 
 #	The following lines tell Pe and Eddie where the SRCS, RDEFS, and RSRCS are
 #	so that Pe and Eddie can fill them in for you.
@@ -59,7 +66,7 @@ RSRCS =
 #	- 	if your library does not follow the standard library naming scheme,
 #		you need to specify the path to the library and it's name.
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
-LIBS =  be $(STDCPPLIBS) clang clangBasic clang-cpp clangSupport clangTooling LLVM-18
+LIBS =  be $(STDCPPLIBS) clang clangBasic clang-cpp clangSupport clangTooling LLVM-20
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
@@ -71,12 +78,12 @@ LIBPATHS = lib
 #	Additional paths to look for system headers. These use the form
 #	"#include <header>". Directories that contain the files in SRCS are
 #	NOT auto-included here.
-SYSTEM_INCLUDE_PATHS = include
+SYSTEM_INCLUDE_PATHS =
 
 #	Additional paths paths to look for local headers. These use the form
 #	#include "header". Directories that contain the files in SRCS are
 #	automatically included.
-LOCAL_INCLUDE_PATHS = include $(HOME)/config/non-packaged/include/sen
+LOCAL_INCLUDE_PATHS = $(HOME)/config/non-packaged/include/sen
 
 #	Specify the level of optimization that you want. Specify either NONE (O0),
 #	SOME (O1), FULL (O2), or leave blank (for the default optimization level).

@@ -51,6 +51,7 @@ int ClangWrapper::run(BMessage *reply) {
     llvm::Expected<CommonOptionsParser> optionsParserOpt = CommonOptionsParser::create(argc, argv, toolCategory);
     if (!optionsParserOpt) {
         llvm::errs() << optionsParserOpt.takeError();
+        std::cerr << "failed to setup parser: " << llvm::errs().error() << std::endl;
         return -1;
     }
     CommonOptionsParser& optionsParser = optionsParserOpt.get();
@@ -64,6 +65,8 @@ int ClangWrapper::run(BMessage *reply) {
 
     if (result != 0) {
         printf("there were errors scanning path '%s' for includes.\n", fSourcePath);
+        // still continue with the includes we've got, might just be some missing ones.
+        // we iterate over those below and return the error result anyway.
     }
 
     // prepare result
