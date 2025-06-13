@@ -6,8 +6,8 @@
 
 #include <Application.h>
 
-#define LINE                "SEN:REL:textref:line"
-#define COLUMN              "SEN:REL:textref:column"
+#define LINE                "be:line"       // reuse common attribute
+#define COLUMN              "be:column"     // reuse common attribute
 #define SELECTION_OFFSET    "SEN:REL:textref:selection_offset"
 #define SELECTION_LENGTH    "SEN:REL:textref:selection_length"
 #define SELECTION_LINE_FROM "SEN:REL:textref:selection_line_from"

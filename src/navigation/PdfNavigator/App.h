@@ -7,8 +7,8 @@
 
 #include <Application.h>
 
-#define PAGE                "SEN:REL:docref:page"
-#define PAGE_MSG_KEY        "bepdf:page_num"
+#define PAGE_ATTR       "SEN:REL:docref:page"
+#define PAGE_MSG_KEY    "bepdf:page_num"
 
 class App : public BApplication
 {

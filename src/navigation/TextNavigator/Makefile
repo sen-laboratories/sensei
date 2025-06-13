@@ -6,7 +6,7 @@
 
 # The name of the binary.
 NAME = SenTextNavigator
-TARGET_DIR = .
+TARGET_DIR = ./bin
 
 # The type of binary, must be one of:
 #	APP:	Application
@@ -16,8 +16,7 @@ TARGET_DIR = .
 TYPE = APP
 
 # 	If you plan to use localization, specify the application's MIME signature.
-
-APP_MIME_SIG = application/x-vnd.sen-labs.TextNavigator
+APP_MIME_SIG = application/x-vnd.sen-labs.SenTextNavigator
 
 #	The following lines tell Pe and Eddie where the SRCS, RDEFS, and RSRCS are
 #	so that Pe and Eddie can fill them in for you.
@@ -73,7 +72,7 @@ SYSTEM_INCLUDE_PATHS =
 #	Additional paths paths to look for local headers. These use the form
 #	#include "header". Directories that contain the files in SRCS are
 #	automatically included.
-LOCAL_INCLUDE_PATHS = /boot/home/config/non-packaged/include/sen
+LOCAL_INCLUDE_PATHS = $(HOME)/config/non-packaged/include/sen
 
 #	Specify the level of optimization that you want. Specify either NONE (O0),
 #	SOME (O1), FULL (O2), or leave blank (for the default optimization level).

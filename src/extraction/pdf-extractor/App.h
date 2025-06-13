@@ -2,8 +2,7 @@
  * Copyright 2024, Gregor B. Rosenauer <gregor.rosenauer@gmail.com>
  * All rights reserved. Distributed under the terms of the MIT license.
  */
-#ifndef APP_H
-#define APP_H
+#pragma once
 
 #include <Application.h>
 #include <qpdf/QIntC.hh>
@@ -12,6 +11,8 @@
 #include <qpdf/QPDFPageDocumentHelper.hh>
 #include <qpdf/QTC.hh>
 #include <qpdf/QUtil.hh>
+
+#define PAGE_ATTR       "SEN:REL:docref:page"
 
 class App : public BApplication
 {
@@ -31,5 +32,3 @@ private:
     void ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessage *msg);
     BMessage* AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage *msg);
 };
-
-#endif // APP_H

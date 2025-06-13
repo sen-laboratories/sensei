@@ -61,7 +61,7 @@ void App::RefsReceived(BMessage *message)
     status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), &reply);
 
     if (result != B_OK) {
-        reply.AddString("result", strerror(result));
+        reply.AddString("pluginResult", strerror(result));  // TODO: handle not found includes correctly
     }
 
     // we don't expect a reply but run into a race condition with the app

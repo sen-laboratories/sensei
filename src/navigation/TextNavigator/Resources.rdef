@@ -1,4 +1,4 @@
-resource app_signature "application/x-vnd.sen-labs.TextNavigator";
+resource app_signature "application/x-vnd.sen-labs.SenTextNavigator";
 
 resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
 
@@ -17,8 +17,13 @@ resource app_version {
 	long_info  = "SEN module to resolve textual relations with well-known properties."
 };
 
+/* declare as a SEN navigator plugin so it will be detected and used accordingly. */
+resource(0, "SEN:TYPE") "meta/x-vnd.sen-meta.plugin";
+resource(1, "SENSEI:TYPE") "navigator";
+
 resource file_types message {
-    "types" = "relation/x-vnd.sen-labs.relation.textref"
+    "types" = "relation/x-vnd.sen-labs.relation.textref",
+    "types" = "relation/x-vnd.sen-labs.relation.sourcecode.include"
 };
 
 resource vector_icon {

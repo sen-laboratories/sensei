@@ -141,7 +141,7 @@ status_t App::MapRelationPropertiesToArguments(BMessage *message)
     if ((result = message->FindInt32("page" /* todo map PAGE attr! */, &page)) == B_OK) {
         message->AddInt32(PAGE_MSG_KEY, page); // BePDF
         message->RemoveData("page");
-    } else return result;
+    }
 
     return result;
 }

@@ -124,7 +124,9 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
             targetPage = page_map[dest_page.getObjGen()];
         }
     }
+    // common relation attributes
     msg->AddString("label", outline.getTitle().c_str());
+    // specific docref attributes - uses aliases for full attribute names defined in plugin config map
     msg->AddInt32("page", targetPage);
 
     return msg;
