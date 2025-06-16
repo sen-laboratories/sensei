@@ -120,6 +120,8 @@ void App::RefsReceived(BMessage *message)
     return;
 }
 
+// todo: map from well known aliases and standard attribute names to app-specific message props
+// todo: extend API (and add proper const source msg, desgMsg), then move to base class for reuse
 status_t App::MapRelationPropertiesToArguments(BMessage *message)
 {
     status_t result;
