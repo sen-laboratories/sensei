@@ -402,7 +402,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         paramsMsg.PrintToStream();
     }
 
-    BUrl queryUrl(API_BASE_URL "search.json");
+    BUrl queryUrl(API_BASE_URL "search.json", true);
     BMessage queryResult;
 
     result = fBaseEnricher->FetchByHttpQuery(queryUrl, &paramsMsg, &queryResult);

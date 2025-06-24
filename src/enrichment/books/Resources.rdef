@@ -19,8 +19,11 @@ resource app_version {
 
 /* declare as a SEN extractor plugin so it will be detected and used accordingly. */
 resource(0, "SEN:TYPE") "meta/x-vnd.sen-meta.plugin";
-/* SENSEI specific type, one of extractor, enricher, navigator or identifier */
-resource(1, "SENSEI:TYPE") "enricher";
+
+resource(1, "SEN:plugin:extract")  0;
+resource(2, "SEN:plugin:enrich")   1;
+resource(3, "SEN:plugin:identify") 0;
+resource(4, "SEN:plugin:navigate") 0;
 
 /* defines supported file types for scanning */
 resource file_types message {
