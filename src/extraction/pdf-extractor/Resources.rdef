@@ -15,9 +15,14 @@ resource app_version {
 	long_info  = "SEN module to extract structure outline from PDFs."
 };
 
-/* declare as a SEN extractor plugin so it will be detected and used accordingly. */
-resource(0, "SEN:TYPE") "meta/x-vnd.sen-meta.plugin";
-resource(1, "SENSEI:TYPE") "extractor";
+/* declare as a SEN plugin so it will be detected and used accordingly. */
+resource(0, "SEN:TYPE") "application/x-vnd.sen-labs.plugin";
+
+// set supported feature flags
+resource(1, "SEN:plugin:extract")  1;
+resource(2, "SEN:plugin:enrich")   0;
+resource(3, "SEN:plugin:identify") 0;
+resource(4, "SEN:plugin:navigate") 0;
 
 /* defines supported file types for scanning */
 resource file_types message {
@@ -26,14 +31,14 @@ resource file_types message {
 
 /* schema to define supported output file types (relations) and an optional mapping for the receiver.
    this is a simple type alias mapping to strip down message size of the extraction result. */
-resource(2, "SENSEI:type_mapping") message {
+resource(5, "SENSEI:type_mapping") message {
     /* this defines a default schema that is used when no type is provided in extraction result items. */
     "SENSEI:default" = "relation/x-vnd.sen-labs.relation.docref"
 };
 
 /* schema to define aliases for full attribute names used for output relations.
    similar to type alias mapping to strip down message size of the extraction result. */
-resource(3, "SENSEI:attr_mapping") message {
+resource(6, "SENSEI:attr_mapping") message {
     "page" = "SEN:REL:docref:page"
 };
 

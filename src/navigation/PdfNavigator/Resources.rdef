@@ -17,6 +17,16 @@ resource app_version {
 	long_info  = "SEN module to resolve relations to PDF documents with well-known properties."
 };
 
+/* declare as a SEN plugin so it will be detected and used accordingly.
+   Note: only for completeness sake, will most probably be picked up as a default application anyway */
+resource(0, "SEN:TYPE") "application/x-vnd.sen-labs.plugin";
+
+// set supported feature flags
+resource(1, "SEN:plugin:extract")  0;
+resource(2, "SEN:plugin:enrich")   0;
+resource(3, "SEN:plugin:identify") 0;
+resource(4, "SEN:plugin:navigate") 1;
+
 resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.docref"
 };

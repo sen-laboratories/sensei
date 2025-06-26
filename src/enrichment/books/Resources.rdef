@@ -17,9 +17,10 @@ resource app_version {
 	long_info  = "SEN module to grab metadata for books from online services."
 };
 
-/* declare as a SEN extractor plugin so it will be detected and used accordingly. */
-resource(0, "SEN:TYPE") "meta/x-vnd.sen-meta.plugin";
+/* declare as a SEN plugin so it will be detected and used accordingly. */
+resource(0, "SEN:TYPE") "application/x-vnd.sen-labs.plugin";
 
+// set supported feature flags
 resource(1, "SEN:plugin:extract")  0;
 resource(2, "SEN:plugin:enrich")   1;
 resource(3, "SEN:plugin:identify") 0;

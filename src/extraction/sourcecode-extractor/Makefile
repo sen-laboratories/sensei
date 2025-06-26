@@ -130,8 +130,34 @@ LINKER_FLAGS =
 DRIVER_PATH =
 
 ## Include the Makefile-Engine
-DEVEL_DIRECTORY := \
-	$(shell findpaths -r "makefile_engine" B_FIND_PATH_DEVELOP_DIRECTORY)
-include $(DEVEL_DIRECTORY)/etc/makefile-engine
+DEVEL_DIRECTORY = \
+	$(shell findpaths -e B_FIND_PATH_DEVELOP_DIRECTORY etc/makefile-engine)
+include $(DEVEL_DIRECTORY)
 
-$(VERSION_RDEF): Makefile
+ifeq ($(DEBUGGER),TRUE)
+	DEFINES += DEBUGGING TRACING
+endif
+
+PACKAGE_DIR = $(OBJ_DIR)/package
+ARCH_PACKAGE_INFO = $(OBJ_DIR)/PackageInfo_$(ARCH)
+
+$(ARCH_PACKAGE_INFO): Makefile
+	cat ./PackageInfo | sed 's/$$VERSION/$(VERSION)/' | sed 's/$$ARCH/$(ARCH)/' > $(ARCH_PACKAGE_INFO)
+
+$(PACKAGE): $(TARGET_DIR)/$(NAME) $(ARCH_PACKAGE_INFO)
+	mkdir -p $(PACKAGE_DIR)/apps
+	mkdir -p $(PACKAGE_DIR)/data/deskbar/menu/Applications
+	cp $(TARGET_DIR)/$(NAME) $(PACKAGE_DIR)/apps/
+	-ln -s ../../../../apps/$(NAME) $(PACKAGE_DIR)/data/deskbar/menu/Applications/$(NAME)
+	package create -C $(PACKAGE_DIR)/ -i $(OBJ_DIR)/PackageInfo_$(ARCH) $(PACKAGE)
+	mimeset $(PACKAGE)
+
+package: $(PACKAGE)
+
+distclean:
+	-rm $(TARGET_DIR)/$(NAME)
+
+install:: package
+	pkgman install $(PACKAGE)
+
+#$(VERSION_RDEF): Makefile
