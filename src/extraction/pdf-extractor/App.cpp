@@ -102,7 +102,7 @@ void App::GeneratePageMap(QPDF& qpdf)
 
 void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessage* msg)
 {
-    BMessage childrenRoot('Bmrk');
+    BMessage childrenRoot(SENSEI_MESSAGE_RESULT);
 
     for (auto& outline: outlines) {
         AddBookmarkDetails(outline, &childrenRoot);
@@ -110,9 +110,9 @@ void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessa
         ExtractBookmarks(outline.getKids(), &childrenRoot);
     }
 
-    // childrenRoot may be empty but we need to add it nevertheless as a filler so the message field order
-    // (array indices) stay intact and we can relate children to their root node in the message structure.
-    msg->AddMessage("item", new BMessage(childrenRoot));
+    // add nested self relation properties; child properties may be empty but we
+    // need to add it to keep the recursive but else flat message structure intact.
+    msg->AddMessage(SENSEI_ITEM, &childrenRoot);
 }
 
 BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg)
@@ -125,7 +125,7 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
         }
     }
     // common relation attributes
-    msg->AddString("label", outline.getTitle().c_str());
+    msg->AddString(SENSEI_LABEL, outline.getTitle().c_str());
     // specific docref attributes - uses aliases for full attribute names defined in plugin config map
     msg->AddInt32("page", targetPage);
 

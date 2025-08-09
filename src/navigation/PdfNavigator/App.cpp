@@ -64,18 +64,15 @@ void App::RefsReceived(BMessage *message)
     }
 
     status_t result;
-    if (message->HasMessage(SEN_OPEN_RELATION_ARGS_KEY)) {
-        BMessage argsMsg;
-        result = message->FindMessage(SEN_OPEN_RELATION_ARGS_KEY, &argsMsg);
-        if (result == B_OK) {
-            result = MapRelationPropertiesToArguments(&argsMsg);
-        }
-        if (result == B_OK) {
-            message->RemoveData(SEN_OPEN_RELATION_ARGS_KEY);
-            message->Append(argsMsg);
-        }
-    } else {
-        result = MapRelationPropertiesToArguments(message);
+    BMessage argsMsg;
+
+    result = message->FindMessage(SEN_RELATION_PROPERTIES, &argsMsg);
+    if (result == B_OK) {
+        result = MapRelationPropertiesToArguments(&argsMsg);
+    }
+    if (result == B_OK) {
+        message->RemoveData(SEN_RELATION_PROPERTIES);
+        message->Append(argsMsg);
     }
 
     if (result != B_OK) {
