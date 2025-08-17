@@ -19,7 +19,8 @@ public:
 	virtual void        RefsReceived(BMessage* message);
 
     /**
-    * we transparently get any relation properties as fields of the refs received message.
+    * maps relation properties with canonical names as fields of the refs received message,
+    * to be processed as args by the application.
     */
     status_t            MapRelationPropertiesToArguments(BMessage *message);
 };

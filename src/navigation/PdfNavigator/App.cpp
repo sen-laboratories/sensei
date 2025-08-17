@@ -56,7 +56,7 @@ void App::RefsReceived(BMessage *message)
         BAlert* alert = new BAlert("Error launching SEN Relation Navigator",
             "Failed to resolve relation target.",
             "Oh no.");
-        alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
+        alert->SetFlags(alert->Flags() | B_STOP_ALERT | B_CLOSE_ON_ESCAPE);
         alert->Go();
 
         Quit();
@@ -77,7 +77,7 @@ void App::RefsReceived(BMessage *message)
 
     if (result != B_OK) {
         if (result != B_NAME_NOT_FOUND) {
-            BString error("Failed to map launch arguments!\nReason: ");
+            BString error("Failed to map launch arguments!\nReason:\nDetail: ");
             BAlert* alert = new BAlert("SEN Relation Navigator",
                 error << strerror(result), "OK");
             alert->SetFlags(alert->Flags() | B_STOP_ALERT | B_CLOSE_ON_ESCAPE);
@@ -85,7 +85,7 @@ void App::RefsReceived(BMessage *message)
             Quit();
             return;
         } else {    // warn but continue
-            BString error("Could not map launch arguments: no known parameter found!");
+            BString error("Could not map launch arguments!\nNo known parameter found.\nDetail: ");
             BAlert* alert = new BAlert("SEN Relation Navigator",
                 error << strerror(result), "OK");
             alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
@@ -118,12 +118,12 @@ void App::RefsReceived(BMessage *message)
         }
     }
     if (result != B_OK && result != B_ALREADY_RUNNING) {
-            BString error("Could not launch target application: ");
-            error << strerror(result);
-            BAlert* alert = new BAlert("SEN Relation Navigator",
-                error << strerror(result), "OK");
-            alert->SetFlags(alert->Flags() | B_STOP_ALERT | B_CLOSE_ON_ESCAPE);
-            alert->Go();
+        BString error("Could not launch target application: ");
+        error << strerror(result);
+        BAlert* alert = new BAlert("SEN Relation Navigator",
+            error << strerror(result), "OK");
+        alert->SetFlags(alert->Flags() | B_STOP_ALERT | B_CLOSE_ON_ESCAPE);
+        alert->Go();
     }
 
     Quit();
@@ -135,9 +135,9 @@ status_t App::MapRelationPropertiesToArguments(BMessage *message)
     status_t result;
     int32 page;
 
-    if ((result = message->FindInt32("page" /* todo map PAGE attr! */, &page)) == B_OK) {
+    if ((result = message->FindInt32(PAGE_ATTR, &page)) == B_OK) {
         message->AddInt32(PAGE_MSG_KEY, page); // BePDF
-        message->RemoveData("page");
+        message->RemoveData(PAGE_ATTR);
     }
 
     return result;
