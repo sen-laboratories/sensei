@@ -17,10 +17,21 @@ const char* kApplicationSignature = "application/x-vnd.sen-labs.PdfNavigator";
 
 App::App() : BApplication(kApplicationSignature)
 {
+    fMapper = new MappingUtil();
 }
 
 App::~App()
 {
+    delete fMapper;
+}
+
+int main()
+{
+	App* app = new App();
+	app->Run();
+
+	delete app;
+	return 0;
 }
 
 // intended for testing
@@ -42,7 +53,7 @@ void App::ArgvReceived(int32 argc, char ** argv) {
     refsMsg.AddRef("refs", &ref);
 
     if (page > 0) {
-        refsMsg.AddInt32("page", page);
+        refsMsg.AddInt32(PAGE_ATTR, page);
     }
 
     RefsReceived(&refsMsg);
@@ -69,11 +80,18 @@ void App::RefsReceived(BMessage *message)
     result = message->FindMessage(SEN_RELATION_PROPERTIES, &argsMsg);
     if (result == B_OK) {
         result = MapRelationPropertiesToArguments(&argsMsg);
+    } else {
+        if (result == B_NAME_NOT_FOUND) {   // try to map from fs attributes directly (double click relation file)
+            result = fMapper->MapAttrsToMsg(&ref, &argsMsg);
+        }
     }
     if (result == B_OK) {
         message->RemoveData(SEN_RELATION_PROPERTIES);
         message->Append(argsMsg);
     }
+
+    printf("launch args message is:\n");
+    message->PrintToStream();
 
     if (result != B_OK) {
         if (result != B_NAME_NOT_FOUND) {
@@ -82,6 +100,7 @@ void App::RefsReceived(BMessage *message)
                 error << strerror(result), "OK");
             alert->SetFlags(alert->Flags() | B_STOP_ALERT | B_CLOSE_ON_ESCAPE);
             alert->Go();
+
             Quit();
             return;
         } else {    // warn but continue
@@ -95,25 +114,28 @@ void App::RefsReceived(BMessage *message)
 
     // we need to build our own refs received message so we can send the properties with it
     entry_ref appRef;
-    result = be_roster->FindApp(&ref, &appRef);
+    result = be_roster->FindApp("application/pdf", &appRef);    // it's a PDF navigator after all...
+
     if (result == B_OK) {
         if (! be_roster->IsRunning(&appRef)) {
             result = be_roster->Launch(&appRef, message);
         } else {
             char appSig[B_MIME_TYPE_LENGTH];
             BFile appFile(&appRef, B_READ_ONLY);
+
             if (appFile.InitCheck() == B_OK) {
                 BAppFileInfo appFileInfo(&appFile);
+
                 if (appFileInfo.InitCheck() == B_OK) {
                     if (appFileInfo.GetSignature(appSig) == B_OK) {
-                        LOG("got MIME type %s for ref %s\n", appSig, appRef.name);
+                        printf("got MIME type '%s' for ref '%s'\n", appSig, appRef.name);
                         // send message to running instance for a more seamless experience
                         BMessenger appMess(appSig);
                         appMess.SendMessage(message);
                     }
                 }
             } else {
-                LOG("failed to get MIME Type for ref %s: %s\n", appRef.name, strerror(result));
+                printf("failed to get MIME Type for ref %s: %s\n", appRef.name, strerror(result));
             }
         }
     }
@@ -141,13 +163,4 @@ status_t App::MapRelationPropertiesToArguments(BMessage *message)
     }
 
     return result;
-}
-
-int main()
-{
-	App* app = new App();
-	app->Run();
-
-	delete app;
-	return 0;
 }

@@ -24,6 +24,7 @@ const char* kApplicationSignature = "application/x-vnd.sen-labs.bert";
 
 App::App() : BApplication(kApplicationSignature)
 {
+    fMapper = new MappingUtil();
 }
 
 App::~App()
@@ -31,6 +32,7 @@ App::~App()
     if (fBaseEnricher) {
         delete fBaseEnricher;
     }
+    delete fMapper;
 }
 
 int main()
@@ -134,24 +136,24 @@ void App::RefsReceived(BMessage *message)
     fDebugMode = message->GetBool("debug", false);
     fOverwrite = message->GetBool("wipe", true);
 
-    fBaseEnricher = new BaseEnricher(&ref);
+    fBaseEnricher = new BaseEnricher(&ref, fMapper);
 
     // set up global mapping table (all Strings because it's only about names, not values!)
-    fBaseEnricher->AddMapping("Book:ISBN", "isbn");
-    fBaseEnricher->AddMapping("Book:Authors", "author_name");
-    fBaseEnricher->AddMapping("Book:Languages", "language");
-    fBaseEnricher->AddMapping("Book:Publisher", "publisher");
-    fBaseEnricher->AddMapping("Book:Format", "format");
-    fBaseEnricher->AddMapping("Book:Subjects", "subject");
-    fBaseEnricher->AddMapping("Book:Class", "lcc");
-    fBaseEnricher->AddMapping("Book:Pages", "number_of_pages_median");
-    fBaseEnricher->AddMapping("Media:Title", "title");
-    fBaseEnricher->AddMapping(SENSEI_NAME_ATTR, "title");    // add file name as fallback if Media:Title is empty
-    fBaseEnricher->AddMapping("Book:Year", "publish_year");
+    fMapper->AddAlias("Book:ISBN", "isbn");
+    fMapper->AddAlias("Book:Authors", "author_name");
+    fMapper->AddAlias("Book:Languages", "language");
+    fMapper->AddAlias("Book:Publisher", "publisher");
+    fMapper->AddAlias("Book:Format", "format");
+    fMapper->AddAlias("Book:Subjects", "subject");
+    fMapper->AddAlias("Book:Class", "lcc");
+    fMapper->AddAlias("Book:Pages", "number_of_pages_median");
+    fMapper->AddAlias("Media:Title", "title");
+    fMapper->AddAlias(SENSEI_NAME, "title");    // add file name as fallback if Media:Title is empty
+    fMapper->AddAlias("Book:Year", "publish_year");
 
     // keep these for later to save another lookup query for relations
-    fBaseEnricher->AddMapping(OPENLIBRARY_API_AUTHOR_KEY, "author_key");
-    fBaseEnricher->AddMapping(OPENLIBRARY_API_COVER_KEY, "cover_i");
+    fMapper->AddAlias(OPENLIBRARY_API_AUTHOR_KEY, "author_key");
+    fMapper->AddAlias(OPENLIBRARY_API_COVER_KEY, "cover_i");
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = FetchBookMetadata(&ref, &reply);
@@ -198,7 +200,7 @@ void App::RefsReceived(BMessage *message)
         resultRef = outRef;
     }
 
-    result = fBaseEnricher->MapMsgToAttrs(&reply, &resultRef, fOverwrite);
+    result = fMapper->MapMsgToAttrs(&reply, &resultRef, fOverwrite);
     if (result != B_OK) {
         BAlert* alert = new BAlert("Error in SEN Book Enricher",
             "Failed to write back metadata.",
@@ -282,7 +284,7 @@ void App::RefsReceived(BMessage *message)
             exit(1);
         }
 
-        BaseEnricher authorEnricher(&authorRef);
+        BaseEnricher authorEnricher(&authorRef, fMapper);
         outputFile.Sync();  // ensure file is created so we can access up-to-date attributes below
 
         // ensure all input attributes are writte to new file
@@ -302,7 +304,7 @@ void App::RefsReceived(BMessage *message)
             exit(1);
         }
         // write info to attrs
-        result = authorEnricher.MapMsgToAttrs(&authorResult, &authorRef, true);  // TODO: fOverwrite
+        result = fMapper->MapMsgToAttrs(&authorResult, &authorRef, true);  // TODO: fOverwrite
 
         // fetch author photo
         const char* photoId = authorResult.GetString(OPENLIBRARY_API_COVER_KEY);
@@ -370,7 +372,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 
     // gather attributes from ref to map and use as search params
     BMessage inputAttrsMsg;
-    result = fBaseEnricher->MapAttrsToMsg(ref, &inputAttrsMsg);
+    result = fMapper->MapAttrsToMsg(ref, &inputAttrsMsg);
     if (fDebugMode) {
         printf("input msg from attrs:\n");
         inputAttrsMsg.PrintToStream();
@@ -387,7 +389,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     // because it may contain anything from author name to book title to year
     if (paramsMsg.HasString("title")) {
         BString title;
-        if ((title = paramsMsg.GetString("title")) == inputAttrsMsg.GetString(SENSEI_NAME_ATTR)) {
+        if ((title = paramsMsg.GetString("title")) == inputAttrsMsg.GetString(SENSEI_NAME)) {
             printf("sending file name '%s' as query param 'q'.\n", title.String());
             paramsMsg.RemoveData("title");
             paramsMsg.AddString("q", title);
@@ -483,11 +485,11 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     // todo: find a better (i.e. translation safe!) way to determine the default file name
     if (fOverwrite) {
     	// update empty file name with title if exists
-    	BString fileName = inputAttrsMsg.GetString(SENSEI_NAME_ATTR, "");
+    	BString fileName = inputAttrsMsg.GetString(SENSEI_NAME, "");
     	if (fileName.Trim().IsEmpty() || fileName == "New Book") {
     		BString title = resultMsg->GetString("Media:Title", "");
     		if (!title.IsEmpty()) {
-    			resultMsg->AddString(SENSEI_NAME_ATTR, title);
+    			resultMsg->AddString(SENSEI_NAME, title);
     		}
     	}
     }
@@ -498,9 +500,9 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 status_t App::FetchAuthor(const char* authorId, BMessage *resultMsg)
 {
     // add author attribute mapping
-    fBaseEnricher->AddMapping("META:name", "name");
-    fBaseEnricher->AddMapping("META:birthdate", "birth_date");
-    fBaseEnricher->AddMapping(OPENLIBRARY_API_COVER_KEY, "photos");
+    fMapper->AddAlias("META:name", "name");
+    fMapper->AddAlias("META:birthdate", "birth_date");
+    fMapper->AddAlias(OPENLIBRARY_API_COVER_KEY, "photos");
 
     BUrl queryUrl;
     BMessage queryParams;
@@ -553,7 +555,7 @@ status_t App::FetchAuthor(const char* authorId, BMessage *resultMsg)
     	//       if (fileName.Trim().IsEmpty() || fileName == "New Book") {
     		BString personName = resultMsg->GetString("META:name", "");
     		if (!personName.IsEmpty()) {
-    			resultMsg->AddString(SENSEI_NAME_ATTR, personName);
+    			resultMsg->AddString(SENSEI_NAME, personName);
     		}
     	//}
     }

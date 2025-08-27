@@ -30,174 +30,16 @@
 using namespace BPrivate::Network;
 using namespace std::literals;
 
-BaseEnricher::BaseEnricher(entry_ref* srcRef)
+BaseEnricher::BaseEnricher(entry_ref* srcRef, MappingUtil* mapper)
 {
-    fHttpSession = new BHttpSession();
-    fMappingTable = new BMessage('SEmt');
     fSourceRef = srcRef;
+    fHttpSession = new BHttpSession();
+    fMapper = mapper;
 }
 
 BaseEnricher::~BaseEnricher()
 {
     delete fHttpSession;
-    delete fMappingTable;
-}
-
-status_t BaseEnricher::AddMapping(const char* source, const char* target, bool bidir)
-{
-    status_t result = fMappingTable->AddString(source, target);
-    if (result == B_OK) {
-        if (bidir) {
-            // map in other direction, sanity check if different
-            if (strlen(source) == strlen(target) || strncmp(source, target, strlen(target)) == 0) {
-                printf("invalid arguments: bidirectional mapping for identical values requested! Skipping.");
-            } else {
-                result = fMappingTable->AddString(target, source);
-            }
-        }
-    }
-    if (result != B_OK) {
-        printf("error adding mapping for %s -> %s: %s\n", source, target, strerror(result));
-        return result;
-    }
-    return B_OK;
-}
-
-/**
-* low level mapping between file system attributes and the Enricher
-*/
-status_t BaseEnricher::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
-{
-    if (fMappingTable->IsEmpty()) {
-        printf("no mappings defined!\n");
-        return B_NOT_INITIALIZED;
-    }
-
-    status_t result;
-    BNode node(ref);
-
-    result = node.InitCheck();
-	if (result != B_OK) {
-        printf("failed to read input file from ref %s: %s\n", ref->name, strerror(result));
-		return result;
-    }
-
-	char *attrName = new char[B_ATTR_NAME_LENGTH];
-    attr_info attrInfo;
-    type_code attrType;
-
-	while (node.GetNextAttrName(attrName) == B_OK) {
-        if (! fMappingTable->HasString(attrName)) {
-            printf("skipping unmapped attribute '%s'.\n", attrName);
-            continue;
-        }
-
-        result = node.GetAttrInfo(attrName, &attrInfo);
-        if (result != B_OK) {
-            printf("failed to get attribute info for attribute '%s': %s\n", attrName, strerror(result));
-            return result;
-        }
-
-        char attrValue[attrInfo.size + 1];
-        attrType = attrInfo.type;
-
-        ssize_t bytesRead = node.ReadAttr(
-            attrName,
-            attrType,
-            0,
-            attrValue,
-            attrInfo.size);
-
-        if (bytesRead == 0) {
-            printf("attribute %s has unexpeted type %u in file %s.\n", attrName, attrType, ref->name);
-            return B_ERROR;
-        } else if (bytesRead < 0) {
-            printf("failed to read value of attribute '%s' from file %s.\n", attrName, ref->name);
-            return B_ERROR;
-        }
-
-        attrMsg->AddData(attrName, attrType, attrValue, bytesRead, false);
-	}
-
-    // always add file name as pseudo internal attribute to use if needed
-    attrMsg->AddString(SENSEI_NAME_ATTR, ref->name);
-
-    return B_OK;
-}
-
-/**
-* low level mapping from Enricher back to file system attributes.
-*/
-status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetRef, bool overwrite)
-{
-    status_t result;
-    BNode node(targetRef);
-
-    result = node.InitCheck();
-	if (result != B_OK) {
-        printf("failed to open output file '%s' for writing: %s\n", targetRef->name, strerror(result));
-		return result;
-    } else {
-        printf("writing metadata to fs attributes of output file '%s'...\n", targetRef->name);
-    }
-
-    // go through all message data and write to attributes with respective name and type from message key/type
-    for (int32 i = 0; i < attrMsg->CountNames(B_ANY_TYPE); i++) {
-        char *key;
-        uint32 type;
-        result = attrMsg->GetInfo(B_ANY_TYPE, i, &key, &type);
-
-        if (result == B_OK) {
-            const void* data;
-            ssize_t dataSize;
-            result = attrMsg->FindData(key, type, &data, &dataSize);
-
-            if (result == B_OK && dataSize > 0) {
-                // check for internal file name attribute and rename file if different
-                if (strncmp(key, SENSEI_NAME_ATTR, strlen(SENSEI_NAME_ATTR)) == 0) {
-                	BString fileName;
-                	fileName << (const char*) data;
-                	if (! fileName.Trim().IsEmpty()) {
-                		BEntry targetEntry(targetRef);
-                		// overewriting existing name is not checked again here, has to be
-                		// one by specific enricher based on its settings and other logic.
-                		if (targetEntry.InitCheck() == B_OK) {
-                			result = targetEntry.Rename(fileName.String());
-                			if (result != B_OK) {
-                				printf("error renaming outupt file '%s' to '%s', ignoring: %s\n",
-                						targetRef->name, fileName.String(), strerror(result));
-                			}
-                		}
-                	}
-                	// done
-                    continue;
-                }
-
-                // check if attribute is already present
-                attr_info attrInfo;
-
-                result = node.GetAttrInfo(key, &attrInfo);
-                if (result != B_OK) {
-                    if (result != B_ENTRY_NOT_FOUND) {
-                        printf("error inspecting attribute '%s' of file %s: %s\n", key, targetRef->name, strerror(result));
-                        return result;
-                    }
-                } else {
-                    if (! overwrite) {
-                        printf("skipping existing attribute '%s' of file %s: use flag 'overwrite' to force replace.\n",
-                            key, targetRef->name);
-                        continue;
-                    }
-                }
-                ssize_t attrSize = node.WriteAttr(key, type, 0, data, dataSize);
-                if (attrSize < 0) {
-                    printf("failed to write attribute '%s' to file %s: %s\n", key, targetRef->name, strerror(attrSize));
-                    return attrSize;    // maps to system error if negative
-                }
-            }
-        }
-    }
-    return B_OK;
 }
 
 /**
@@ -205,14 +47,6 @@ status_t BaseEnricher::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetR
 */
 status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage *serviceParamMsg)
 {
-    if (fMappingTable->IsEmpty()) {
-        printf("no mappings defined!\n");
-        return B_NOT_INITIALIZED;
-    }
-    // DEBUG
-    printf("mappings:\n");
-    fMappingTable->PrintToStream();
-
     // map all message data using mapping table for names and source types for values
     char *key;
     uint32 type;
@@ -235,7 +69,7 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
         }
 
         // translate key from attribute name to service parameter name from mapping table
-        const char* paramName = fMappingTable->GetString(key);
+        const char* paramName = fMapper->ResolveAlias(key);
         if (paramName == NULL) {
             printf("could not find parameter mapping for attribute '%s', skipping.\n", key);
             continue;
@@ -270,15 +104,10 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
 */
 status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, BMessage *attrMsg)
 {
-    if (fMappingTable->IsEmpty()) {
-        printf("no mappings defined!\n");
-        return B_NOT_INITIALIZED;
-    }
-
     // get attribute definitions from MIME type
     BMessage mimeAttrs;
 
-    status_t result = GetMimeTypeAttrs(fSourceRef, &mimeAttrs);
+    status_t result = fMapper->GetMimeTypeAttrs(fSourceRef, &mimeAttrs);
     if (result != B_OK) {
         printf("failed to get MIME attribute definitions: %s\n", strerror(result));
         return result;
@@ -299,7 +128,7 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
         }
 
         // translate key from service parameter name back to attribute name using the mapping table
-        const char* key = fMappingTable->GetString(paramName);
+        const char* key = fMapper->ResolveAlias(paramName);
         if (key == NULL) {
             printf("no attribute mapping defined for parameter '%s', skipping.\n", paramName);
             continue;
@@ -474,72 +303,6 @@ status_t BaseEnricher::ConvertSingleMessageMapToArray(const BMessage* msg, const
     }
     // all done successfully!
     return B_OK;
-}
-
-status_t BaseEnricher::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg)
-{
-    BNode node(ref);
-    BMimeType mimeType;
-    char type[B_MIME_TYPE_LENGTH];
-
-    BNodeInfo nodeInfo(&node);
-    status_t result = nodeInfo.GetType(type);
-
-    if (result == B_OK) {
-        mimeType.SetType(type);
-    } else {
-        result = BMimeType::GuessMimeType(ref, &mimeType);
-        if (result != B_OK) {
-            printf("failed to get MIME info for input file %s: %s\n", ref->name, strerror(result));
-            return result;
-        }
-    }
-
-    printf("got MIME Type %s for ref '%s'.\n", mimeType.Type(), ref->name);
-
-    BMessage attrInfoMsg;
-    result = mimeType.GetAttrInfo(&attrInfoMsg);
-
-    if (result != B_OK) {
-        printf("failed to get attrInfo for MIME type %s: %s\n", mimeType.Type(), strerror(result));
-        return result;
-    }
-
-    int32 count;
-    result = attrInfoMsg.GetInfo("attr:name", NULL, &count);
-
-    // fill in name and type and return as msg
-    for (int32 info = 0; info < count; info++) {
-
-        const char* attrName = attrInfoMsg.GetString("attr:name", info, NULL);
-        if (attrName == NULL) {
-            printf("failed to get MIME attribute info for attribute: could not get 'attr:name'!\n");
-            return B_ERROR;
-        }
-        int32 typeCode = attrInfoMsg.GetInt32("attr:type", info, -1);
-        if (typeCode < 0) {
-            printf("failed to get attribute type 'attr:type' for attribute %s\n", attrName);
-            return B_ERROR;
-        }
-        // add name/type mapping for MIME type
-        mimeAttrMsg->AddInt32(attrName, typeCode);
-    }
-
-    return B_OK;
-}
-
-bool BaseEnricher::IsInternalAttr(BString* attrName)
-{
-    return attrName->StartsWith("be:") ||
-           attrName->StartsWith("BEOS:") ||
-           attrName->StartsWith("META:") ||
-           attrName->StartsWith("_trk/") ||
-           attrName->StartsWith("Media:Thumbnail") ||
-           // application specific metadata
-           attrName->StartsWith("bepdf:") ||
-           attrName->StartsWith("pe-info") ||
-           attrName->StartsWith("PDF:") ||
-           attrName->StartsWith("StyledEdit");
 }
 
 // HTTP query support

@@ -42,5 +42,7 @@ private:
     void                PrintUsage(const char* errorMsg = NULL);
     bool                fDebugMode;
     bool                fOverwrite;
+
     BaseEnricher*       fBaseEnricher;
+    MappingUtil*        fMapper;
 };

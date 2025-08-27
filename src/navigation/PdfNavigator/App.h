@@ -7,6 +7,8 @@
 
 #include <Application.h>
 
+#include "../../common/MappingUtil.h"
+
 #define PAGE_ATTR       "SEN:REL:docref:page"
 #define PAGE_MSG_KEY    "bepdf:page_num"
 
@@ -23,4 +25,7 @@ public:
     * to be processed as args by the application.
     */
     status_t            MapRelationPropertiesToArguments(BMessage *message);
+
+private:
+    MappingUtil*        fMapper;
 };
