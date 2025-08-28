@@ -83,17 +83,25 @@ void App::RefsReceived(BMessage *message)
     } else {
         if (result == B_NAME_NOT_FOUND) {   // try to map from fs attributes directly (double click relation file)
             result = fMapper->MapAttrsToMsg(&ref, &argsMsg);
+            if (result == B_OK) {
+                // replace ref to open if there was a relation target ref
+                if (argsMsg.HasRef(SEN_RELATION_TARGET_REF_ATTR)) {
+                    result = argsMsg.FindRef(SEN_RELATION_TARGET_REF_ATTR, &ref);
+                    if (result == B_OK) {
+                        printf("got new launch ref: %s\n", ref.name);
+                        // replace in original message
+                        message->ReplaceRef("refs", &ref);
+                    }
+                }
+            }
         }
     }
     if (result == B_OK) {
         message->RemoveData(SEN_RELATION_PROPERTIES);
         message->Append(argsMsg);
-    }
-
-    printf("launch args message is:\n");
-    message->PrintToStream();
-
-    if (result != B_OK) {
+        printf("launch args message is:\n");
+        message->PrintToStream();
+    } else {
         if (result != B_NAME_NOT_FOUND) {
             BString error("Failed to map launch arguments!\nReason:\nDetail: ");
             BAlert* alert = new BAlert("SEN Relation Navigator",

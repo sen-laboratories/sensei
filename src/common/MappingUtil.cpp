@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "MappingUtil.h"
+#include "Sen.h"
 #include "Sensei.h"
 
 MappingUtil::MappingUtil()
@@ -98,13 +99,21 @@ status_t MappingUtil::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
             return B_ERROR;
         }
 
-        attrMsg->AddData(attrName, attrType, attrValue, bytesRead, false);
+        result = attrMsg->AddData(attrName, attrType, attrValue, bytesRead, false);
+        if (result != B_OK) {
+            break;
+        }
 	}
+
+    if (result != B_OK) {
+        printf("error mapping attributes: %s\n", strerror(result));
+        return result;
+    }
 
     // always add file name as pseudo internal attribute to use if needed
     attrMsg->AddString(SENSEI_NAME, ref->name);
 
-    return B_OK;
+    return result;
 }
 
 /**
