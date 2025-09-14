@@ -12,7 +12,7 @@
 #include <qpdf/QTC.hh>
 #include <qpdf/QUtil.hh>
 
-#define PAGE_ATTR       "SEN:REL:docref:page"
+#define PAGE    "page"
 
 class App : public BApplication
 {

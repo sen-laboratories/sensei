@@ -75,18 +75,17 @@ void App::RefsReceived(BMessage *message)
     }
 
     status_t result;
-    BMessage argsMsg;
+    BMessage argsMsg, propsMsg;
 
-    result = message->FindMessage(SEN_RELATION_PROPERTIES, &argsMsg);
-    if (result == B_OK) {
-        result = MapRelationPropertiesToArguments(&argsMsg);
-    } else {
+    // e.g. when coming directly from relation menu
+    result = message->FindMessage(SEN_RELATION_PROPERTIES, &propsMsg);
+    if (result != B_OK) {
         if (result == B_NAME_NOT_FOUND) {   // try to map from fs attributes directly (double click relation file)
-            result = fMapper->MapAttrsToMsg(&ref, &argsMsg);
+            result = fMapper->MapAttrsToMsg(&ref, &propsMsg);
             if (result == B_OK) {
                 // replace ref to open if there was a relation target ref
-                if (argsMsg.HasRef(SEN_RELATION_TARGET_REF_ATTR)) {
-                    result = argsMsg.FindRef(SEN_RELATION_TARGET_REF_ATTR, &ref);
+                if (propsMsg.HasRef(SEN_RELATION_TARGET_REF_ATTR)) {
+                    result = propsMsg.FindRef(SEN_RELATION_TARGET_REF_ATTR, &ref);
                     if (result == B_OK) {
                         printf("got new launch ref: %s\n", ref.name);
                         // replace in original message
@@ -95,6 +94,10 @@ void App::RefsReceived(BMessage *message)
                 }
             }
         }
+    }
+
+    if (result == B_OK) {
+        result = MapRelationPropertiesToArguments(&propsMsg, &argsMsg);
     }
     if (result == B_OK) {
         message->RemoveData(SEN_RELATION_PROPERTIES);
@@ -160,14 +163,13 @@ void App::RefsReceived(BMessage *message)
     return;
 }
 
-status_t App::MapRelationPropertiesToArguments(BMessage *message)
+status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage)
 {
     status_t result;
     int32 page;
 
-    if ((result = message->FindInt32(PAGE_ATTR, &page)) == B_OK) {
-        message->AddInt32(PAGE_MSG_KEY, page); // BePDF
-        message->RemoveData(PAGE_ATTR);
+    if ((result = inputMessage->FindInt32(PAGE_ATTR, &page)) == B_OK) {
+        result = outputMessage->AddInt32(PAGE_MSG_KEY, page); // BePDF
     }
 
     return result;

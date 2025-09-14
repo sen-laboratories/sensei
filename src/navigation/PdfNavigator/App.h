@@ -22,9 +22,9 @@ public:
 
     /**
     * maps relation properties with canonical names as fields of the refs received message,
-    * to be processed as args by the application.
+    * to be processed as args by the application. Only known properties are converted to supported arguments.
     */
-    status_t            MapRelationPropertiesToArguments(BMessage *message);
+    status_t            MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage);
 
 private:
     MappingUtil*        fMapper;

@@ -111,7 +111,9 @@ void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessa
     }
 
     // add nested self relation properties; child properties may be empty but we
-    // need to add it to keep the recursive but else flat message structure intact.
+    // need to add it to keep the recursive but flat message structure intact.
+    childrenRoot.AddString(SEN_TO_SELF, "");     // filled in by SEN
+
     msg->AddMessage(SENSEI_ITEM, &childrenRoot);
 }
 
@@ -127,7 +129,7 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
     // common relation attributes
     msg->AddString(SENSEI_LABEL, outline.getTitle().c_str());
     // specific docref attributes - uses aliases for full attribute names defined in plugin config map
-    msg->AddInt32("page", targetPage);
+    msg->AddInt32(PAGE, targetPage);
 
     return msg;
 }

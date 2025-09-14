@@ -29,24 +29,31 @@
 
 #include "ClangWrapper.hpp"
 #include "IncludeFinderAction.hpp"
+#include "sen/Sen.h"
+#include "sen/Sensei.h"
 
 using namespace clang::tooling;
 static llvm::cl::OptionCategory toolCategory("Include scanner");
 static llvm::cl::extrahelp commonHelp(CommonOptionsParser::HelpMessage);
 
-ClangWrapper::ClangWrapper(const char* filePath) {
+ClangWrapper::ClangWrapper(const char* filePath, bool self) {
    fSourcePath = filePath;
+   fSelf       = self;
 }
 
 ClangWrapper::~ClangWrapper() {
 }
 
 int ClangWrapper::run(BMessage *reply) {
-    const char* argv[3];
-    argv[0] = "clang++";
-    argv[1] = fSourcePath;
-    argv[2] = "--";		// this is important, else clang-tools won't run!
-    int argc = 3;
+    const char* argv[5];
+    int   arg = 0;
+    argv[arg++] = "clang-20";
+    // this is needed, else clang will fail with "unknown option" for the next option (-I)
+    argv[arg++] = "--extra-arg";
+    argv[arg++] = "-I";
+    argv[arg++] = "/boot/home/config/non-packaged/include";
+    argv[arg++] = fSourcePath;
+    int argc = arg;
 
     llvm::Expected<CommonOptionsParser> optionsParserOpt = CommonOptionsParser::create(argc, argv, toolCategory);
     if (!optionsParserOpt) {
@@ -66,35 +73,41 @@ int ClangWrapper::run(BMessage *reply) {
     if (result != 0) {
         printf("there were errors scanning path '%s' for includes.\n", fSourcePath);
         // still continue with the includes we've got, might just be some missing ones.
-        // we iterate over those below and return the error result anyway.
+        // since we cannot expect a CMakeLists.txt to exist, this is acceptable.
+        result = B_OK;
     }
 
     // prepare result
     auto includes = includeFinder->GetIncludes();
     std::vector<IncludeInfo*>::iterator it;
     BMessage item;
-    int32 msgIndex = 0;
 
     printf("got %zu includes for path %s:\n", includes.size(), fSourcePath);
 
-    for (it = includes.begin(); it != includes.end(); ++it, msgIndex++) {
-        unsigned int lineNum =    (*it)->lineNum;
-        std::string  hdrPath =    (*it)->fileName;
+    for (it = includes.begin(); it != includes.end(); ++it) {
+        item.MakeEmpty();
+
+        unsigned int lineNum    = (*it)->lineNum;
+        std::string  fileName   = (*it)->fileName;
         std::string  searchPath = (*it)->filePath;
-        bool         isGlobal =   (*it)->global;
+        bool         isGlobal   = (*it)->global;
 
-        std::cout << lineNum << ": " << hdrPath << " from " << searchPath <<
-            (isGlobal ? " (global)" : "(local)") << std::endl;
+        // same for inward (self) and outward relation
+        item.AddString("label", fileName.c_str() /*path.Leaf()*/);
 
-        BPath path(hdrPath.c_str());
-
-        item.AddString("label", path.Leaf());
+        // path is mapped to SEN_TO_PATH so SEN can resolve the target transparently
+        BPath path(searchPath.c_str(), fileName.c_str());
         item.AddString("path", path.Path());
-        item.AddString("spath", searchPath.c_str());
-        item.AddInt32("line", lineNum);
+
         item.AddBool("global", isGlobal);
+
+        // self relations have additional inward pointing properties
+        if (fSelf) {
+            item.AddInt32("line", lineNum);
+        }
+
+        reply->AddMessage(SENSEI_ITEM, &item);
     }
-    reply->AddMessage("item", new BMessage(item));
 
     return result;
 }

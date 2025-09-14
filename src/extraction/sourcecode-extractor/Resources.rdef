@@ -4,7 +4,7 @@ resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
 
 resource app_version {
 	major  = 0,
-	middle = 3,
+	middle = 4,
 	minor  = 0,
 
 	/* 0 = development	1 = alpha			2 = beta
@@ -42,8 +42,8 @@ resource(5, "SENSEI:type_mapping") message {
    similar to type alias mapping to strip down message size of the extraction result. */
 resource(6, "SENSEI:attr_mapping") message {
     "line" =  "be:line",
-    "path" =  "SEN:REL:SourceInclude:path",
-    "spath" = "SEN:REL:SourceInclude:search_path",
+    "path" =  "SEN:REL:path",
+    "SEN:TO:PATH" = "path",
     "global" = "SEN:REL:SourceInclude:global"
 };
 

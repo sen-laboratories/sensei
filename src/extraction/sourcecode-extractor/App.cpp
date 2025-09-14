@@ -16,7 +16,7 @@
 
 #include "App.h"
 #include "clang-include-checker/ClangWrapper.hpp"
-#include "Sensei.h"
+#include "sen/Sensei.h"
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.SourceCodeExtractor";
 
@@ -35,9 +35,16 @@ void App::ArgvReceived(int32 argc, char ** argv) {
     }
 
     BMessage refsMsg(B_REFS_RECEIVED);
-    BEntry entry(argv[1]);
-    entry_ref ref;
+    int32 arg = 1;
 
+    // parse optional "self" param
+    if (strncmp(argv[arg], SENSEI_OPTION_SELF, strlen(SENSEI_OPTION_SELF)) == 0) {
+        refsMsg.AddBool("self", true);
+        arg++;
+    }
+
+    BEntry entry(argv[arg]);
+    entry_ref ref;
     entry.GetRef(&ref);
     refsMsg.AddRef("refs", &ref);
 
@@ -57,12 +64,18 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
+    bool self = message->GetBool("self");
+
     BMessage reply(SENSEI_MESSAGE_RESULT);
-    status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), &reply);
+    status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), self, &reply);
 
     if (result != B_OK) {
-        reply.AddString("pluginResult", strerror(result));  // TODO: handle not found includes correctly
+        reply.AddString(SENSEI_RESULT, strerror(result));  // TODO: handle includes not found correctly
     }
+
+    //TEST
+    std::cout << "sending reply:\n";
+    reply.PrintToStream();
 
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
@@ -70,13 +83,15 @@ void App::RefsReceived(BMessage *message)
     Quit();
 }
 
-status_t App::ExtractIncludes(const entry_ref* ref, BMessage *reply)
+status_t App::ExtractIncludes(const entry_ref* ref, bool self, BMessage *reply)
 {
     status_t result;
     BPath inputPath(ref);
 
+    std::cout << "extracting " << (self ? "self " : "") << "include refs from " << ref->name << "...\n";
+
     try {
-        ClangWrapper clangWrapper(inputPath.Path());
+        ClangWrapper clangWrapper(inputPath.Path(), self);
         int result = clangWrapper.run(reply);
 
         switch(result) {

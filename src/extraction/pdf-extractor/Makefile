@@ -68,6 +68,7 @@ LIBPATHS = lib $(HOME)/config/non-packaged/lib
 #	Additional paths to look for system headers. These use the form
 #	"#include <header>". Directories that contain the files in SRCS are
 #	NOT auto-included here.
+#   Note: QPDF includes reference dependencies as system includes!
 SYSTEM_INCLUDE_PATHS = include $(HOME)/config/non-packaged/include
 
 #	Additional paths paths to look for local headers. These use the form

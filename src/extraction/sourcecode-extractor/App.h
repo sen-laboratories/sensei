@@ -14,7 +14,7 @@ public:
     virtual void        RefsReceived(BMessage* message);
     virtual void        ArgvReceived(int32 argc, char ** argv);
 
-    status_t            ExtractIncludes(const entry_ref* ref, BMessage *message);
+    status_t            ExtractIncludes(const entry_ref* ref, bool self, BMessage *message);
 
 private:
 };
