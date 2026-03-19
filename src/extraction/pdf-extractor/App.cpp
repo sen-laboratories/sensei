@@ -61,9 +61,13 @@ void App::RefsReceived(BMessage *message)
     status_t result = ExtractPdfBookmarks(const_cast<const entry_ref*>(&ref), &reply);
     reply.AddString("result", strerror(result));
 
+    //TEST
+    //reply.PrintToStream();
+
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
     message->SendReply(&reply, this);
+
     Quit();
 }
 
@@ -110,11 +114,10 @@ void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessa
         ExtractBookmarks(outline.getKids(), &childrenRoot);
     }
 
-    // add nested self relation properties; child properties may be empty but we
-    // need to add it to keep the recursive but flat message structure intact.
-    childrenRoot.AddString(SEN_TO_SELF, "");     // filled in by SEN
-
+    // Note: we also add empty subnodes here to keep the structure intact
     msg->AddMessage(SENSEI_ITEM, &childrenRoot);
+    msg->AddString (SENSEI_ITEM_ID, "");           // filled in by SEN, just indicate we need a unique ID here
+    msg->AddString (SENSEI_TO, SENSEI_TO_SELF);    // target is always self for bookmarks
 }
 
 BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg)

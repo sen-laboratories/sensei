@@ -63,13 +63,13 @@ LIBS =  be $(STDCPPLIBS) qpdf
 #	to the Makefile. The paths included are not parsed recursively, so
 #	include all of the paths where libraries must be found. Directories where
 #	source files were specified are	automatically included.
-LIBPATHS = lib $(HOME)/config/non-packaged/lib
+LIBPATHS = lib $(HOME)/config/non-packaged/lib/qpdf
 
 #	Additional paths to look for system headers. These use the form
 #	"#include <header>". Directories that contain the files in SRCS are
 #	NOT auto-included here.
 #   Note: QPDF includes reference dependencies as system includes!
-SYSTEM_INCLUDE_PATHS = include $(HOME)/config/non-packaged/include
+SYSTEM_INCLUDE_PATHS = include $(HOME)/config/non-packaged/develop/headers
 
 #	Additional paths paths to look for local headers. These use the form
 #	#include "header". Directories that contain the files in SRCS are

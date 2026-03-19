@@ -1,0 +1,11 @@
+prefix=/boot/system
+exec_prefix=${prefix}
+libdir=/boot/system/lib
+includedir=/boot/system/include
+
+Name: libqpdf
+Description: PDF transformation library
+Version: 12.3.0
+Requires.private: zlib, libjpeg, openssl >= 1.1.0
+Libs: -L${libdir} -lqpdf
+Cflags: -I${includedir}
