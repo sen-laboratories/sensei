@@ -16,7 +16,7 @@
 
 #include "App.h"
 #include "clang-include-checker/ClangWrapper.hpp"
-#include "sen/Sensei.h"
+#include <sen/Sensei.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.SourceCodeExtractor";
 
