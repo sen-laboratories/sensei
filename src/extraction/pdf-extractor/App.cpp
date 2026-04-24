@@ -62,7 +62,7 @@ void App::RefsReceived(BMessage *message)
     reply.AddString("result", strerror(result));
 
     //TEST
-    //reply.PrintToStream();
+    reply.PrintToStream();
 
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.

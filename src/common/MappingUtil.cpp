@@ -8,8 +8,8 @@
 #include <stdio.h>
 
 #include "MappingUtil.h"
-#include "Sen.h"
-#include "Sensei.h"
+#include <sen/Sen.h>
+#include <sen/Sensei.h>
 
 MappingUtil::MappingUtil()
 {
