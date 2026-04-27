@@ -17,8 +17,8 @@
 #include <iostream>
 
 #include "App.h"
-#include "Sen.h"
-#include "Sensei.h"
+#include <sen/Sen.h>
+#include <sen/Sensei.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.bert";
 

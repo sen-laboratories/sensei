@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
-#include <Path.h>
 #include <iostream>
+
+#include <FindDirectory.h>
+#include <Path.h>
 #include <Message.h>
 
 #include <clang/Basic/Diagnostic.h>
@@ -29,8 +30,8 @@
 
 #include "ClangWrapper.hpp"
 #include "IncludeFinderAction.hpp"
-#include "sen/Sen.h"
-#include "sen/Sensei.h"
+#include <sen/Sen.h>
+#include <sen/Sensei.h>
 
 using namespace clang::tooling;
 static llvm::cl::OptionCategory toolCategory("Include scanner");
@@ -45,18 +46,44 @@ ClangWrapper::~ClangWrapper() {
 }
 
 int ClangWrapper::run(BMessage *reply) {
-    const char* argv[5];
-    int   arg = 0;
-    argv[arg++] = "clang-20";
-    // this is needed, else clang will fail with "unknown option" for the next option (-I)
-    argv[arg++] = "--extra-arg";
-    argv[arg++] = "-I";
-    argv[arg++] = "/boot/home/config/non-packaged/include";
-    argv[arg++] = fSourcePath;
-    int argc = arg;
+std::vector<const char*> args;
+    args.push_back("clang-22");
+    args.push_back(fSourcePath);
 
-    llvm::Expected<CommonOptionsParser> optionsParserOpt = CommonOptionsParser::create(argc, argv, toolCategory);
-    if (!optionsParserOpt) {
+    // Clang tooling requires "--" to separate tool arguments from compiler arguments
+    // when bypassing a compile_commands.json database.
+    args.push_back("--");
+
+    BPath pathSys, pathSysExtra, pathUser, pathUserExtra;
+    status_t status;
+
+    status = find_directory(B_SYSTEM_HEADERS_DIRECTORY, &pathSys);
+    if (status == B_OK) {
+        args.push_back("-I");
+        args.push_back(pathSys.Path());
+    }
+
+    status = find_directory(B_SYSTEM_NONPACKAGED_HEADERS_DIRECTORY, &pathSysExtra);
+    if (status == B_OK) {
+        args.push_back("-I");
+        args.push_back(pathSysExtra.Path());
+    }
+
+    status = find_directory(B_USER_HEADERS_DIRECTORY, &pathUser);
+    if (status == B_OK) {
+        args.push_back("-I");
+        args.push_back(pathUser.Path());
+    }
+
+    status = find_directory(B_USER_NONPACKAGED_HEADERS_DIRECTORY, &pathUserExtra);
+    if (status == B_OK) {
+        args.push_back("-I");
+        args.push_back(pathUserExtra.Path());
+    }
+
+    int argc = static_cast<int>(args.size());
+
+    llvm::Expected<CommonOptionsParser> optionsParserOpt = CommonOptionsParser::create(argc, args.data(), toolCategory);    if (!optionsParserOpt) {
         llvm::errs() << optionsParserOpt.takeError();
         std::cerr << "failed to setup parser: " << llvm::errs().error() << std::endl;
         return -1;
@@ -71,7 +98,7 @@ int ClangWrapper::run(BMessage *reply) {
     int result = tool.run(customFrontendActionFactory(includeFinder).get());
 
     if (result != 0) {
-        printf("there were errors scanning path '%s' for includes.\n", fSourcePath);
+        printf("warning: there were errors scanning path '%s' for includes.\n", fSourcePath);
         // still continue with the includes we've got, might just be some missing ones.
         // since we cannot expect a CMakeLists.txt to exist, this is acceptable.
         result = B_OK;
@@ -80,12 +107,11 @@ int ClangWrapper::run(BMessage *reply) {
     // prepare result
     auto includes = includeFinder->GetIncludes();
     std::vector<IncludeInfo*>::iterator it;
-    BMessage item;
 
     printf("got %zu includes for path %s:\n", includes.size(), fSourcePath);
 
     for (it = includes.begin(); it != includes.end(); ++it) {
-        item.MakeEmpty();
+        BMessage item;
 
         unsigned int lineNum    = (*it)->lineNum;
         std::string  fileName   = (*it)->fileName;

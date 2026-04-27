@@ -32,8 +32,8 @@ resource file_types message {
 };
 
 /* LATER: schema to define aliases for full attribute names used for grabbing/enrichment
-resource(2, "SEN:attr_mapping") message {
-    "page" = "SEN:REL:docref:page"
+resource(5, "SEN:attr_mapping") message {
+    "isbn" = "SEN:Book:isbn"
 };
 */
 

@@ -150,7 +150,7 @@ void MarkdownExtractorApp::ExtractReferences(std::ifstream& stream, bool isSelfR
             while (linkIt != end) {
                 BMessage itemMsg;
                 itemMsg.AddString(SENSEI_ITEM_ID, "<SEN:ID>");
-                itemMsg.AddString(SENSEI_TO, "<SEN:ID>");
+                itemMsg.AddString(SENSEI_TO, "<SEN:TO>");
                 itemMsg.AddString(SENSEI_LABEL, (*linkIt)[1].str().c_str());
                 itemMsg.AddInt32("offset", static_cast<int32>(currentOffset + linkIt->position()));
 
@@ -163,7 +163,7 @@ void MarkdownExtractorApp::ExtractReferences(std::ifstream& stream, bool isSelfR
             while (wikiIt != end) {
                 BMessage itemMsg;
                 itemMsg.AddString(SENSEI_ITEM_ID, "<SEN:ID>");
-                itemMsg.AddString(SENSEI_TO, "<SEN:ID>");
+                itemMsg.AddString(SENSEI_TO, "<SEN:TO>");
                 itemMsg.AddString(SENSEI_LABEL, (*wikiIt)[1].str().c_str());
                 itemMsg.AddInt32("offset", static_cast<int32>(currentOffset + wikiIt->position()));
 
@@ -182,7 +182,9 @@ int main() {
     if (app->InitCheck() != B_OK) {
         return 1;
     }
+
     app->Run();
+
     delete app;
     return 0;
 }
