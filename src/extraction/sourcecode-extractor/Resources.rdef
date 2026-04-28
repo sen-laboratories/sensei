@@ -42,8 +42,7 @@ resource(5, "SEN:type_mapping") message {
    similar to type alias mapping to strip down message size of the extraction result. */
 resource(6, "SEN:attr_mapping") message {
     "line" =  "be:line",
-    "path" =  "SEN:REL:path",
-    "SEN:TO:PATH" = "path",
+    "path" =  "SEN:REL:SourceInclude:search_path",
     "global" = "SEN:REL:SourceInclude:global"
 };
 

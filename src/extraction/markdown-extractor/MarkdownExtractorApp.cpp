@@ -23,6 +23,19 @@
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.MarkdownExtractor";
 
+// In-memory AST Node to track hierarchy before serializing
+struct MarkdownNode {
+    std::string label;
+    int32 offset;
+    int32 line;
+    bool isSelf;
+    std::vector<MarkdownNode*> children;
+
+    ~MarkdownNode() {
+        for (auto c : children) delete c;
+    }
+};
+
 class MarkdownExtractorApp : public BApplication {
 public:
     MarkdownExtractorApp();
@@ -32,6 +45,7 @@ public:
 private:
     status_t ProcessMarkdown(const entry_ref* ref, bool isSelfRelation, BMessage* reply);
     void ExtractReferences(std::ifstream& stream, bool isSelfRelation, BMessage* reply);
+    void SerializeNodes(const std::vector<MarkdownNode*>& siblings, BMessage* msg, bool isSelfRelation);
 };
 
 MarkdownExtractorApp::MarkdownExtractorApp()
@@ -118,62 +132,142 @@ status_t MarkdownExtractorApp::ProcessMarkdown(const entry_ref* ref, bool isSelf
 }
 
 void MarkdownExtractorApp::ExtractReferences(std::ifstream& stream, bool isSelfRelation, BMessage* reply) {
-    std::string line;
+    std::string lineStr;
+    std::streampos currentOffset = 0;
+    int32 currentLine = 1;
 
-    // Regex definitions (To be replaced by tree-sitter AST traversal later)
-    std::regex headingRegex("^#{1,6}\\s+(.*)");
+    std::vector<MarkdownNode*> roots;
+    std::vector<std::pair<int, MarkdownNode*>> stack;
+
+    std::regex headingRegex("^(\\#{1,6})\\s+(.*)");
     std::regex linkRegex("\\[([^\\]]+)\\]\\(([^)]+)\\)");
     std::regex wikiLinkRegex("\\[\\[(.*?)\\]\\]");
 
-    std::streampos currentOffset = 0;
-
-    while (std::getline(stream, line)) {
+    while (std::getline(stream, lineStr)) {
         std::smatch match;
 
-        // MODE 1: Self Relations (Outlines / Headings)
-        if (isSelfRelation && std::regex_search(line, match, headingRegex)) {
-            BMessage itemMsg;
-            itemMsg.AddString(SENSEI_ITEM_ID, "");
-            itemMsg.AddString(SENSEI_TO, SENSEI_TO_SELF);
-            itemMsg.AddString(SENSEI_LABEL, match[1].str().c_str());
-            itemMsg.AddInt32("offset", static_cast<int32>(currentOffset));
+        // process structural hierarchy from headings for self relations only
+        if (isSelfRelation) {
+            if (std::regex_search(lineStr, match, headingRegex)) {
+                int level = match[1].length();
 
-            // Append item as an element in the BMessage array under the key "_item"
-            reply->AddMessage(SENSEI_ITEM, &itemMsg);
-        }
-        // MODE 2: External Relations (Links and Wiki Links)
-        else if (!isSelfRelation) {
+                MarkdownNode* node = new MarkdownNode();
+                node->label = match[2].str();
+                node->offset = static_cast<int32>(currentOffset);
+                node->line = currentLine;
+                node->isSelf = true; // Outline nodes are always self-relations
 
-            // Extract standard Markdown links: [Title](url/file)
-            std::sregex_iterator linkIt(line.begin(), line.end(), linkRegex);
+                while (!stack.empty() && stack.back().first >= level) {
+                    stack.pop_back();
+                }
+
+                if (stack.empty()) {
+                    roots.push_back(node);
+                } else {
+                    stack.back().second->children.push_back(node);
+                }
+
+                stack.push_back({level, node});
+            }
+        } else {
+            // Process standard Markdown links (Mode 2)
+            std::sregex_iterator linkIt(lineStr.begin(), lineStr.end(), linkRegex);
             std::sregex_iterator end;
-            while (linkIt != end) {
-                BMessage itemMsg;
-                itemMsg.AddString(SENSEI_ITEM_ID, "<SEN:ID>");
-                itemMsg.AddString(SENSEI_TO, "<SEN:TO>");
-                itemMsg.AddString(SENSEI_LABEL, (*linkIt)[1].str().c_str());
-                itemMsg.AddInt32("offset", static_cast<int32>(currentOffset + linkIt->position()));
 
-                reply->AddMessage(SENSEI_ITEM, &itemMsg);
+            while (linkIt != end) {
+                std::string linkText = (*linkIt)[1].str();
+                std::string url = (*linkIt)[2].str();
+
+                // We only care about external links here
+                if (!url.empty() && url[0] != '#') {
+                    std::string leafLabel = url;
+
+                    // 1. Isolate the leaf by finding the last slash
+                    size_t lastSlash = url.find_last_of('/');
+                    if (lastSlash != std::string::npos && lastSlash + 1 < url.length()) {
+                        leafLabel = url.substr(lastSlash + 1);
+                    }
+
+                    // 2. Strip any #fragments or ?parameters from the leaf
+                    size_t fragmentPos = leafLabel.find_first_of("#?");
+                    if (fragmentPos != std::string::npos) {
+                        leafLabel = leafLabel.substr(0, fragmentPos);
+                    }
+
+                    // 3. Fallback: if URL was just a root domain with a trailing slash (e.g. "http://sen-labs.org/"),
+                    // the leaf is empty. Fall back to the original link text.
+                    if (leafLabel.empty()) {
+                        leafLabel = linkText;
+                    }
+
+                    MarkdownNode* node = new MarkdownNode();
+                    node->label = leafLabel;
+                    node->offset = static_cast<int32>(currentOffset + linkIt->position());
+                    node->line = currentLine;
+                    node->isSelf = false;
+
+                    if (stack.empty()) {
+                        roots.push_back(node);
+                    } else {
+                        stack.back().second->children.push_back(node);
+                    }
+                }
                 ++linkIt;
             }
 
-            // Extract Wiki links: [[Wiki Link]]
-            std::sregex_iterator wikiIt(line.begin(), line.end(), wikiLinkRegex);
-            while (wikiIt != end) {
-                BMessage itemMsg;
-                itemMsg.AddString(SENSEI_ITEM_ID, "<SEN:ID>");
-                itemMsg.AddString(SENSEI_TO, "<SEN:TO>");
-                itemMsg.AddString(SENSEI_LABEL, (*wikiIt)[1].str().c_str());
-                itemMsg.AddInt32("offset", static_cast<int32>(currentOffset + wikiIt->position()));
+            // Process Wiki links (Always external, so only in Mode 2)
+            std::sregex_iterator wikiIt(lineStr.begin(), lineStr.end(), wikiLinkRegex);
 
-                reply->AddMessage(SENSEI_ITEM, &itemMsg);
+            while (wikiIt != end) {
+                MarkdownNode* node = new MarkdownNode();
+                node->label = (*wikiIt)[1].str();
+                node->offset = static_cast<int32>(currentOffset + wikiIt->position());
+                node->line = currentLine;
+                node->isSelf = false;
+
+                if (stack.empty()) {
+                    roots.push_back(node);
+                } else {
+                    stack.back().second->children.push_back(node);
+                }
                 ++wikiIt;
             }
-        }
+        }   // if isSelfRelation
 
-        // Update the textual offset (+1 accounts for the newline character consumed by std::getline)
-        currentOffset += line.length() + 1;
+        currentOffset += lineStr.length() + 1;
+        currentLine++;
+    }   // while
+
+    // Pass the initial mode as the default for any text-links at the absolute root of the document
+    SerializeNodes(roots, reply, isSelfRelation);
+
+    for (auto root : roots) {
+        delete root;
+    }
+}
+
+void MarkdownExtractorApp::SerializeNodes(const std::vector<MarkdownNode*>& siblings, BMessage* msg, bool parentIsSelf) {
+    BMessage childrenRoot(SENSEI_MESSAGE_RESULT);
+
+    for (const MarkdownNode* node : siblings) {
+        childrenRoot.AddString(SENSEI_LABEL, node->label.c_str());
+        childrenRoot.AddInt32("offset", node->offset);
+        childrenRoot.AddInt32("line", node->line);
+
+        // Crucial: Pass THIS node's isSelf status down.
+        // This ensures the recursive call appends the correct target (Self vs <SEN:ID>)
+        // to `childrenRoot`'s parallel arrays for this exact index.
+        SerializeNodes(node->children, &childrenRoot, node->isSelf);
+    }
+
+    msg->AddMessage(SENSEI_ITEM, &childrenRoot);
+
+    if (parentIsSelf) {
+        msg->AddString(SENSEI_ITEM_ID, "");
+        msg->AddString(SENSEI_TO, SENSEI_TO_SELF);
+    } else {
+        msg->AddString(SENSEI_ITEM_ID, "<SEN:ID>");
+        msg->AddString(SENSEI_TO, "<SEN:ID>");
     }
 }
 

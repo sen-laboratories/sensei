@@ -61,9 +61,6 @@ void App::RefsReceived(BMessage *message)
     status_t result = ExtractPdfBookmarks(const_cast<const entry_ref*>(&ref), &reply);
     reply.AddString("result", strerror(result));
 
-    //TEST
-    reply.PrintToStream();
-
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.
     message->SendReply(&reply, this);

@@ -110,16 +110,17 @@ std::vector<const char*> args;
 
     printf("got %zu includes for path %s:\n", includes.size(), fSourcePath);
 
-    for (it = includes.begin(); it != includes.end(); ++it) {
-        BMessage item;
+    // build flat item fields array for compact result
+    BMessage item;
 
+    for (it = includes.begin(); it != includes.end(); ++it) {
         unsigned int lineNum    = (*it)->lineNum;
         std::string  fileName   = (*it)->fileName;
         std::string  searchPath = (*it)->filePath;
         bool         isGlobal   = (*it)->global;
 
         // same for inward (self) and outward relation
-        item.AddString("label", fileName.c_str() /*path.Leaf()*/);
+        item.AddString(SENSEI_LABEL, fileName.c_str());
 
         // path is mapped to SEN_TO_PATH so SEN can resolve the target transparently
         BPath path(searchPath.c_str(), fileName.c_str());
@@ -131,9 +132,9 @@ std::vector<const char*> args;
         if (fSelf) {
             item.AddInt32("line", lineNum);
         }
-
-        reply->AddMessage(SENSEI_ITEM, &item);
     }
+
+    reply->AddMessage(SENSEI_ITEM, &item);
 
     return result;
 }
