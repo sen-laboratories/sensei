@@ -96,9 +96,6 @@ void MarkdownExtractorApp::RefsReceived(BMessage* message) {
         return;
     }
 
-    // DEBUG
-    message->PrintToStream();
-
     // scan self references like outline and internal links, or external refs?
     bool isSelfRelation = message->GetBool(SEN_RELATION_IS_SELF, false);
 
@@ -263,11 +260,11 @@ void MarkdownExtractorApp::SerializeNodes(const std::vector<MarkdownNode*>& sibl
     msg->AddMessage(SENSEI_ITEM, &childrenRoot);
 
     if (parentIsSelf) {
-        msg->AddString(SENSEI_ITEM_ID, "");
+        //msg->AddString(SENSEI_ITEM_ID, "");
         msg->AddString(SENSEI_TO, SENSEI_TO_SELF);
     } else {
-        msg->AddString(SENSEI_ITEM_ID, "<SEN:ID>");
-        msg->AddString(SENSEI_TO, "<SEN:ID>");
+        //msg->AddString(SENSEI_ITEM_ID, "<SEN:ID>");
+        //msg->AddString(SENSEI_TO, "<SEN:ID>");
     }
 }
 
