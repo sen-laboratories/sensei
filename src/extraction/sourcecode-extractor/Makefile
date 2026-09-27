@@ -68,14 +68,14 @@ RSRCS =
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
 LIBS =  be $(STDCPPLIBS) \
 				$(shell findpaths -e B_FIND_PATH_LIBS_DIRECTORY) \
-				clang clangBasic clang-cpp clangSupport clangTooling LLVM-22
+				clang clangBasic clang-cpp clangSupport clangTooling LLVM-23
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
 #	to the Makefile. The paths included are not parsed recursively, so
 #	include all of the paths where libraries must be found. Directories where
 #	source files were specified are	automatically included.
-LIBPATHS = 
+LIBPATHS = $(HOME)/config/non-packaged/lib
 
 #	Additional paths to look for system headers. These use the form
 #	"#include <header>". Directories that contain the files in SRCS are
