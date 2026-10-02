@@ -78,7 +78,7 @@ void App::RefsReceived(BMessage *message)
     BMessage argsMsg, propsMsg;
 
     // e.g. when coming directly from relation menu
-    result = message->FindMessage(SEN_RELATION_CONFIG, &propsMsg);
+    result = message->FindMessage(SEN_RELATION_PROPERTIES, &propsMsg);
     if (result != B_OK) {
         if (result == B_NAME_NOT_FOUND) {   // try to map from fs attributes directly (double click relation file)
             result = fMapper->MapAttrsToMsg(&ref, &propsMsg);
@@ -100,7 +100,7 @@ void App::RefsReceived(BMessage *message)
         result = MapRelationPropertiesToArguments(&propsMsg, &argsMsg);
     }
     if (result == B_OK) {
-        message->RemoveData(SEN_RELATION_CONFIG);
+        message->RemoveData(SEN_RELATION_PROPERTIES);
         message->Append(argsMsg);
         printf("launch args message is:\n");
         message->PrintToStream();

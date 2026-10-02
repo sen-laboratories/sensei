@@ -51,12 +51,12 @@ void App::RefsReceived(BMessage *message)
     status_t result;
     BMessage argsMsg;
 
-    result = message->FindMessage(SEN_RELATION_CONFIG, &argsMsg);
+    result = message->FindMessage(SEN_RELATION_PROPERTIES, &argsMsg);
     if (result == B_OK) {
         result = MapRelationPropertiesToArguments(&argsMsg);
     }
     if (result == B_OK) {
-        message->RemoveData(SEN_RELATION_CONFIG);
+        message->RemoveData(SEN_RELATION_PROPERTIES);
         message->Append(argsMsg);
     }
 
