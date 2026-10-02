@@ -16,6 +16,7 @@
 
 #include "App.h"
 #include "clang-include-checker/ClangWrapper.hpp"
+#include <sen/Sen.h>
 #include <sen/Sensei.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.SourceCodeExtractor";
@@ -39,7 +40,7 @@ void App::ArgvReceived(int32 argc, char ** argv) {
 
     // parse optional "self" param
     if (strncmp(argv[arg], SENSEI_OPTION_SELF, strlen(SENSEI_OPTION_SELF)) == 0) {
-        refsMsg.AddBool("self", true);
+        refsMsg.AddBool(SEN_RELATION_IS_SELF, true);
         arg++;
     }
 
@@ -64,7 +65,7 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    bool self = message->GetBool("self");
+    bool self = message->GetBool(SEN_RELATION_IS_SELF, false);
 
     BMessage reply(SENSEI_MESSAGE_RESULT);
     status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), self, &reply);
