@@ -39,8 +39,8 @@ void App::ArgvReceived(int32 argc, char ** argv) {
     int32 arg = 1;
 
     // parse optional "self" param
-    if (strncmp(argv[arg], SENSEI_OPTION_SELF, strlen(SENSEI_OPTION_SELF)) == 0) {
-        refsMsg.AddBool(SEN_RELATION_IS_SELF, true);
+    if (strncmp(argv[arg], sensei::kOptionSelf, strlen(sensei::kOptionSelf)) == 0) {
+        refsMsg.AddBool(sen::conf::kSelf, true);
         arg++;
     }
 
@@ -65,13 +65,13 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    bool self = message->GetBool(SEN_RELATION_IS_SELF, false);
+    bool self = message->GetBool(sen::conf::kSelf, false);
 
-    BMessage reply(SENSEI_MESSAGE_RESULT);
+    BMessage reply(sensei::cmd::kResult);
     status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), self, &reply);
 
     if (result != B_OK) {
-        reply.AddString(SENSEI_RESULT, strerror(result));  // TODO: handle includes not found correctly
+        reply.AddString(sensei::key::kResult, strerror(result));  // TODO: handle includes not found correctly
     }
 
     //TEST

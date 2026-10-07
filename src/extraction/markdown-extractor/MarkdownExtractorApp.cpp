@@ -64,8 +64,8 @@ void MarkdownExtractorApp::ArgvReceived(int32 argc, char** argv) {
     // check for self relations flag
     // todo: use more elaborate options parser if needed
     if (argc > 2) {
-        if (strncmp(argv[arg], SENSEI_OPTION_SELF, strlen(argv[arg])) == 0) {
-            refsMsg.AddBool(SEN_RELATION_IS_SELF, true);
+        if (strncmp(argv[arg], sensei::kOptionSelf, strlen(argv[arg])) == 0) {
+            refsMsg.AddBool(sen::conf::kSelf, true);
             arg++;
         }
         // check for other options - no others supported yet
@@ -97,12 +97,12 @@ void MarkdownExtractorApp::RefsReceived(BMessage* message) {
     }
 
     // scan self references like outline and internal links, or external refs?
-    bool isSelfRelation = message->GetBool(SEN_RELATION_IS_SELF, false);
+    bool isSelfRelation = message->GetBool(sen::conf::kSelf, false);
 
-    BMessage reply(SENSEI_MESSAGE_RESULT);
+    BMessage reply(sensei::cmd::kResult);
     status_t result = ProcessMarkdown(&ref, isSelfRelation, &reply);
 
-    reply.AddString(SENSEI_RESULT, strerror(result));
+    reply.AddString(sensei::key::kResult, strerror(result));
 
     // DEBUG
     reply.PrintToStream();
@@ -244,10 +244,10 @@ void MarkdownExtractorApp::ExtractReferences(std::ifstream& stream, bool isSelfR
 }
 
 void MarkdownExtractorApp::SerializeNodes(const std::vector<MarkdownNode*>& siblings, BMessage* msg, bool parentIsSelf) {
-    BMessage childrenRoot(SENSEI_MESSAGE_RESULT);
+    BMessage childrenRoot(sensei::cmd::kResult);
 
     for (const MarkdownNode* node : siblings) {
-        childrenRoot.AddString(SENSEI_LABEL, node->label.c_str());
+        childrenRoot.AddString(sensei::key::kLabel, node->label.c_str());
         childrenRoot.AddInt32("offset", node->offset);
         childrenRoot.AddInt32("line", node->line);
 
@@ -257,14 +257,14 @@ void MarkdownExtractorApp::SerializeNodes(const std::vector<MarkdownNode*>& sibl
         SerializeNodes(node->children, &childrenRoot, node->isSelf);
     }
 
-    msg->AddMessage(SENSEI_ITEM, &childrenRoot);
+    msg->AddMessage(sensei::key::kItem, &childrenRoot);
 
     if (parentIsSelf) {
-        //msg->AddString(SENSEI_ITEM_ID, "");
-        msg->AddString(SENSEI_TO, SENSEI_TO_SELF);
+        //msg->AddString(sensei::key::kItemId, "");
+        msg->AddString(sensei::key::kTo, sensei::to::kSelf);
     } else {
-        //msg->AddString(SENSEI_ITEM_ID, "<SEN:ID>");
-        //msg->AddString(SENSEI_TO, "<SEN:ID>");
+        //msg->AddString(sensei::key::kItemId, "<SEN:ID>");
+        //msg->AddString(sensei::key::kTo, "<SEN:ID>");
     }
 }
 

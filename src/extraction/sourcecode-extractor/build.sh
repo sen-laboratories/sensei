@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # a simple wrapper for make, since I found no way to add this to the Makefile template
-# adds some needed attributes from the resource, since we need to query for the SEN:TYPE.
+# adds some needed attributes from the resource, since we need to query for the META:TYPE.
 make && \
 rc Resources.rdef && \
 resattr -o bin/SenCodeExtractor Resources.rsrc && \

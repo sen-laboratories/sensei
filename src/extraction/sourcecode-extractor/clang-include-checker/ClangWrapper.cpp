@@ -120,9 +120,9 @@ std::vector<const char*> args;
         bool         isGlobal   = (*it)->global;
 
         // same for inward (self) and outward relation
-        item.AddString(SENSEI_LABEL, fileName.c_str());
+        item.AddString(sensei::key::kLabel, fileName.c_str());
 
-        // path is mapped to SEN_TO_PATH so SEN can resolve the target transparently
+        // path is mapped to sen::attr::kToPath so SEN can resolve the target transparently
         BPath path(searchPath.c_str(), fileName.c_str());
         item.AddString("path", path.Path());
 
@@ -134,7 +134,7 @@ std::vector<const char*> args;
         }
     }
 
-    reply->AddMessage(SENSEI_ITEM, &item);
+    reply->AddMessage(sensei::key::kItem, &item);
 
     return result;
 }

@@ -18,7 +18,7 @@ resource app_version {
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */
-resource(0, "SEN:TYPE") "application/x-vnd.sen-labs.plugin";
+resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
 
 // set supported feature flags
 resource(1, "SEN:plugin:extract")  1;
@@ -33,14 +33,14 @@ resource file_types message {
 
 /* schema to define supported output file types (relations) and an optional mapping for the receiver.
    this is a simple type alias mapping to strip down message size of the extraction result. */
-resource(5, "SEN:type_mapping") message {
+resource(5, "SEN:typeMapping") message {
     /* this defines a default schema that is used when no type is provided in extraction result items. */
     "SEN:default" = "relation/x-vnd.sen-labs.relation.sourcecode.include"
 };
 
 /* schema to define aliases for full attribute names used for output relations.
    similar to type alias mapping to strip down message size of the extraction result. */
-resource(6, "SEN:attr_mapping") message {
+resource(6, "SEN:attrMapping") message {
     "line" =  "be:line",
     "path" =  "SEN:REL:SourceInclude:search_path",
     "global" = "SEN:REL:SourceInclude:global"

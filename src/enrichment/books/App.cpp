@@ -148,14 +148,14 @@ void App::RefsReceived(BMessage *message)
     fMapper->AddAlias("Book:Class", "lcc");
     fMapper->AddAlias("Book:Pages", "number_of_pages_median");
     fMapper->AddAlias("Media:Title", "title");
-    fMapper->AddAlias(SENSEI_NAME, "title");    // add file name as fallback if Media:Title is empty
+    fMapper->AddAlias(sensei::key::kName, "title");    // add file name as fallback if Media:Title is empty
     fMapper->AddAlias("Book:Year", "publish_year");
 
     // keep these for later to save another lookup query for relations
     fMapper->AddAlias(OPENLIBRARY_API_AUTHOR_KEY, "author_key");
     fMapper->AddAlias(OPENLIBRARY_API_COVER_KEY, "cover_i");
 
-    BMessage reply(SENSEI_MESSAGE_RESULT);
+    BMessage reply(sensei::cmd::kResult);
     status_t result = FetchBookMetadata(&ref, &reply);
 
     if (result != B_OK) {
@@ -389,7 +389,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     // because it may contain anything from author name to book title to year
     if (paramsMsg.HasString("title")) {
         BString title;
-        if ((title = paramsMsg.GetString("title")) == inputAttrsMsg.GetString(SENSEI_NAME)) {
+        if ((title = paramsMsg.GetString("title")) == inputAttrsMsg.GetString(sensei::key::kName)) {
             printf("sending file name '%s' as query param 'q'.\n", title.String());
             paramsMsg.RemoveData("title");
             paramsMsg.AddString("q", title);
@@ -485,11 +485,11 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     // todo: find a better (i.e. translation safe!) way to determine the default file name
     if (fOverwrite) {
     	// update empty file name with title if exists
-    	BString fileName = inputAttrsMsg.GetString(SENSEI_NAME, "");
+    	BString fileName = inputAttrsMsg.GetString(sensei::key::kName, "");
     	if (fileName.Trim().IsEmpty() || fileName == "New Book") {
     		BString title = resultMsg->GetString("Media:Title", "");
     		if (!title.IsEmpty()) {
-    			resultMsg->AddString(SENSEI_NAME, title);
+    			resultMsg->AddString(sensei::key::kName, title);
     		}
     	}
     }
@@ -555,7 +555,7 @@ status_t App::FetchAuthor(const char* authorId, BMessage *resultMsg)
     	//       if (fileName.Trim().IsEmpty() || fileName == "New Book") {
     		BString personName = resultMsg->GetString("META:name", "");
     		if (!personName.IsEmpty()) {
-    			resultMsg->AddString(SENSEI_NAME, personName);
+    			resultMsg->AddString(sensei::key::kName, personName);
     		}
     	//}
     }

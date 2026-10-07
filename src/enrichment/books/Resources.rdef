@@ -18,7 +18,7 @@ resource app_version {
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */
-resource(0, "SEN:TYPE") "application/x-vnd.sen-labs.plugin";
+resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
 
 // set supported feature flags
 resource(1, "SEN:plugin:extract")  0;

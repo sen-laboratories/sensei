@@ -78,14 +78,14 @@ void App::RefsReceived(BMessage *message)
     BMessage argsMsg, propsMsg;
 
     // e.g. when coming directly from relation menu
-    result = message->FindMessage(SEN_RELATION_PROPERTIES, &propsMsg);
+    result = message->FindMessage(sen::key::kRelationProperties, &propsMsg);
     if (result != B_OK) {
         if (result == B_NAME_NOT_FOUND) {   // try to map from fs attributes directly (double click relation file)
             result = fMapper->MapAttrsToMsg(&ref, &propsMsg);
             if (result == B_OK) {
                 // replace ref to open if there was a relation target ref
-                if (propsMsg.HasRef(SEN_RELATION_TARGET_REF_ATTR)) {
-                    result = propsMsg.FindRef(SEN_RELATION_TARGET_REF_ATTR, &ref);
+                if (propsMsg.HasRef(sen::attr::kRelationTargetRef)) {
+                    result = propsMsg.FindRef(sen::attr::kRelationTargetRef, &ref);
                     if (result == B_OK) {
                         printf("got new launch ref: %s\n", ref.name);
                         // replace in original message
@@ -100,7 +100,7 @@ void App::RefsReceived(BMessage *message)
         result = MapRelationPropertiesToArguments(&propsMsg, &argsMsg);
     }
     if (result == B_OK) {
-        message->RemoveData(SEN_RELATION_PROPERTIES);
+        message->RemoveData(sen::key::kRelationProperties);
         message->Append(argsMsg);
         printf("launch args message is:\n");
         message->PrintToStream();

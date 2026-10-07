@@ -111,7 +111,7 @@ status_t MappingUtil::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
     }
 
     // always add file name as pseudo internal attribute to use if needed
-    attrMsg->AddString(SENSEI_NAME, ref->name);
+    attrMsg->AddString(sensei::key::kName, ref->name);
 
     return result;
 }
@@ -145,7 +145,7 @@ status_t MappingUtil::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetRe
 
             if (result == B_OK && dataSize > 0) {
                 // check for internal file name attribute and rename file if different
-                if (strncmp(key, SENSEI_NAME, strlen(SENSEI_NAME)) == 0) {
+                if (strncmp(key, sensei::key::kName, strlen(sensei::key::kName)) == 0) {
                 	BString fileName;
                 	fileName << (const char*) data;
                 	if (! fileName.Trim().IsEmpty()) {

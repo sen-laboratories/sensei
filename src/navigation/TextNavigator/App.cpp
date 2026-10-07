@@ -10,6 +10,7 @@
 
 #include "App.h"
 #include <sen/Sen.h>
+#include <spdlog/spdlog.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-labs.SenTextNavigator";
 
@@ -45,18 +46,18 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    LOG("got refs:");
+    spdlog::info("got refs:");
     message->PrintToStream();
 
     status_t result;
     BMessage argsMsg;
 
-    result = message->FindMessage(SEN_RELATION_PROPERTIES, &argsMsg);
+    result = message->FindMessage(sen::key::kRelationProperties, &argsMsg);
     if (result == B_OK) {
         result = MapRelationPropertiesToArguments(&argsMsg);
     }
     if (result == B_OK) {
-        message->RemoveData(SEN_RELATION_PROPERTIES);
+        message->RemoveData(sen::key::kRelationProperties);
         message->Append(argsMsg);
     }
 
@@ -75,7 +76,7 @@ void App::RefsReceived(BMessage *message)
     entry_ref appRef;
     result = be_roster->FindApp(&ref, &appRef);
     if (result == B_OK) {
-        LOG("sending args to app %s...\n", appRef.name);
+        spdlog::info("sending args to app {}...", appRef.name);
         message->PrintToStream();
 
         if (! be_roster->IsRunning(&appRef)) {
@@ -89,14 +90,14 @@ void App::RefsReceived(BMessage *message)
 
                 if (appFileInfo.InitCheck() == B_OK) {
                     if (appFileInfo.GetSignature(appSig) == B_OK) {
-                        LOG("got MIME type %s for ref %s\n", appSig, appRef.name);
+                        spdlog::info("got MIME type {} for ref {}", appSig, appRef.name);
                         // send message to running instance for a more seamless experience
                         BMessenger appMess(appSig);
                         appMess.SendMessage(message);
                     }
                 }
             } else {
-                LOG("failed to get MIME Type for ref %s: %s\n", appRef.name, strerror(result));
+                spdlog::info("failed to get MIME Type for ref {}: {}", appRef.name, strerror(result));
             }
         }
     }
@@ -154,7 +155,7 @@ status_t App::MapRelationPropertiesToArguments(BMessage *message)
         message->AddInt32("be:selection_length", selectLen);          // StyledEdit and Pe
     }
 
-    LOG("mapped args:");
+    spdlog::info("mapped args:");
     message->PrintToStream();
 
     if (result == B_NAME_NOT_FOUND)

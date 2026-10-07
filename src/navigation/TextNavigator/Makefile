@@ -55,7 +55,7 @@ RSRCS =
 #	- 	if your library does not follow the standard library naming scheme,
 #		you need to specify the path to the library and it's name.
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
-LIBS =  be
+LIBS =  be spdlog fmt $(STDCPPLIBS)
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
@@ -90,7 +90,7 @@ LOCALES =
 #	use. For example, setting DEFINES to "DEBUG=1" will cause the compiler
 #	option "-DDEBUG=1" to be used. Setting DEFINES to "DEBUG" would pass
 #	"-DDEBUG" on the compiler's command line.
-DEFINES =
+DEFINES = SPDLOG_COMPILED_LIB SPDLOG_FMT_EXTERNAL
 
 #	Specify the warning level. Either NONE (suppress all warnings),
 #	ALL (enable all warnings), or leave blank (enable default warnings).

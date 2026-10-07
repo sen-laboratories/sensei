@@ -57,7 +57,7 @@ void App::RefsReceived(BMessage *message)
         return;
     }
 
-    BMessage reply(SENSEI_MESSAGE_RESULT);
+    BMessage reply(sensei::cmd::kResult);
     status_t result = ExtractPdfBookmarks(const_cast<const entry_ref*>(&ref), &reply);
     reply.AddString("result", strerror(result));
 
@@ -103,7 +103,7 @@ void App::GeneratePageMap(QPDF& qpdf)
 
 void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessage* msg)
 {
-    BMessage childrenRoot(SENSEI_MESSAGE_RESULT);
+    BMessage childrenRoot(sensei::cmd::kResult);
 
     for (auto& outline: outlines) {
         AddBookmarkDetails(outline, &childrenRoot);
@@ -112,9 +112,9 @@ void App::ExtractBookmarks(std::vector<QPDFOutlineObjectHelper> outlines, BMessa
     }
 
     // Note: we also add empty subnodes here to keep the structure intact
-    msg->AddMessage(SENSEI_ITEM, &childrenRoot);
-    msg->AddString (SENSEI_ITEM_ID, "");           // filled in by SEN, just indicate we need a unique ID here
-    msg->AddString (SENSEI_TO, SENSEI_TO_SELF);    // target is always self for bookmarks
+    msg->AddMessage(sensei::key::kItem, &childrenRoot);
+    msg->AddString (sensei::key::kItemId, "");           // filled in by SEN, just indicate we need a unique ID here
+    msg->AddString (sensei::key::kTo, sensei::to::kSelf);    // target is always self for bookmarks
 }
 
 BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg)
@@ -127,7 +127,7 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
         }
     }
     // common relation attributes
-    msg->AddString(SENSEI_LABEL, outline.getTitle().c_str());
+    msg->AddString(sensei::key::kLabel, outline.getTitle().c_str());
     // specific docref attributes - uses aliases for full attribute names defined in plugin config map
     msg->AddInt32(PAGE, targetPage);
 
