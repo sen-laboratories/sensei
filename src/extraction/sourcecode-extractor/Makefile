@@ -41,9 +41,7 @@ APP_MIME_SIG = application/x-vnd.sen-labs.SourceCodeExtractor
 #	same name (source.c or source.cpp) are included from different directories.
 #	Also note that spaces in folder names do not work well with this Makefile.
 SRCS = App.cpp \
-       clang-include-checker/ClangWrapper.cpp \
-       clang-include-checker/IncludeFinder.cpp \
-       clang-include-checker/IncludeFinderAction.cpp
+       IncludeScanner.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be
 #	used.
@@ -69,9 +67,7 @@ RSRCS =
 #	- 	if your library does not follow the standard library naming scheme,
 #		you need to specify the path to the library and it's name.
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
-LIBS =  be $(STDCPPLIBS) \
-				$(shell findpaths -e B_FIND_PATH_LIBS_DIRECTORY) \
-				clang clangBasic clang-cpp clangSupport clangTooling LLVM-23
+LIBS =  be $(STDCPPLIBS) spdlog fmt clang
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
@@ -106,7 +102,7 @@ LOCALES =
 #	use. For example, setting DEFINES to "DEBUG=1" will cause the compiler
 #	option "-DDEBUG=1" to be used. Setting DEFINES to "DEBUG" would pass
 #	"-DDEBUG" on the compiler's command line.
-DEFINES =
+DEFINES = SPDLOG_COMPILED_LIB SPDLOG_FMT_EXTERNAL
 
 #	Specify the warning level. Either NONE (suppress all warnings),
 #	ALL (enable all warnings), or leave blank (enable default warnings).

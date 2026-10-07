@@ -1,4 +1,0 @@
-# Files with a license of their own (not MIT): see src/extraction/sourcecode-extractor/README.md
-src/extraction/sourcecode-extractor/clang-include-checker/ClangWrapper.cpp
-src/extraction/sourcecode-extractor/clang-include-checker/IncludeFinder.hpp
-src/extraction/sourcecode-extractor/clang-include-checker/IncludeFinderAction.hpp

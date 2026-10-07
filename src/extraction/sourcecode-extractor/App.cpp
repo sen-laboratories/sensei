@@ -12,7 +12,7 @@
 #include <cstring>
 
 #include "App.h"
-#include "clang-include-checker/ClangWrapper.hpp"
+#include "IncludeScanner.h"
 #include <sen/Sen.h>
 #include <sen/Sensei.h>
 
@@ -89,8 +89,8 @@ status_t App::ExtractIncludes(const entry_ref* ref, bool self, BMessage *reply)
     std::cout << "extracting " << (self ? "self " : "") << "include refs from " << ref->name << "...\n";
 
     try {
-        ClangWrapper clangWrapper(inputPath.Path(), self);
-        int result = clangWrapper.run(reply);
+        IncludeScanner scanner(inputPath.Path(), self);
+        int result = scanner.run(reply);
 
         switch(result) {
             case 0: return B_OK;
