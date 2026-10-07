@@ -28,12 +28,12 @@ resource(4, "SEN:plugin:navigate") 0;
 
 /* defines supported file types for scanning */
 resource file_types message {
-    "types" = "entity/book"
+    "types" = "entity/x-vnd.sen-labs.entity.book"
 };
 
 /* LATER: schema to define aliases for full attribute names used for grabbing/enrichment
-resource(5, "SEN:attr_mapping") message {
-    "isbn" = "SEN:Book:isbn"
+resource(5, "SEN:attrMapping") message {
+    "isbn" = "schema:isbn"
 };
 */
 

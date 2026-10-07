@@ -9,6 +9,8 @@
 #include <MimeType.h>
 #include <NodeInfo.h>
 #include <String.h>
+
+#include <time.h>
 #include <SupportKit.h>
 #include <TranslationUtils.h>
 #include <Url.h>
@@ -184,6 +186,17 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                                     attrMsg->AddInt32(key, intVal);
                                     printf("  successfully converted Double to Int32: %u\n", intVal);
                                     break;
+                                case B_TIME_TYPE: {
+                                    // a year (e.g. the year of publication) becomes the first moment of that year (UTC)
+                                    struct tm firstOfYear = {};
+                                    firstOfYear.tm_year = intVal - 1900;
+                                    firstOfYear.tm_mon  = 0;
+                                    firstOfYear.tm_mday = 1;
+                                    time_t time = timegm(&firstOfYear);
+                                    attrMsg->AddData(key, B_TIME_TYPE, &time, sizeof(time_t), true);
+                                    printf("  successfully converted year %d to Time\n", intVal);
+                                    break;
+                                }
                                 case B_STRING_TYPE: {
                                     std::string strVal = std::to_string(intVal).c_str();
                                     attrMsg->AddString(key, strVal.c_str());

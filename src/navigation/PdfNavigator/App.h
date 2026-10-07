@@ -7,9 +7,11 @@
 
 #include <Application.h>
 
+#include <sen/SenOntoCore.h>
+
 #include "../../common/MappingUtil.h"
 
-#define PAGE_ATTR       "SEN:REL:docref:page"
+#define PAGE_ATTR       sen::onto::core::attr::kPageStart
 #define PAGE_MSG_KEY    "bepdf:page_num"
 
 class App : public BApplication

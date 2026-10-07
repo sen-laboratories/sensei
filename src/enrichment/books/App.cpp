@@ -139,17 +139,17 @@ void App::RefsReceived(BMessage *message)
     fBaseEnricher = new BaseEnricher(&ref, fMapper);
 
     // set up global mapping table (all Strings because it's only about names, not values!)
-    fMapper->AddAlias("Book:ISBN", "isbn");
-    fMapper->AddAlias("Book:Authors", "author_name");
-    fMapper->AddAlias("Book:Languages", "language");
-    fMapper->AddAlias("Book:Publisher", "publisher");
-    fMapper->AddAlias("Book:Format", "format");
-    fMapper->AddAlias("Book:Subjects", "subject");
-    fMapper->AddAlias("Book:Class", "lcc");
-    fMapper->AddAlias("Book:Pages", "number_of_pages_median");
-    fMapper->AddAlias("Media:Title", "title");
-    fMapper->AddAlias(sensei::key::kName, "title");    // add file name as fallback if Media:Title is empty
-    fMapper->AddAlias("Book:Year", "publish_year");
+    fMapper->AddAlias(sen::onto::books::attr::kIsbn, "isbn");
+    fMapper->AddAlias(sen::onto::books::attr::kCreator, "author_name");
+    fMapper->AddAlias(sen::onto::books::attr::kLanguage, "language");
+    fMapper->AddAlias(sen::onto::books::attr::kPublisher, "publisher");
+    fMapper->AddAlias(sen::onto::books::attr::kBookFormat, "format");
+    fMapper->AddAlias(sen::onto::books::attr::kSubject, "subject");
+    fMapper->AddAlias(sen::onto::books::attr::kBookClass, "lcc");
+    fMapper->AddAlias(sen::onto::books::attr::kNumberOfPages, "number_of_pages_median");
+    fMapper->AddAlias(sen::onto::books::attr::kTitle, "title");
+    fMapper->AddAlias(sensei::key::kName, "title");    // add file name as fallback if the title is empty
+    fMapper->AddAlias(sen::onto::books::attr::kDate, "publish_year");
 
     // keep these for later to save another lookup query for relations
     fMapper->AddAlias(OPENLIBRARY_API_AUTHOR_KEY, "author_key");

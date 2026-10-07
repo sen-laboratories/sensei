@@ -5,9 +5,11 @@
 #pragma once
 
 #include <Application.h>
+#include <sen/SenOntoBooks.h>
+
 #include "../BaseEnricher.h"
 
-#define BOOK_MIME_TYPE          "entity/book"
+#define BOOK_MIME_TYPE          sen::onto::books::mime::kBook
 #define AUTHOR_MIME_TYPE        "application/x-person"
 #define THUMBNAIL_ATTR_NAME     "Media:Thumbnail"
 #define THUMBNAIL_CREATION_TIME THUMBNAIL_ATTR_NAME ":CreationTime"

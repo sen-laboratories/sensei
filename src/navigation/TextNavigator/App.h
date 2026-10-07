@@ -6,12 +6,14 @@
 
 #include <Application.h>
 
+#include <sen/SenOntoCore.h>
+
 #define LINE                "be:line"       // reuse common attribute
 #define COLUMN              "be:column"     // reuse common attribute
-#define SELECTION_OFFSET    "SEN:textref:selection_offset"
-#define SELECTION_LENGTH    "SEN:textref:selection_length"
-#define SELECTION_LINE_FROM "SEN:textref:selection_line_from"
-#define SELECTION_LINE_TO   "SEN:textref:selection_line_to"
+#define SELECTION_START     sen::onto::core::attr::kTextStart
+#define SELECTION_END       sen::onto::core::attr::kTextEnd
+#define SELECTION_LINE_FROM sen::onto::core::attr::kLineStart
+#define SELECTION_LINE_TO   sen::onto::core::attr::kLineEnd
 
 class App : public BApplication
 {

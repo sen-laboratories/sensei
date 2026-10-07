@@ -39,7 +39,7 @@ resource(5, "SEN:typeMapping") message {
 /* schema to define aliases for full attribute names used for output relations.
    similar to type alias mapping to strip down message size of the extraction result. */
 resource(6, "SEN:attrMapping") message {
-    "page" = "SEN:REL:docref:page"
+    "page" = "schema:pageStart"
 };
 
 resource vector_icon {

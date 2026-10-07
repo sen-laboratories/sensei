@@ -145,14 +145,15 @@ status_t App::MapRelationPropertiesToArguments(BMessage *message)
         message->AddInt32("to", selectLineTo);    // Pe
     }
 
-    int32 selectFromOffset;
-    if ((result = message->FindInt32(SELECTION_OFFSET, &selectFromOffset)) == B_OK) {
+    int32 selectFromOffset = 0;
+    bool hasStart = (result = message->FindInt32(SELECTION_START, &selectFromOffset)) == B_OK;
+    if (hasStart) {
         message->AddInt32("be:selection_offset", selectFromOffset);   // StyledEdit and Pe
     }
 
-    int32 selectLen;
-    if ((result = message->FindInt32(SELECTION_LENGTH, &selectLen)) == B_OK) {
-        message->AddInt32("be:selection_length", selectLen);          // StyledEdit and Pe
+    int32 selectEnd;
+    if ((result = message->FindInt32(SELECTION_END, &selectEnd)) == B_OK && hasStart) {
+        message->AddInt32("be:selection_length", selectEnd - selectFromOffset);   // StyledEdit and Pe
     }
 
     spdlog::info("mapped args:");
