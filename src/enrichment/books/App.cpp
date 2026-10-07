@@ -1,9 +1,6 @@
 /*
- * Copyright 2024, Gregor B. Rosenauer <gregor.rosenauer@gmail.com>
- * All rights reserved. Distributed under the terms of the MIT license.
- *
- * BERT - Book EnRichment Tool
- * a simple SEN plugin for grabbing metadata for books, can also be used as a standalone tool.
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileCopyrightText: 2024-2026 SEN Labs e.U.
  */
 #include <Alert.h>
 #include <Entry.h>

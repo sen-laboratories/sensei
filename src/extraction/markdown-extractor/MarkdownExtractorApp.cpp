@@ -1,7 +1,6 @@
 /*
- * Markdown Extractor Plugin for SEN
- * Distributed under the terms of the MIT License.
- * (c) 2026 Gregor B. Rosenauer, SEN Labs <gregor.rosenauer@sen-labs.org>
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
  */
 
 #include <Alert.h>

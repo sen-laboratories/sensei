@@ -1,9 +1,6 @@
 /*
- * Copyright 2024, Gregor B. Rosenauer <gregor.rosenauer@gmail.com>
- * All rights reserved. Distributed under the terms of the MIT license.
- *
- * derived from QPDF example 'pdf-bookmarks.cc'
- * see project site at https://qpdf.sourceforge.io
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileCopyrightText: 2024-2026 SEN Labs e.U.
  */
 
 #include <Alert.h>

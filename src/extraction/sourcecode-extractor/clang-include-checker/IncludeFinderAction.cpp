@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileCopyrightText: 2024-2026 SEN Labs e.U.
+ */
+
 #include <iostream>
 #include <clang/Frontend/CompilerInstance.h>
 #include "IncludeFinder.hpp"
