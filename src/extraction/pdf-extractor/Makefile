@@ -63,7 +63,7 @@ LIBS =  be $(STDCPPLIBS) qpdf
 #	to the Makefile. The paths included are not parsed recursively, so
 #	include all of the paths where libraries must be found. Directories where
 #	source files were specified are	automatically included.
-LIBPATHS = lib $(HOME)/config/non-packaged/lib/
+LIBPATHS = lib $(HOME)/config/non-packaged/lib/ /boot/system/non-packaged/lib
 
 #	Additional paths to look for system headers. These use the form
 #	"#include <header>". Directories that contain the files in SRCS are
