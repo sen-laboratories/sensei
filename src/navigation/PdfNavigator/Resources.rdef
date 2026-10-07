@@ -22,10 +22,10 @@ resource app_version {
 resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
 
 // set supported feature flags
-resource(1, "SEN:plugin:extract")  0;
-resource(2, "SEN:plugin:enrich")   0;
-resource(3, "SEN:plugin:identify") 0;
-resource(4, "SEN:plugin:navigate") 1;
+resource(1, "SEN:plugin:extract")  (int16) 0;
+resource(2, "SEN:plugin:enrich")   (int16) 0;
+resource(3, "SEN:plugin:identify") (int16) 0;
+resource(4, "SEN:plugin:navigate") (int16) 1;
 
 resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.docref"
