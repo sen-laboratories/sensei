@@ -102,7 +102,8 @@ void MarkdownExtractorApp::RefsReceived(BMessage* message) {
     BMessage reply(sensei::cmd::kResult);
     status_t result = ProcessMarkdown(&ref, isSelfRelation, &reply);
 
-    reply.AddString(sensei::key::kResult, strerror(result));
+    reply.AddInt32(sensei::key::kResult, result);
+    reply.AddString(sen::key::kDetail, strerror(result));
 
     // DEBUG
     reply.PrintToStream();

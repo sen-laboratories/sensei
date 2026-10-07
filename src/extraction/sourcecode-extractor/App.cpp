@@ -70,9 +70,9 @@ void App::RefsReceived(BMessage *message)
     BMessage reply(sensei::cmd::kResult);
     status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), self, &reply);
 
-    if (result != B_OK) {
-        reply.AddString(sensei::key::kResult, strerror(result));  // TODO: handle includes not found correctly
-    }
+    // the result of the plugin is an int32 status_t (the server reads it), with a text for people and logs
+    reply.AddInt32(sensei::key::kResult, result);
+    reply.AddString(sen::key::kDetail, strerror(result));   // TODO: handle includes not found correctly
 
     //TEST
     std::cout << "sending reply:\n";

@@ -59,7 +59,8 @@ void App::RefsReceived(BMessage *message)
 
     BMessage reply(sensei::cmd::kResult);
     status_t result = ExtractPdfBookmarks(const_cast<const entry_ref*>(&ref), &reply);
-    reply.AddString("result", strerror(result));
+    reply.AddInt32(sensei::key::kResult, result);
+    reply.AddString(sen::key::kDetail, strerror(result));
 
     // we don't expect a reply but run into a race condition with the app
     // being deleted too early, resulting in a malloc assertion failure.

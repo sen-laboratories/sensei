@@ -354,7 +354,8 @@ void App::RefsReceived(BMessage *message)
         }
     }
 
-    reply.AddInt32("resultCode", result);
+    reply.AddInt32(sensei::key::kResult, result);
+    reply.AddString(sen::key::kDetail, strerror(result));
 
     printf("reply message:\n");
     reply.PrintToStream();
