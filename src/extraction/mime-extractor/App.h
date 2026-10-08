@@ -23,6 +23,10 @@ public:
 	virtual void	ArgvReceived(int32 argc, char** argv);
 
 private:
-	/** The attributes of the type that the file stands for, in the format of the plugin result (an item with one entry in every field per attribute). */
+	/**
+	 * The attributes of the type that the file stands for, those of the type first, then the ones that it has from its supertype
+	 * (the MIME database does not inherit them), in the format of the plugin result (an item with one entry in every field per
+	 * attribute).
+	 */
 	status_t		ExtractAttributes(const entry_ref* ref, BMessage* reply);
 };

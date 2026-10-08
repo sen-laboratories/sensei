@@ -8,7 +8,12 @@
 #include <Alert.h>
 #include <Node.h>
 #include <String.h>
+#include <FindDirectory.h>
+#include <Path.h>
 #include <fs_attr.h>
+
+#include <set>
+#include <string>
 
 #include <stdio.h>
 #include <string.h>
@@ -64,33 +69,62 @@ TypeName(int32 type)
 }
 
 
-status_t
-App::ExtractAttributes(const entry_ref* ref, BMessage* reply)
+/** the attribute info of the entry of a type in the MIME database (empty if it has none) */
+static status_t
+ReadAttributeInfo(BNode& node, BMessage* attributes)
 {
-	BNode node(ref);
-	status_t result = node.InitCheck();
-	if (result != B_OK)
-		return result;
-
 	attr_info info;
-	result = node.GetAttrInfo(kAttributeInfo, &info);
+	status_t result = node.GetAttrInfo(kAttributeInfo, &info);
 	if (result == B_ENTRY_NOT_FOUND)
-		return B_OK;	// a type without attributes has nothing to contain
+		return B_OK;
 	if (result != B_OK)
 		return result;
 
 	char* buffer = new char[info.size + 1];
 	ssize_t size = node.ReadAttr(kAttributeInfo, B_MESSAGE_TYPE, 0, buffer, info.size);
-	BMessage attributes;
-	result = size < 0 ? (status_t) size : attributes.Unflatten(buffer);
+	result = size < 0 ? (status_t) size : attributes->Unflatten(buffer);
 	delete[] buffer;
-	if (result != B_OK)
-		return result;
+	return result;
+}
 
-	// one item whose fields have one entry per attribute (the format of the plugin results: it keeps the order)
-	BMessage item;
+
+/** the supertype of the type that an entry of the MIME database stands for (entity/x-vnd... -> entity), or empty */
+static BString
+SupertypeEntry(const entry_ref& ref, BPath* supertypePath)
+{
+	BPath settings, entry(&ref);
+	if (find_directory(B_USER_SETTINGS_DIRECTORY, &settings) != B_OK || settings.Append("mime_db") != B_OK
+			|| entry.InitCheck() != B_OK)
+		return BString();
+
+	BString database(settings.Path());
+	database << "/";
+	BString path(entry.Path());
+	if (!path.StartsWith(database))
+		return BString();
+
+	// the type is the rest of the path: the supertype is its first part
+	path.Remove(0, database.Length());
+	int32 slash = path.FindFirst('/');
+	if (slash <= 0)
+		return BString();	// a supertype itself
+
+	BString supertype;
+	path.CopyInto(supertype, 0, slash);
+	supertypePath->SetTo(settings.Path(), supertype.String());	// settings is the MIME database by now
+	return supertype;
+}
+
+
+/** add the attributes of the info as entries of the item, those of a name that is there already (seen) not */
+static void
+AddAttributes(const BMessage& attributes, BMessage* item, std::set<std::string>* seen)
+{
 	const char* name;
 	for (int32 index = 0; attributes.FindString("attr:name", index, &name) == B_OK; index++) {
+		if (!seen->insert(name).second)
+			continue;
+
 		const char* publicName;
 		if (attributes.FindString("attr:public_name", index, &publicName) != B_OK || publicName[0] == '\0')
 			publicName = name;
@@ -99,16 +133,46 @@ App::ExtractAttributes(const entry_ref* ref, BMessage* reply)
 		attributes.FindInt32("attr:type", index, &type);
 		attributes.FindInt32("attr:width", index, &width);
 
-		item.AddString(sensei::key::kLabel, publicName);
-		item.AddString(sensei::key::kName, publicName);
+		item->AddString(sensei::key::kLabel, publicName);
+		item->AddString(sensei::key::kName, publicName);
 		// what the item is: an attribute of a type (not just a "contains")
-		item.AddString(sensei::key::kType, sen::onto::core::mime::kMimeAttribute);
-		item.AddString("name", name);
-		item.AddString("type", TypeName(type));
-		item.AddBool("viewable", attributes.GetBool("attr:viewable", index, false));
-		item.AddBool("editable", attributes.GetBool("attr:editable", index, false));
-		item.AddBool("searchable", attributes.GetBool("attr:searchable", index, false));
-		item.AddInt32("width", width);
+		item->AddString(sensei::key::kType, sen::onto::core::mime::kMimeAttribute);
+		item->AddString("name", name);
+		item->AddString("type", TypeName(type));
+		item->AddBool("viewable", attributes.GetBool("attr:viewable", index, false));
+		item->AddBool("editable", attributes.GetBool("attr:editable", index, false));
+		item->AddBool("searchable", attributes.GetBool("attr:searchable", index, false));
+		item->AddInt32("width", width);
+	}
+}
+
+
+status_t
+App::ExtractAttributes(const entry_ref* ref, BMessage* reply)
+{
+	BNode node(ref);
+	status_t result = node.InitCheck();
+	if (result != B_OK)
+		return result;
+
+	BMessage attributes;
+	result = ReadAttributeInfo(node, &attributes);
+	if (result != B_OK)
+		return result;
+
+	// one item whose fields have one entry per attribute (the format of the plugin results: it keeps the order)
+	BMessage item;
+	std::set<std::string> seen;
+	AddAttributes(attributes, &item, &seen);
+
+	// the attributes that the type has from its supertype (the MIME database does not inherit them, the Attributes menu of
+	// Tracker shows both): after its own
+	BPath supertypePath;
+	if (!SupertypeEntry(*ref, &supertypePath).IsEmpty()) {
+		BNode supertypeNode(supertypePath.Path());
+		BMessage inherited;
+		if (supertypeNode.InitCheck() == B_OK && ReadAttributeInfo(supertypeNode, &inherited) == B_OK)
+			AddAttributes(inherited, &item, &seen);
 	}
 
 	if (!item.IsEmpty())
@@ -136,6 +200,8 @@ App::RefsReceived(BMessage* message)
 	reply.AddInt32(sensei::key::kResult, result);
 	reply.AddString(sen::key::kDetail, strerror(result));
 
+	if (message->GetBool("print", false))
+		reply.PrintToStream();
 	message->SendReply(&reply, this);
 	Quit();
 }
@@ -147,6 +213,7 @@ App::ArgvReceived(int32 argc, char** argv)
 {
 	int32 arg = 1;
 	BMessage refs(B_REFS_RECEIVED);
+	refs.AddBool("print", true);
 	if (arg < argc && strncmp(argv[arg], sensei::kOptionSelf, strlen(sensei::kOptionSelf)) == 0) {
 		refs.AddBool(sen::conf::kSelf, true);
 		arg++;
