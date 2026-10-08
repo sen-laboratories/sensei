@@ -98,8 +98,9 @@ App::RefsReceived(BMessage* message)
 		BString mimeType = MimeTypeOfDatabaseEntry(ref);
 		if (!mimeType.IsEmpty()) {
 			// a type of the MIME database: FileTypes shows it (-type selects it; an instance that runs just comes to the front)
-			const char* arguments[] = {"FileTypes", "-type", mimeType.String()};
-			result = be_roster->Launch(kFileTypesSignature, 3, arguments);
+			// (the roster puts the program in front of the arguments itself)
+			const char* arguments[] = {"-type", mimeType.String()};
+			result = be_roster->Launch(kFileTypesSignature, 2, arguments);
 			if (result == B_ALREADY_RUNNING)
 				result = B_OK;
 		} else {
