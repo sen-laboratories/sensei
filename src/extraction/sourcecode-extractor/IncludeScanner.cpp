@@ -129,11 +129,12 @@ IncludeScanner::run(BMessage* reply)
 	for (const std::string& argument : arguments)
 		argv.push_back(argument.c_str());
 
+	// only the #include lines of this file matter: the headers themselves are looked up but not read (3.5 s -> fast)
 	CXIndex index = clang_createIndex(0, 0);
 	CXTranslationUnit unit = NULL;
 	CXErrorCode error = clang_parseTranslationUnit2(index, fSourcePath, argv.data(), (int) argv.size(), NULL, 0,
 		CXTranslationUnit_DetailedPreprocessingRecord | CXTranslationUnit_SkipFunctionBodies
-			| CXTranslationUnit_Incomplete,
+			| CXTranslationUnit_Incomplete | CXTranslationUnit_SingleFileParse,
 		&unit);
 	if (error != CXError_Success || unit == NULL) {
 		spdlog::error("could not scan {} for includes (libclang error {})", fSourcePath, (int) error);
