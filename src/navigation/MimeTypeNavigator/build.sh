@@ -7,7 +7,7 @@
 # adds some needed attributes from the resource, since we need to query for the META:TYPE.
 make && \
 rc Resources.rdef && \
-resattr -o bin/SenReferenceNavigator Resources.rsrc
+resattr -o bin/SenMimeTypeNavigator Resources.rsrc
 
 # in any case, clean up, but don't fail if file does not exist
 rm -f Resources.rsrc
