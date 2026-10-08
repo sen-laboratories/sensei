@@ -9,7 +9,9 @@
 #include <iostream>
 #include <MimeType.h>
 #include <Roster.h>
+#include <File.h>
 #include <String.h>
+#include <stdio.h>
 
 #include "App.h"
 #include <sen/Sen.h>
@@ -97,8 +99,23 @@ void App::RefsReceived(BMessage *message)
         }
     }
 
+    // the viewer of this file: the preferred application of the file or its type (Toji, BePDF,...), which says how to
+    // pass the place to it
+    entry_ref appRef;
+    char appSig[B_MIME_TYPE_LENGTH] = "";
+    status_t viewerResult = be_roster->FindApp(&ref, &appRef);
+    if (viewerResult != B_OK)
+        viewerResult = be_roster->FindApp("application/pdf", &appRef);
+    if (viewerResult == B_OK) {
+        BFile appFile(&appRef, B_READ_ONLY);
+        BAppFileInfo appFileInfo(&appFile);
+        if (appFile.InitCheck() != B_OK || appFileInfo.InitCheck() != B_OK || appFileInfo.GetSignature(appSig) != B_OK)
+            appSig[0] = '\0';
+    }
+    printf("viewer of %s: %s (%s)\n", ref.name, appSig, strerror(viewerResult));
+
     if (result == B_OK) {
-        result = MapRelationPropertiesToArguments(&propsMsg, &argsMsg);
+        result = MapRelationPropertiesToArguments(&propsMsg, &argsMsg, appSig);
     }
     if (result == B_OK) {
         message->RemoveData(sen::key::kRelationProperties);
@@ -125,30 +142,15 @@ void App::RefsReceived(BMessage *message)
     }
 
     // we need to build our own refs received message so we can send the properties with it
-    entry_ref appRef;
-    result = be_roster->FindApp("application/pdf", &appRef);    // it's a PDF navigator after all...
+    result = viewerResult;
 
     if (result == B_OK) {
         if (! be_roster->IsRunning(&appRef)) {
             result = be_roster->Launch(&appRef, message);
-        } else {
-            char appSig[B_MIME_TYPE_LENGTH];
-            BFile appFile(&appRef, B_READ_ONLY);
-
-            if (appFile.InitCheck() == B_OK) {
-                BAppFileInfo appFileInfo(&appFile);
-
-                if (appFileInfo.InitCheck() == B_OK) {
-                    if (appFileInfo.GetSignature(appSig) == B_OK) {
-                        printf("got MIME type '%s' for ref '%s'\n", appSig, appRef.name);
-                        // send message to running instance for a more seamless experience
-                        BMessenger appMess(appSig);
-                        appMess.SendMessage(message);
-                    }
-                }
-            } else {
-                printf("failed to get MIME Type for ref %s: %s\n", appRef.name, strerror(result));
-            }
+        } else if (appSig[0] != '\0') {
+            // send message to running instance for a more seamless experience
+            BMessenger appMess(appSig);
+            result = appMess.SendMessage(message);
         }
     }
     if (result != B_OK && result != B_ALREADY_RUNNING) {
@@ -164,24 +166,36 @@ void App::RefsReceived(BMessage *message)
     return;
 }
 
-/** The launch arguments for the PDF viewer: the place as a W3C Web Annotation target (see Toji, WebAnnotation.h):
- *    oa:hasTarget = { oa:hasSelector = { type = oa:FragmentSelector, dcterms:conformsTo = RFC 3778, rdf:value = page=N } }
- *  The page of the relation is its schema:pageStart. */
-status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage)
+/** The launch arguments for the PDF viewer, as that viewer takes them (by its signature, case does not matter):
+ *   Toji   the place as a W3C Web Annotation target (see Toji, WebAnnotation.h):
+ *            oa:hasTarget = { oa:hasSelector = { type = oa:FragmentSelector, dcterms:conformsTo = RFC 3778, rdf:value = page=N } }
+ *   BePDF  bepdf:page_num
+ *  The page of the relation is its schema:pageStart. Another viewer just opens the file. */
+status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage, const char* viewer)
 {
     int32 page;
     status_t result = inputMessage->FindInt32(PAGE_ATTR, &page);
     if (result != B_OK)
         return result;
 
-    BString value;
-    value << "page=" << page;
+    BString signature(viewer);
+    signature.ToLower();
 
-    BMessage selector, target;
-    selector.AddString("type", "oa:FragmentSelector");
-    selector.AddString("dcterms:conformsTo", "http://tools.ietf.org/rfc/rfc3778");
-    selector.AddString("rdf:value", value);
-    target.AddMessage("oa:hasSelector", &selector);
+    if (signature.FindFirst("toji") >= 0) {
+        BString value;
+        value << "page=" << page;
 
-    return outputMessage->AddMessage(PAGE_TARGET_KEY, &target);
+        BMessage selector, target;
+        selector.AddString("type", "oa:FragmentSelector");
+        selector.AddString("dcterms:conformsTo", "http://tools.ietf.org/rfc/rfc3778");
+        selector.AddString("rdf:value", value);
+        target.AddMessage("oa:hasSelector", &selector);
+
+        return outputMessage->AddMessage(PAGE_TARGET_KEY, &target);
+    }
+    if (signature.FindFirst("bepdf") >= 0)
+        return outputMessage->AddInt32(PAGE_BEPDF_KEY, page);
+
+    printf("no known way to pass the page to viewer '%s', opening the file only.\n", viewer);
+    return B_OK;
 }

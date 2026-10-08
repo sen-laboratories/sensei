@@ -13,6 +13,7 @@
 
 #define PAGE_ATTR       sen::onto::core::attr::kPageStart
 #define PAGE_TARGET_KEY "oa:hasTarget"
+#define PAGE_BEPDF_KEY  "bepdf:page_num"
 
 class App : public BApplication
 {
@@ -24,9 +25,11 @@ public:
 
     /**
     * maps relation properties with canonical names as fields of the refs received message,
-    * to be processed as args by the application. Only known properties are converted to supported arguments.
+    * to be processed as args by the application. Only known properties are converted to supported arguments,
+    * in the way that the viewer (by its signature) takes them.
     */
-    status_t            MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage);
+    status_t            MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage,
+                                                         const char* viewer);
 
 private:
     MappingUtil*        fMapper;
