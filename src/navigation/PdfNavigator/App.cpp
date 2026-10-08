@@ -9,6 +9,7 @@
 #include <iostream>
 #include <MimeType.h>
 #include <Roster.h>
+#include <String.h>
 
 #include "App.h"
 #include <sen/Sen.h>
@@ -163,14 +164,24 @@ void App::RefsReceived(BMessage *message)
     return;
 }
 
+/** The launch arguments for the PDF viewer: the place as a W3C Web Annotation target (see Toji, WebAnnotation.h):
+ *    oa:hasTarget = { oa:hasSelector = { type = oa:FragmentSelector, dcterms:conformsTo = RFC 3778, rdf:value = page=N } }
+ *  The page of the relation is its schema:pageStart. */
 status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage)
 {
-    status_t result;
     int32 page;
+    status_t result = inputMessage->FindInt32(PAGE_ATTR, &page);
+    if (result != B_OK)
+        return result;
 
-    if ((result = inputMessage->FindInt32(PAGE_ATTR, &page)) == B_OK) {
-        result = outputMessage->AddInt32(PAGE_MSG_KEY, page); // BePDF
-    }
+    BString value;
+    value << "page=" << page;
 
-    return result;
+    BMessage selector, target;
+    selector.AddString("type", "oa:FragmentSelector");
+    selector.AddString("dcterms:conformsTo", "http://tools.ietf.org/rfc/rfc3778");
+    selector.AddString("rdf:value", value);
+    target.AddMessage("oa:hasSelector", &selector);
+
+    return outputMessage->AddMessage(PAGE_TARGET_KEY, &target);
 }

@@ -12,7 +12,7 @@
 #include "../../common/MappingUtil.h"
 
 #define PAGE_ATTR       sen::onto::core::attr::kPageStart
-#define PAGE_MSG_KEY    "bepdf:page_num"
+#define PAGE_TARGET_KEY "oa:hasTarget"
 
 class App : public BApplication
 {
