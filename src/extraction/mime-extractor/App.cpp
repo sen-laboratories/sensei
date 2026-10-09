@@ -141,7 +141,7 @@ AddAttributes(const BMessage& attributes, BMessage* item, std::set<std::string>*
 		item->AddString("type", TypeName(type));
 		item->AddBool("viewable", attributes.GetBool("attr:viewable", index, false));
 		item->AddBool("editable", attributes.GetBool("attr:editable", index, false));
-		item->AddBool("searchable", attributes.GetBool("attr:searchable", index, false));
+		item->AddBool("searchable", attributes.GetBool(sen::attr::kAttrInfoSearchable, index, false));
 		item->AddInt32("width", width);
 	}
 }

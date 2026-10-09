@@ -9,9 +9,10 @@
 #include <String.h>
 
 /**
- * @brief Navigator for the types of the MIME database and their attributes (and for generic references, which may point to one).
+ * @brief Navigator for references: opens the target of a relation.
  *
- * The target of a relation decides how it is opened:
+ * It is the navigator of the generic reference relation, and of what a type contains. It is not bound to a kind of target: what the
+ * target is decides how it is opened, and a new kind of target gets its branch in `App::RefsReceived`:
  *  - a type of the MIME database (what an ontology provides, or what contains attributes) is shown in FileTypes, selected,
  *  - an attribute of a type (the contents of a type) is opened in the attribute window of FileTypes, which is done like a user
  *    does it: the application is scripted with what every application has (its windows and views, by name and index),

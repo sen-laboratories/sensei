@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 
-resource app_signature "application/x-vnd.sen-labs.MimeTypeNavigator";
+resource app_signature "application/x-vnd.sen-labs.ReferenceNavigator";
 
 resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
 
@@ -16,8 +16,8 @@ resource app_version {
 
 	internal = 0,
 
-	short_info = "SENSEI MIME Type Navigator",
-	long_info  = "SEN module to open MIME types, and their attributes, in FileTypes; any other target is opened as usual."
+	short_info = "SENSEI Reference Navigator",
+	long_info  = "SEN module to open the targets of references: what they point to decides how (a MIME type, its attribute, any other file)."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */
@@ -29,7 +29,7 @@ resource(2, "SEN:plugin:enrich")   0;
 resource(3, "SEN:plugin:identify") 0;
 resource(4, "SEN:plugin:navigate") 1;
 
-/* generic references (the types that an ontology provides), what a type contains and the attributes themselves */
+/* generic references, what a type contains (its attributes) and the attributes themselves */
 resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.reference",
     "types" = "relation/x-vnd.sen-labs.relation.contains",

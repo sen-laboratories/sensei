@@ -20,7 +20,7 @@
 #include <sen/Sen.h>
 #include <sen/SenOntoCore.h>
 
-static const char* kApplicationSignature = "application/x-vnd.sen-labs.MimeTypeNavigator";
+static const char* kApplicationSignature = "application/x-vnd.sen-labs.ReferenceNavigator";
 static const char* kFileTypesSignature = "application/x-vnd.Haiku-FileTypes";
 // the list of the attributes in the window of FileTypes, the one that shows the types
 static const char* kAttributeListView = "listview attr";
@@ -248,7 +248,7 @@ App::RefsReceived(BMessage* message)
 }
 
 
-/** for testing: MimeTypeNavigator <path of the type in the MIME database or of any file> [<name of an attribute>] */
+/** for testing: ReferenceNavigator <path of the type in the MIME database or of any file> [<name of an attribute>] */
 void
 App::ArgvReceived(int32 argc, char** argv)
 {
