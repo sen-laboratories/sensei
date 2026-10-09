@@ -21,7 +21,6 @@
 #include <sen/SenOntoCore.h>
 
 static const char* kApplicationSignature = "application/x-vnd.sen-labs.ReferenceNavigator";
-static const char* kFileTypesSignature = "application/x-vnd.Haiku-FileTypes";
 // the list of the attributes in the window of FileTypes, the one that shows the types
 static const char* kAttributeListView = "listview attr";
 
@@ -186,20 +185,44 @@ App::OpenMimeType(const BString& mimeType, const BString& attribute)
 		}
 	}
 
-	// FileTypes shows the type that is asked for (-type) when it is started; one that runs is only brought to the front
-	// (the list of its window is that of another type)
-	bool running = BMessenger(kFileTypesSignature).IsValid();
+	// The FileTypes of SEN (found by its signature) is asked by a message, and decides itself what to do: it shows the type, closes
+	// the dialog of any other attribute and opens one for this.
+	entry_ref senFileTypes;
+	if (be_roster->FindApp(sen::kFileTypesSignature, &senFileTypes) == B_OK) {
+		BMessenger messenger(sen::kFileTypesSignature);
+		if (!messenger.IsValid()) {
+			status_t launched = be_roster->Launch(sen::kFileTypesSignature);
+			if (launched != B_OK && launched != B_ALREADY_RUNNING)
+				return launched;
+			messenger = BMessenger(sen::kFileTypesSignature);
+			for (int tries = 0; tries < 50 && !messenger.IsValid(); tries++) {
+				snooze(100000);
+				messenger = BMessenger(sen::kFileTypesSignature);
+			}
+		}
+
+		BMessage open(sen::cmd::kOpenMimeAttribute);
+		open.AddString(sen::key::kMimeType, owner);
+		if (!attribute.IsEmpty())
+			open.AddString(sen::key::kAttributeName, attribute);
+		return messenger.SendMessage(&open);
+	}
+
+	// The FileTypes of Haiku (single launch, it needs the MIME database for itself) shows the type that is asked for (-type) when
+	// it is started; one that runs is only brought to the front (the list of its window is that of another type). For the attribute
+	// the application is scripted with what every application has.
+	bool running = BMessenger(sen::kHaikuFileTypesSignature).IsValid();
 
 	// (the roster puts the program in front of the arguments itself)
 	const char* arguments[] = {"-type", owner.String()};
-	status_t result = be_roster->Launch(kFileTypesSignature, 2, arguments);
+	status_t result = be_roster->Launch(sen::kHaikuFileTypesSignature, 2, arguments);
 	if (result == B_ALREADY_RUNNING)
 		result = B_OK;
 	if (result != B_OK || index < 0 || running)
 		return result;
 
 	// the window needs a moment to be there with the attributes of the type
-	BMessenger fileTypes(kFileTypesSignature);
+	BMessenger fileTypes(sen::kHaikuFileTypesSignature);
 	int32 window = 0;
 	for (int tries = 0; tries < 60 && ListedAttributes(fileTypes, &window) <= index; tries++)
 		snooze(100000);

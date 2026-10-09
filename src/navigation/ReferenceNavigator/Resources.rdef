@@ -32,6 +32,7 @@ resource(4, "SEN:plugin:navigate") 1;
 /* generic references, what a type contains (its attributes) and the attributes themselves */
 resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.reference",
+    "types" = "relation/x-vnd.sen-labs.relation.dependency",
     "types" = "relation/x-vnd.sen-labs.relation.contains",
     "types" = "meta/x-vnd.sen-labs.meta-mime-attribute"
 };
