@@ -13,6 +13,7 @@
 
 #define PAGE_ATTR       sen::onto::core::attr::kPageStart
 #define PAGE_TARGET_KEY "oa:hasTarget"
+#define PAGE_MOTIVATION_KEY "oa:motivatedBy"
 #define PAGE_BEPDF_KEY  "bepdf:page_num"
 
 class App : public BApplication

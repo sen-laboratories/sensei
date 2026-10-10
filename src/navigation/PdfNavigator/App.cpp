@@ -168,7 +168,9 @@ void App::RefsReceived(BMessage *message)
 
 /** The launch arguments for the PDF viewer, as that viewer takes them (by its signature, case does not matter):
  *   Toji   the place as a W3C Web Annotation target (see Toji, WebAnnotation.h):
- *            oa:hasTarget = { oa:hasSelector = { type = oa:FragmentSelector, dcterms:conformsTo = RFC 3778, rdf:value = page=N } }
+ *            oa:hasTarget = { oa:hasSelector = { type = oa:FragmentSelector, dcterms:conformsTo = RFC 3778, rdf:value = page=N,
+ *                oa:refinedBy = { type = oa:TextQuoteSelector, oa:exact = <label of the relation> } } }
+ *            oa:motivatedBy = oa:highlighting   (the words are marked, not saved)
  *   BePDF  bepdf:page_num
  *  The page of the relation is its schema:pageStart. Another viewer just opens the file. */
 status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMessage *outputMessage, const char* viewer)
@@ -189,6 +191,17 @@ status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMe
         selector.AddString("type", "oa:FragmentSelector");
         selector.AddString("dcterms:conformsTo", "http://tools.ietf.org/rfc/rfc3778");
         selector.AddString("rdf:value", value);
+
+        // the title of the item (of the outline) is looked for on the page and marked there, so that the user sees which
+        // heading the relation is about when the page has several; without the words found, Toji just shows the page
+        const char* title = inputMessage->GetString(sen::attr::kRelationLabel, "");
+        if (strlen(title) > 0) {
+            BMessage words;
+            words.AddString("type", "oa:TextQuoteSelector");
+            words.AddString("oa:exact", title);
+            selector.AddMessage("oa:refinedBy", &words);
+            outputMessage->AddString(PAGE_MOTIVATION_KEY, "oa:highlighting");
+        }
         target.AddMessage("oa:hasSelector", &selector);
 
         return outputMessage->AddMessage(PAGE_TARGET_KEY, &target);
