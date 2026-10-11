@@ -21,6 +21,7 @@
 #include <sen/SenOntoCore.h>
 
 static const char* kApplicationSignature = "application/x-vnd.sen-labs.ReferenceNavigator";
+static const char* kRelationNavigatorSignature = "application/x-vnd.sen-labs.RelationNavigator";
 // the list of the attributes in the window of FileTypes, the one that shows the types
 static const char* kAttributeListView = "listview attr";
 
@@ -254,8 +255,11 @@ App::RefsReceived(BMessage* message)
 		BString mimeType = MimeTypeOfDatabaseEntry(ref);
 		if (!mimeType.IsEmpty())
 			result = OpenMimeType(mimeType, attribute);
+		else if (message->HasMessage(sen::key::kRelationProperties))
+			result = be_roster->Launch(&ref);	// any other target of an item of a menu: opened as usual
 		else
-			result = be_roster->Launch(&ref);	// any other target: opened as usual
+			// the file of a relation (double-clicked in a relation view): the relation navigator shows the target in Tracker
+			result = be_roster->Launch(kRelationNavigatorSignature, message);
 	}
 
 	if (result != B_OK) {

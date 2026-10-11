@@ -16,7 +16,8 @@
  *  - a type of the MIME database (what an ontology provides, or what contains attributes) is shown in FileTypes, selected,
  *  - an attribute of a type (the contents of a type) is opened in the attribute window of FileTypes, which is done like a user
  *    does it: the application is scripted with what every application has (its windows and views, by name and index),
- *  - any other file is opened as usual, with its preferred application.
+ *  - any other target is opened as usual, with its preferred application, if it was chosen in a menu; the file of a relation (opened
+ *    in a relation view) is handed to the RelationNavigator, which shows the target in Tracker.
  *
  * The file of a relation in a relation view is a proxy for its target: it carries the target (SEN:REL:TRG) and, for an attribute,
  * its name (SEN:attr:name); the same is in the properties of the message when an item of a menu is chosen.
