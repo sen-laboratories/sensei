@@ -4,16 +4,32 @@ SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 -->
 # SEN source code extractor
 
-Finds the `#include` directives of a source file (normal relations to the files it includes) and replies to the SEN server as described
-in the developer guide of `sento`.
+Finds the references of a source file to other files (`#include`, later `import` of other languages) and gives them to the SEN server as relations
+inside the file (normal relations to the files it includes), as described in the developer guide of `sento`.
 
-It uses **libclang** (the stable C API of clang, HaikuPorts package `llvm23_clang`, library `clang`): the file is only preprocessed, so no compile
-command and no project files are needed, and an include whose header is missing is still found (without a resolved path). Only the directives of the
+It **reads** the file, it does not compile it: no compiler libraries, no compile command and no project files are needed, it is fast (a few
+milliseconds) and small, and a reference to a file that does not exist is still found (without a resolved path). Only the references written in the
 file itself are reported, not those of the headers it includes.
 
-Result (one item, an entry per include in each field): `_label` the name as written, `path` where it was found, `global` for `<name>`,
+Result (one item, an entry per reference in each field): `_label` the name as written, `path` where it was found, `global` for `<name>`,
 and for relations inside the file `line` of the directive.
 
-An earlier version used the clang C++ tooling API, adapted from [self-inc-first](https://github.com/xaizek/self-inc-first) (GPL-2.0-or-later).
-That code is gone; this implementation is written against the documented libclang API (`clang_getInclusions` and the cursors of
-`CXCursor_InclusionDirective`) and is MIT like the rest of SEN.
+## Languages
+
+A language is a `LanguageScanner` (`LanguageScanner.h`): the extensions of its files, `Scan()` that finds the references in the text and `Resolve()` that
+looks for the file that a reference names. `IncludeScanner` chooses the scanner by the extension of the file (`ScannerRegistry.cpp`).
+
+| Language | Scanner | What it finds |
+|---|---|---|
+| C, C++, Objective-C | `CFamilyScanner` | `#include`, `#include_next`, `#import`; skips comments, strings (also raw strings), line continuations and blocks that are off (`#if 0`) |
+
+To add a language (Java `import`, Python `import` and `from ... import`, ...): write a subclass, implement the three functions (a small lexer that skips comments and
+strings, and the naming rules of the language: Java maps `a.b.C` to `a/b/C.java` below a source root, Python maps `a.b` to `a/b.py` or `a/b/__init__.py`
+and relative imports to the folder of the file), add it to the list in `ScannerRegistry.cpp` and the file types to `Resources.rdef`.
+
+C family headers are looked up like the compiler of Haiku does: `"name"` relative to the file first, then the header folders of the system as the
+Haiku API names them (`BPathFinder`, `B_FIND_PATH_HEADERS_DIRECTORY`: the folders of user and system, packaged and not, with the kits below `os`, `posix`,
+`bsd`, `gnu` and `c++`). Include folders of a project (`-I`) are not known: such headers are reported as written.
+
+An earlier version used libclang (which needs the 100+ MB package `llvm23_clang`) and before that the clang C++ tooling API (adapted from
+[self-inc-first](https://github.com/xaizek/self-inc-first), GPL-2.0-or-later, long gone).
