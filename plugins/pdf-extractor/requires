@@ -2,3 +2,4 @@ lib:libz
 lib:libjpeg
 lib:libssl
 lib:libcrypto
+sen_ontology_core
