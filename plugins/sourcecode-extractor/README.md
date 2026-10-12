@@ -22,14 +22,18 @@ looks for the file that a reference names. `IncludeScanner` chooses the scanner 
 | Language | Scanner | What it finds |
 |---|---|---|
 | C, C++, Objective-C | `CFamilyScanner` | `#include`, `#include_next`, `#import`; skips comments, strings (also raw strings), line continuations and blocks that are off (`#if 0`) |
+| Python | `PythonScanner` | `import a.b as c, d`, `from a.b import c`, `from . import x`, `from ..pkg import y`; skips comments, strings and docstrings; finds statements after `;` and `if x:` |
 
-To add a language (Java `import`, Python `import` and `from ... import`, ...): write a subclass, implement the three functions (a small lexer that skips comments and
-strings, and the naming rules of the language: Java maps `a.b.C` to `a/b/C.java` below a source root, Python maps `a.b` to `a/b.py` or `a/b/__init__.py`
-and relative imports to the folder of the file), add it to the list in `ScannerRegistry.cpp` and the file types to `Resources.rdef`.
+To add a language (Java `import`, ...): write a subclass like `PythonScanner` (about 300 lines with the lexer), implement the three functions (a small lexer that skips
+comments and strings, and the naming rules of the language: Java maps `a.b.C` to `a/b/C.java` below a source root), add it to the list in `ScannerRegistry.cpp`
+and the file types to `Resources.rdef`. `Resolve()` may also correct `global`: a Python module found in the project is not a library.
 
-C family headers are looked up like the compiler of Haiku does: `"name"` relative to the file first, then the header folders of the system as the
-Haiku API names them (`BPathFinder`, `B_FIND_PATH_HEADERS_DIRECTORY`: the folders of user and system, packaged and not, with the kits below `os`, `posix`,
-`bsd`, `gnu` and `c++`). Include folders of a project (`-I`) are not known: such headers are reported as written.
+C family headers are looked up like the compiler of Haiku does: `"name"` relative to the file first, then the header folders that `find_directory` names
+(`B_USER_NONPACKAGED_HEADERS_DIRECTORY`, `B_USER_HEADERS_DIRECTORY`, `B_SYSTEM_NONPACKAGED_HEADERS_DIRECTORY`, `B_SYSTEM_HEADERS_DIRECTORY`, then what `BPathFinder`
+adds), and in each of them the kits below `os`, `posix`, `bsd`, `gnu` and `c++`. Include folders of a project (`-I`) are not known: such headers are reported as written.
+
+Python modules are looked up in the folder of the file, in the folder above its package, and in the library folders of Python (`python3*` and `site-packages` in
+`B_USER_NONPACKAGED_LIB_DIRECTORY`, `B_USER_LIB_DIRECTORY`, `B_SYSTEM_NONPACKAGED_LIB_DIRECTORY` and `B_SYSTEM_LIB_DIRECTORY`).
 
 An earlier version used libclang (which needs the 100+ MB package `llvm23_clang`) and before that the clang C++ tooling API (adapted from
 [self-inc-first](https://github.com/xaizek/self-inc-first), GPL-2.0-or-later, long gone).

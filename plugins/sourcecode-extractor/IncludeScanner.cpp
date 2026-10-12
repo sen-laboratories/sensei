@@ -47,7 +47,7 @@ IncludeScanner::run(BMessage* reply)
 	std::vector<Dependency> dependencies;
 	scanner->Scan(text, &dependencies);
 	for (Dependency& dependency : dependencies)
-		dependency.resolved = scanner->Resolve(dependency, fSourcePath);
+		scanner->Resolve(&dependency, fSourcePath);
 
 	spdlog::info("found {} references in {} ({})", dependencies.size(), fSourcePath, scanner->Name());
 

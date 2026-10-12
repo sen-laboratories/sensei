@@ -266,9 +266,22 @@ CFamilyScanner::HeaderFolders() const
 		return fHeaderFolders;
 	fHeaderFoldersKnown = true;
 
-	// the places for headers that the system names (user and system, packaged and not): in the order that the compiler uses them
-	BStringList roots;
-	BPathFinder::FindPaths(B_FIND_PATH_HEADERS_DIRECTORY, NULL, B_FIND_PATH_EXISTING_ONLY, roots);
+	// the places for headers that the system names, in the order of the compiler: user before system, not packaged before packaged
+	std::vector<std::string> roots;
+	const directory_which places[] = {B_USER_NONPACKAGED_HEADERS_DIRECTORY, B_USER_HEADERS_DIRECTORY,
+		B_SYSTEM_NONPACKAGED_HEADERS_DIRECTORY, B_SYSTEM_HEADERS_DIRECTORY};
+	for (directory_which place : places) {
+		BPath path;
+		if (find_directory(place, &path) == B_OK)
+			roots.push_back(path.Path());
+	}
+	// what the path finder knows in addition (other architectures, other roots)
+	BStringList found;
+	BPathFinder::FindPaths(B_FIND_PATH_HEADERS_DIRECTORY, NULL, B_FIND_PATH_EXISTING_ONLY, found);
+	for (int32 index = 0; index < found.CountStrings(); index++) {
+		if (std::find(roots.begin(), roots.end(), found.StringAt(index).String()) == roots.end())
+			roots.push_back(found.StringAt(index).String());
+	}
 
 	auto isFolder = [](const std::string& path) {
 		struct stat st;
@@ -293,9 +306,7 @@ CFamilyScanner::HeaderFolders() const
 			fHeaderFolders.push_back(path);
 	};
 
-	for (int32 index = 0; index < roots.CountStrings(); index++) {
-		std::string root = roots.StringAt(index).String();
-
+	for (const std::string& root : roots) {
 		// the standard library, then the BeAPI (every kit has a folder, and the add-ons below them), then POSIX and the like
 		add(root + "/c++");
 		add(root + "/c++/backward");
@@ -316,15 +327,15 @@ CFamilyScanner::HeaderFolders() const
 }
 
 
-std::string
-CFamilyScanner::Resolve(const Dependency& dependency, const std::string& sourcePath) const
+void
+CFamilyScanner::Resolve(Dependency* dependency, const std::string& sourcePath) const
 {
 	std::vector<std::string> folders;
-	if (!dependency.global) {
+	if (!dependency->global) {
 		size_t slash = sourcePath.rfind('/');
 		folders.push_back(slash == std::string::npos ? "." : sourcePath.substr(0, slash));
 	}
 	for (const std::string& folder : HeaderFolders())
 		folders.push_back(folder);
-	return FindFileInFolders(folders, dependency.name);
+	dependency->resolved = FindFileInFolders(folders, dependency->name);
 }

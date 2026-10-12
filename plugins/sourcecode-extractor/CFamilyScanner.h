@@ -15,14 +15,15 @@
  * (`#include MACRO`) are not reported.
  *
  * Headers are looked up like the compiler of Haiku does: `"name"` relative to the folder of the file first, then the header folders of the
- * system (BPathFinder with B_FIND_PATH_HEADERS_DIRECTORY, the folders below `os`, `posix`, `bsd`, `gnu` and `c++`).
+ * system: the header folders of find_directory (B_USER_NONPACKAGED_HEADERS_DIRECTORY, B_USER_HEADERS_DIRECTORY, B_SYSTEM_NONPACKAGED_HEADERS_DIRECTORY
+ * and B_SYSTEM_HEADERS_DIRECTORY, then what BPathFinder adds), and in each of them the folders below `os`, `posix`, `bsd`, `gnu` and `c++`.
  */
 class CFamilyScanner : public LanguageScanner {
 public:
 	const char*	Name() const;
 	const std::vector<std::string>&	Extensions() const;
 	void		Scan(const std::string& text, std::vector<Dependency>* dependencies) const;
-	std::string	Resolve(const Dependency& dependency, const std::string& sourcePath) const;
+	void		Resolve(Dependency* dependency, const std::string& sourcePath) const;
 
 private:
 	const std::vector<std::string>&	HeaderFolders() const;

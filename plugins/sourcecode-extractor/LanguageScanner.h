@@ -37,12 +37,12 @@ public:
 	virtual	void		Scan(const std::string& text, std::vector<Dependency>* dependencies) const = 0;
 
 	/**
-	 * @brief Look for the file of a reference.
+	 * @brief Look for the file of a reference and set `resolved` (the normalized path of the file; it stays empty if there is none). A
+	 * scanner may also correct `global` once it knows where the file is (a Python module of the project is not a library).
 	 * @param sourcePath the file that the reference is in (for names that are relative to it)
-	 * @return the normalized path of the file, or an empty string if there is none
 	 */
-	virtual	std::string	Resolve(const Dependency& dependency, const std::string& sourcePath) const
-							{ return std::string(); }
+	virtual	void		Resolve(Dependency* dependency, const std::string& sourcePath) const
+							{}
 };
 
 /** @return the scanner for a file (by its extension), or NULL for a language that is not known */

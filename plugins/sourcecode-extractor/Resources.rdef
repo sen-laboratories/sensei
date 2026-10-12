@@ -17,7 +17,7 @@ resource app_version {
 	internal = 0,
 
 	short_info = "SEN SourceCode Extractor",
-	long_info  = "SEN module to extract include references from source code files."
+	long_info  = "SEN module to extract the references of source code files to other files: includes (C, C++) and imports (Python)."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */

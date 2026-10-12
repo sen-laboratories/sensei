@@ -43,7 +43,8 @@ APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor
 SRCS = App.cpp \
        IncludeScanner.cpp \
        ScannerRegistry.cpp \
-       CFamilyScanner.cpp
+       CFamilyScanner.cpp \
+       PythonScanner.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be
 #	used.

@@ -13,13 +13,15 @@
 #include <Path.h>
 
 #include "CFamilyScanner.h"
+#include "PythonScanner.h"
 
 /** The languages that the extractor understands: add a scanner here (see LanguageScanner.h). */
 static const std::vector<const LanguageScanner*>&
 Scanners()
 {
 	static const CFamilyScanner cFamily;
-	static const std::vector<const LanguageScanner*> scanners = {&cFamily};
+	static const PythonScanner python;
+	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &python};
 	return scanners;
 }
 
