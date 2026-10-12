@@ -1,0 +1,27 @@
+name			sen_plugins
+version			@VERSION@
+architecture	any
+summary			"All plugins of SENSEI"
+description		"SENSEI, the extraction, navigation and enrichment part of SEN (Semantic Extensions
+Native): this package brings all of its plugins, so that one installation gives
+SEN the ability to read relations out of PDF, Markdown and source code files,
+to open them, and to enrich books. Remove it to keep only the plugins that you
+want, they are packages of their own (sen_plugin_*)."
+packager		"Gregor B. Rosenauer <semantic.extensions@gmail.com>"
+vendor			"SEN Labs e.U."
+copyrights		{
+	"2024-2026 SEN Labs e.U."
+}
+licenses		{
+	"MIT"
+}
+urls			{
+	"https://sen-labs.org"
+	"https://github.com/sen-laboratories/sensei"
+}
+provides		{
+	sen_plugins = @VERSION@
+}
+requires		{
+@REQUIRES@
+}

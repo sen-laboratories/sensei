@@ -30,7 +30,8 @@ is one of them).
 
 ```sh
 pkgman add-repo https://kiri.sen-labs.org/x86_64     # once
-pkgman install sen_plugin_pdf_navigator              # one package per plugin, see PLUGINS.md for the names
+pkgman install sen_plugins                           # all plugins at once
+pkgman install sen_plugin_pdf_navigator              # or one package per plugin, see PLUGINS.md for the names
 ```
 
 Build and package on Haiku (each plugin has a `build.sh` that also writes the attributes from its resources, `package.sh` makes the packages):

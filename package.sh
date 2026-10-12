@@ -16,7 +16,8 @@ ARCH=$(getarch)
 REVISION=${REVISION:-1}
 
 plugins="$*"
-[ -n "$plugins" ] || plugins=$(cd plugins && ls)
+all=
+[ -n "$plugins" ] || { plugins=$(cd plugins && ls); all=1; }
 
 for name in $plugins; do
 	dir=$ROOT/plugins/$name
@@ -72,4 +73,16 @@ for name in $plugins; do
 	package create -C "$stage" "$out" >/dev/null
 	echo "created $out"
 done
+
+# the package that brings all of them (only when all plugins were packaged)
+if [ -n "$all" ]; then
+	requires=$(for name in $plugins; do printf '\\n\\tsen_plugin_%s' "$(echo $name | tr '-' '_')"; done)
+	stage=$ROOT/package-build/meta
+	rm -rf "$stage"
+	mkdir -p "$stage"
+	sed -e "s|@VERSION@|1.0.0~dev-$REVISION|g" -e "s|@REQUIRES@|$requires|" package/PackageInfo.meta.in > "$stage/.PackageInfo"
+	rm -f sen_plugins-*.hpkg
+	package create -C "$stage" "sen_plugins-1.0.0~dev-$REVISION-any.hpkg" >/dev/null
+	echo "created sen_plugins-1.0.0~dev-$REVISION-any.hpkg"
+fi
 rm -rf package-build
