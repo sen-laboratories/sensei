@@ -39,8 +39,10 @@ database. The type is in the reply (`META:TYPE`, `sensei::key::kSemanticType`), 
 | Rust | `RustScanner` | `mod name;` (also `#[path = ".."]` and inside inline modules), `use` trees expanded to one reference per path, `extern crate`; skips nested comments, strings, raw strings, characters (lifetimes are told apart); module paths resolve to `a.rs` or `a/mod.rs` from the crate root, the module of the file or `super` |
 
 A note on the **Haiku type**: the plugin is only called for files that Haiku types `text/x-source-code`, which is decided by the extensions that the MIME database lists for that
-type (Tracker types a new file by them). The system lists `c cc cpp cxx h h++ hpp go java js json py rs cs php lua ...`, but not `hh hxx inl mjs cjs jsx ts tsx mts cts`: such files
-are `text/plain` until their type is set (or the extensions are added to `text/x-source-code` in the MIME database, which is the user's choice).
+type (Tracker types a new file by them). The system lists `c cc cpp cxx h h++ hpp go java js json py rs cs php lua ...`, but not `hh hxx inl ipp tpp txx tcc icc mjs cjs jsx ts tsx mts cts pyw pyi mm c++`.
+The ontology `sen_ontology_sourcecode` (sen-oni, class `SourceCodeFile`) therefore installs `text/x-source-code` in the MIME database of the user with the extensions of the system **plus** these
+(only that list: the preferred application, the icon and the sniffer rule stay those of the system; removing the ontology brings the type back as it was). Haiku reads the extensions when its
+registrar starts, so files of the new extensions are typed as source code after the next restart. `.ts` is also the extension of MPEG transport streams (`video/mp2t`) in Haiku.
 
 To add a language (C#, PHP, Ruby, ...): write a subclass like `JavaScanner` or `PythonScanner` (about 300 lines with the lexer), name its file kinds (extension and semantic type), implement the functions (a small lexer that skips
 comments and strings, and the naming rules of the language: Java maps `a.b.C` to `a/b/C.java` below a source root), add it to the list in `ScannerRegistry.cpp`
