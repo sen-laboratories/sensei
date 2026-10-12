@@ -19,6 +19,7 @@
 #include "CFamilyScanner.h"
 #include "GoScanner.h"
 #include "JavaScanner.h"
+#include "JavaScriptScanner.h"
 #include "PythonScanner.h"
 #include "RustScanner.h"
 
@@ -29,9 +30,10 @@ Scanners()
 	static const CFamilyScanner cFamily;
 	static const GoScanner go;
 	static const JavaScanner java;
+	static const JavaScriptScanner javaScript;
 	static const PythonScanner python;
 	static const RustScanner rust;
-	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &go, &java, &python, &rust};
+	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &go, &java, &javaScript, &python, &rust};
 	return scanners;
 }
 

@@ -46,6 +46,7 @@ SRCS = App.cpp \
        CFamilyScanner.cpp \
        GoScanner.cpp \
        JavaScanner.cpp \
+       JavaScriptScanner.cpp \
        PythonScanner.cpp \
        RustScanner.cpp
 
