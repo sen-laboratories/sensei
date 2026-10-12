@@ -31,7 +31,7 @@ database. The type is in the reply (`META:TYPE`, `sensei::key::kSemanticType`), 
 
 | Language | Scanner | What it finds |
 |---|---|---|
-| C, C++, Objective-C | `CFamilyScanner` | `#include`, `#include_next`, `#import`; skips comments, strings (also raw strings), line continuations and blocks that are off (`#if 0`) |
+| C, C++, Objective-C | `CFamilyScanner` | `#include`, `#include_next`, `#import` (C++ headers: `hh hpp hxx h++ inl` and the files of template and inline definitions `ipp tpp txx tcc icc`); skips comments, strings (also raw strings), line continuations and blocks that are off (`#if 0`) |
 | Go | `GoScanner` | `import "x"`, aliased, `.`, `_` and groups `import ( ... )`; skips comments, strings, raw strings; a package is resolved to its **folder** (module from `go.mod`, `vendor`, GOROOT/GOPATH, `go/src` in the library folders) |
 | Java | `JavaScanner` | `import a.b.C;`, `import a.b.*;`, `import static a.b.C.member;` (the class); skips comments, strings, text blocks; imports at the top level only |
 | JavaScript, TypeScript (JSX, TSX) | `JavaScriptScanner` | `import ... from 'x'`, `import 'x'`, `import x = require('x')`, `export ... from 'x'`, `require('x')`, `import('x')`, `/// <reference path="x" />`; skips comments, strings, template literals (nested `${}`) and regular expressions; resolves like Node and TypeScript (extensions, `x.js` for `x.ts`, folders with `package.json`/`index.*`, `node_modules` up the tree and in the library folders of Haiku); `tsconfig` paths are not read |

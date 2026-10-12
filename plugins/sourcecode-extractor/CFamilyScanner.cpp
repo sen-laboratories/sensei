@@ -111,6 +111,7 @@ CFamilyScanner::FileKinds() const
 		{"c", "text/x-csrc"}, {"h", "text/x-chdr"},
 		{"cc", "text/x-c++src"}, {"cpp", "text/x-c++src"}, {"cxx", "text/x-c++src"}, {"c++", "text/x-c++src"},
 		{"hh", "text/x-c++hdr"}, {"hpp", "text/x-c++hdr"}, {"hxx", "text/x-c++hdr"}, {"h++", "text/x-c++hdr"}, {"inl", "text/x-c++hdr"},
+		{"ipp", "text/x-c++hdr"}, {"tpp", "text/x-c++hdr"}, {"txx", "text/x-c++hdr"}, {"tcc", "text/x-c++hdr"}, {"icc", "text/x-c++hdr"},
 		{"m", "text/x-objcsrc"}, {"mm", "text/x-objcsrc"}
 	};
 	return kinds;
