@@ -1,0 +1,26 @@
+name			@PACKAGE@
+version			@VERSION@
+architecture	@ARCH@
+summary			"@SUMMARY@"
+description		"@DESCRIPTION@
+This is a plugin of SENSEI, the extraction, navigation and enrichment part of SEN
+(Semantic Extensions Native). Features: @FEATURES@. Handles: @TYPES@."
+packager		"Gregor B. Rosenauer <semantic.extensions@gmail.com>"
+vendor			"SEN Labs e.U."
+copyrights		{
+	"2024-2026 SEN Labs e.U."
+}
+licenses		{
+	@LICENSES@
+}
+urls			{
+	"https://sen-labs.org"
+	"https://github.com/sen-laboratories/sensei"
+}
+provides		{
+	@PACKAGE@ = @VERSION@
+}
+requires		{
+	haiku
+@REQUIRES@
+}

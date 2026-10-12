@@ -1,0 +1,3 @@
+lib:libspdlog
+lib:libfmt
+lib:libclang >= 23

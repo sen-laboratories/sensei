@@ -1,0 +1,4 @@
+lib:libz
+lib:libjpeg
+lib:libssl
+lib:libcrypto

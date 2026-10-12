@@ -1,0 +1,75 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SEN Labs e.U.
+#
+# Builds the HPKG of each plugin (or of the named ones: ./package.sh pdf-navigator text-navigator) from plugins/<name>/bin/<binary>
+# (run the build.sh of the plugin first). The packages are written to the repository root; REVISION overrides the revision (default 1).
+#
+# From the plugin folder it takes: Resources.rdef (signature, version, descriptions, features, file types), the Makefile (name of the binary),
+# the optional file "requires" (one HaikuPorts requirement per line, e.g. lib:libspdlog) and the optional script "package.stage" that is
+# run with the stage folder as its argument to add files (a bundled library).
+# The binary goes to add-ons/sen/plugins/ and keeps its attributes (the signature BEOS:APP_SIG is how the server finds it, see Sensei.h).
+set -e
+cd "$(dirname "$0")"
+ROOT=$(pwd)
+ARCH=$(getarch)
+REVISION=${REVISION:-1}
+
+plugins="$*"
+[ -n "$plugins" ] || plugins=$(cd plugins && ls)
+
+for name in $plugins; do
+	dir=$ROOT/plugins/$name
+	[ -f "$dir/Resources.rdef" ] || { echo "no such plugin: $name" >&2; exit 1; }
+	rdef=$dir/Resources.rdef
+	binary=$(sed -n 's/^NAME[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "$dir/Makefile" | head -n1)
+	[ -f "$dir/bin/$binary" ] || { echo "$name: bin/$binary not found, run build.sh in plugins/$name first" >&2; exit 1; }
+
+	major=$(sed -n 's/^[[:space:]]*major[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
+	middle=$(sed -n 's/^[[:space:]]*middle[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
+	minor=$(sed -n 's/^[[:space:]]*minor[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
+	variety=$(sed -n 's/^[[:space:]]*variety[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
+	version="$major.$middle.$minor"
+	# 0 = development, 2 = beta
+	[ "$variety" = 0 ] && version="$version~dev"
+	[ "$variety" = 2 ] && version="$version~beta$(sed -n 's/^[[:space:]]*internal[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)"
+	version="$version-$REVISION"
+
+	licenses='"MIT"'
+	[ -f "$dir/licenses" ] && licenses=$(awk 'NF { printf "%s\"%s\"", (n++ ? "\\n\\t" : ""), $0 }' "$dir/licenses")
+	summary=$(sed -n 's/.*short_info[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' $rdef | head -n1)
+	description=$(sed -n 's/.*long_info[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' $rdef | head -n1 | sed 's/"/\\"/g')
+	signature=$(sed -n 's/^resource app_signature "\(.*\)";/\1/p' $rdef)
+	features=$(for f in extract enrich identify navigate search; do grep -q "\"SEN:plugin:$f\")[[:space:]]*1" $rdef && echo $f; done | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+	types=$(sed -n '/resource file_types message/,/};/p' $rdef | sed -n 's/.*"types"[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+	package=sen_plugin_$(echo $name | tr '-' '_')
+
+	requires=
+	[ -f "$dir/requires" ] && requires=$(awk 'NF { printf "\\n\\t%s", $0 }' "$dir/requires")
+
+	stage=$ROOT/package-build/$name
+	rm -rf "$stage"
+	mkdir -p "$stage/add-ons/sen/plugins" "$stage/documentation/packages/$package"
+	cp -a "$dir/bin/$binary" "$stage/add-ons/sen/plugins/"
+	cp "$ROOT/LICENSE" "$stage/documentation/packages/$package/"
+	[ -f "$dir/README.md" ] && cp "$dir/README.md" "$stage/documentation/packages/$package/"
+	[ -f "$dir/package.stage" ] && sh "$dir/package.stage" "$stage"
+
+	# the signature must be there as the attribute that the server queries for
+	attr=$(catattr -d BEOS:APP_SIG "$stage/add-ons/sen/plugins/$binary" 2>/dev/null || true)
+	if [ "$attr" != "$signature" ]; then
+		echo "$name: the binary has the signature '$attr', not '$signature' (build it with build.sh, which sets the attributes)" >&2
+		exit 1
+	fi
+
+	# (the requirements are lines of their own: \n\t before each, GNU sed makes newlines of them)
+	sed -e "s|@PACKAGE@|$package|g" -e "s|@VERSION@|$version|g" -e "s|@ARCH@|$ARCH|g" -e "s|@SUMMARY@|$summary|g" \
+		-e "s|@DESCRIPTION@|$description|g" -e "s|@FEATURES@|$features|g" -e "s|@TYPES@|$types|g" \
+		-e "s|@REQUIRES@|$requires|" -e "s|@LICENSES@|$licenses|" package/PackageInfo.in > "$stage/.PackageInfo"
+
+	out=$package-$version-$ARCH.hpkg
+	rm -f $package-*.hpkg
+	package create -C "$stage" "$out" >/dev/null
+	echo "created $out"
+done
+rm -rf package-build
