@@ -33,6 +33,13 @@ public:
 	/** @return the extensions of its source files, lower case without the dot */
 	virtual	const std::vector<std::string>&	Extensions() const = 0;
 
+	/**
+	 * @return the semantic types of its source files: the value of the attribute META:TYPE (`text/x-python`, `text/x-java-source`). Haiku gives all
+	 * source files the one type `text/x-source-code`, which is why the plugin handles that type; the semantic type names the language, and has
+	 * precedence over the extension when a file has one.
+	 */
+	virtual	const std::vector<std::string>&	SemanticTypes() const = 0;
+
 	/** @brief Find the references in the source text, in the order they are written (the `resolved` part is left empty). */
 	virtual	void		Scan(const std::string& text, std::vector<Dependency>* dependencies) const = 0;
 
@@ -45,7 +52,7 @@ public:
 							{}
 };
 
-/** @return the scanner for a file (by its extension), or NULL for a language that is not known */
+/** @return the scanner for a file: by its semantic type (META:TYPE) if it has one, else by its extension; NULL for a language that is not known */
 const LanguageScanner*	ScannerForFile(const std::string& path);
 
 /** @return the normalized path of the first folder that holds the relative name as a file, or an empty string */

@@ -16,21 +16,29 @@ and for relations inside the file `line` of the directive.
 
 ## Languages
 
+Haiku gives every source file the one type `text/x-source-code`, which is the type that the plugin handles. The language comes from the **semantic type** of the file,
+the attribute `META:TYPE` (`text/x-csrc`, `text/x-c++src`, `text/x-python`, `text/x-java-source`...), and, for a file that has none, from its extension. (A file
+that has `META:TYPE` must also have its `BEOS:TYPE`: without it Haiku takes the file for an entry of the MIME database.)
+
 A language is a `LanguageScanner` (`LanguageScanner.h`): the extensions of its files, `Scan()` that finds the references in the text and `Resolve()` that
 looks for the file that a reference names. `IncludeScanner` chooses the scanner by the extension of the file (`ScannerRegistry.cpp`).
 
 | Language | Scanner | What it finds |
 |---|---|---|
 | C, C++, Objective-C | `CFamilyScanner` | `#include`, `#include_next`, `#import`; skips comments, strings (also raw strings), line continuations and blocks that are off (`#if 0`) |
+| Java | `JavaScanner` | `import a.b.C;`, `import a.b.*;`, `import static a.b.C.member;` (the class); skips comments, strings, text blocks; imports at the top level only |
 | Python | `PythonScanner` | `import a.b as c, d`, `from a.b import c`, `from . import x`, `from ..pkg import y`; skips comments, strings and docstrings; finds statements after `;` and `if x:` |
 
-To add a language (Java `import`, ...): write a subclass like `PythonScanner` (about 300 lines with the lexer), implement the three functions (a small lexer that skips
+To add a language (Go `import`, Rust `mod`/`use`, ...): write a subclass like `JavaScanner` or `PythonScanner` (about 300 lines with the lexer), implement the functions (a small lexer that skips
 comments and strings, and the naming rules of the language: Java maps `a.b.C` to `a/b/C.java` below a source root), add it to the list in `ScannerRegistry.cpp`
 and the file types to `Resources.rdef`. `Resolve()` may also correct `global`: a Python module found in the project is not a library.
 
 C family headers are looked up like the compiler of Haiku does: `"name"` relative to the file first, then the header folders that `find_directory` names
 (`B_USER_NONPACKAGED_HEADERS_DIRECTORY`, `B_USER_HEADERS_DIRECTORY`, `B_SYSTEM_NONPACKAGED_HEADERS_DIRECTORY`, `B_SYSTEM_HEADERS_DIRECTORY`, then what `BPathFinder`
 adds), and in each of them the kits below `os`, `posix`, `bsd`, `gnu` and `c++`. Include folders of a project (`-I`) are not known: such headers are reported as written.
+
+Java classes are looked up as `a/b/C.java` in the source root that the `package` declaration leads to and in the usual layouts (`src/main/java`, `src/test/java`, `src`) above the file;
+the classes of libraries have no sources and stay unresolved (and global).
 
 Python modules are looked up in the folder of the file, in the folder above its package, and in the library folders of Python (`python3*` and `site-packages` in
 `B_USER_NONPACKAGED_LIB_DIRECTORY`, `B_USER_LIB_DIRECTORY`, `B_SYSTEM_NONPACKAGED_LIB_DIRECTORY` and `B_SYSTEM_LIB_DIRECTORY`).

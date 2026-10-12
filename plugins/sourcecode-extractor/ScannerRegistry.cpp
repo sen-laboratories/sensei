@@ -10,9 +10,14 @@
 #include <algorithm>
 #include <cctype>
 
+#include <Node.h>
 #include <Path.h>
+#include <String.h>
+
+#include <sen/Sen.h>
 
 #include "CFamilyScanner.h"
+#include "JavaScanner.h"
 #include "PythonScanner.h"
 
 /** The languages that the extractor understands: add a scanner here (see LanguageScanner.h). */
@@ -20,8 +25,9 @@ static const std::vector<const LanguageScanner*>&
 Scanners()
 {
 	static const CFamilyScanner cFamily;
+	static const JavaScanner java;
 	static const PythonScanner python;
-	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &python};
+	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &java, &python};
 	return scanners;
 }
 
@@ -29,6 +35,17 @@ Scanners()
 const LanguageScanner*
 ScannerForFile(const std::string& path)
 {
+	// the semantic type names the language (Haiku only knows that it is source code)
+	BNode node(path.c_str());
+	BString semanticType;
+	if (node.InitCheck() == B_OK && node.ReadAttrString(sen::attr::kType, &semanticType) == B_OK) {
+		for (const LanguageScanner* scanner : Scanners()) {
+			const std::vector<std::string>& types = scanner->SemanticTypes();
+			if (std::find(types.begin(), types.end(), semanticType.String()) != types.end())
+				return scanner;
+		}
+	}
+
 	size_t dot = path.rfind('.');
 	size_t slash = path.rfind('/');
 	if (dot == std::string::npos || (slash != std::string::npos && dot < slash))

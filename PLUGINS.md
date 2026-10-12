@@ -45,6 +45,6 @@ sensei
 
 **relation-navigator**: SEN module to open a file of a relation: the target is shown in Tracker, in its folder, selected.
 
-**sourcecode-extractor**: SEN module to extract the references of source code files to other files: includes (C, C++) and imports (Python).
+**sourcecode-extractor**: SEN module to extract the references of source code files to other files: includes (C, C++) and imports (Java, Python).
 
 **text-navigator**: SEN module to resolve textual relations with well-known properties.

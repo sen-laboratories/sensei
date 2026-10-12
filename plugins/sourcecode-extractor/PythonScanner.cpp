@@ -345,6 +345,14 @@ PythonScanner::Extensions() const
 }
 
 
+const std::vector<std::string>&
+PythonScanner::SemanticTypes() const
+{
+	static const std::vector<std::string> types = {"text/x-python"};
+	return types;
+}
+
+
 void
 PythonScanner::Scan(const std::string& text, std::vector<Dependency>* dependencies) const
 {

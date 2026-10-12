@@ -112,6 +112,14 @@ CFamilyScanner::Extensions() const
 }
 
 
+const std::vector<std::string>&
+CFamilyScanner::SemanticTypes() const
+{
+	static const std::vector<std::string> types = {"text/x-csrc", "text/x-chdr", "text/x-c++src", "text/x-c++hdr", "text/x-objcsrc"};
+	return types;
+}
+
+
 void
 CFamilyScanner::Scan(const std::string& text, std::vector<Dependency>* dependencies) const
 {
