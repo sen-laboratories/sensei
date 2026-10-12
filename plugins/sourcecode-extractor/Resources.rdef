@@ -17,7 +17,7 @@ resource app_version {
 	internal = 0,
 
 	short_info = "SEN SourceCode Extractor",
-	long_info  = "SEN module to extract the references of source code files to other files: includes (C, C++) and imports (Java, Python)."
+	long_info  = "SEN module to identify the language of source code files (sets their semantic type) and to extract their references to other files: includes, imports and modules (C, C++, Go, Java, Python, Rust)."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */
@@ -26,7 +26,7 @@ resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
 // set supported feature flags
 resource(1, "SEN:plugin:extract")  1;
 resource(2, "SEN:plugin:enrich")   0;
-resource(3, "SEN:plugin:identify") 0;
+resource(3, "SEN:plugin:identify") 1;
 resource(4, "SEN:plugin:navigate") 0;
 
 /* defines supported file types for scanning */

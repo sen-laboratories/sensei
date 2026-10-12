@@ -11,6 +11,7 @@ class App : public BApplication
 public:
                         App();
     virtual            ~App();
+    virtual void        MessageReceived(BMessage* message);
     virtual void        RefsReceived(BMessage* message);
     virtual void        ArgvReceived(int32 argc, char ** argv);
 

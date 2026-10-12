@@ -104,19 +104,50 @@ CFamilyScanner::Name() const
 }
 
 
-const std::vector<std::string>&
-CFamilyScanner::Extensions() const
+const std::vector<FileKind>&
+CFamilyScanner::FileKinds() const
 {
-	static const std::vector<std::string> extensions = {"c", "h", "cc", "cpp", "cxx", "c++", "hh", "hpp", "hxx", "h++", "inl", "m", "mm"};
-	return extensions;
+	static const std::vector<FileKind> kinds = {
+		{"c", "text/x-csrc"}, {"h", "text/x-chdr"},
+		{"cc", "text/x-c++src"}, {"cpp", "text/x-c++src"}, {"cxx", "text/x-c++src"}, {"c++", "text/x-c++src"},
+		{"hh", "text/x-c++hdr"}, {"hpp", "text/x-c++hdr"}, {"hxx", "text/x-c++hdr"}, {"h++", "text/x-c++hdr"}, {"inl", "text/x-c++hdr"},
+		{"m", "text/x-objcsrc"}, {"mm", "text/x-objcsrc"}
+	};
+	return kinds;
 }
 
 
-const std::vector<std::string>&
-CFamilyScanner::SemanticTypes() const
+namespace {
+
+/** is the word in the text (not part of a longer word)? */
+bool HasWord(const std::string& text, const std::string& word)
 {
-	static const std::vector<std::string> types = {"text/x-csrc", "text/x-chdr", "text/x-c++src", "text/x-c++hdr", "text/x-objcsrc"};
-	return types;
+	for (size_t at = text.find(word); at != std::string::npos; at = text.find(word, at + 1)) {
+		bool before = at == 0 || !IsIdentifier(text[at - 1]);
+		bool after = at + word.size() >= text.size() || !IsIdentifier(text[at + word.size()]);
+		if (before && after)
+			return true;
+	}
+	return false;
+}
+
+}	// namespace
+
+
+std::string
+CFamilyScanner::RefineType(const std::string& type, const std::string& text) const
+{
+	// the extension .h is used by C and by C++: C++ if the header has what only C++ has
+	if (type != "text/x-chdr")
+		return type;
+	for (const char* word : {"namespace", "class", "template", "public", "private", "protected", "nullptr", "constexpr", "typename", "virtual"}) {
+		if (HasWord(text, word))
+			return "text/x-c++hdr";
+	}
+	if (text.find("std::") != std::string::npos || text.find("#include <string>") != std::string::npos
+			|| text.find("#include <vector>") != std::string::npos || text.find("#include <iostream>") != std::string::npos)
+		return "text/x-c++hdr";
+	return type;
 }
 
 

@@ -337,19 +337,22 @@ PythonScanner::Name() const
 }
 
 
-const std::vector<std::string>&
-PythonScanner::Extensions() const
+const std::vector<FileKind>&
+PythonScanner::FileKinds() const
 {
-	static const std::vector<std::string> extensions = {"py", "pyw", "pyi"};
-	return extensions;
+	static const std::vector<FileKind> kinds = {{"py", "text/x-python"}, {"pyw", "text/x-python"}, {"pyi", "text/x-python"}};
+	return kinds;
 }
 
 
-const std::vector<std::string>&
-PythonScanner::SemanticTypes() const
+std::string
+PythonScanner::TypeFromContent(const std::string& text) const
 {
-	static const std::vector<std::string> types = {"text/x-python"};
-	return types;
+	// a script: `#!/usr/bin/env python3`, `#!/bin/python`
+	if (text.compare(0, 2, "#!") != 0)
+		return std::string();
+	std::string line = text.substr(0, text.find('\n'));
+	return line.find("python") != std::string::npos ? "text/x-python" : std::string();
 }
 
 

@@ -44,8 +44,10 @@ SRCS = App.cpp \
        IncludeScanner.cpp \
        ScannerRegistry.cpp \
        CFamilyScanner.cpp \
+       GoScanner.cpp \
        JavaScanner.cpp \
-       PythonScanner.cpp
+       PythonScanner.cpp \
+       RustScanner.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be
 #	used.

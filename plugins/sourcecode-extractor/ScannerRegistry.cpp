@@ -17,49 +17,81 @@
 #include <sen/Sen.h>
 
 #include "CFamilyScanner.h"
+#include "GoScanner.h"
 #include "JavaScanner.h"
 #include "PythonScanner.h"
+#include "RustScanner.h"
 
 /** The languages that the extractor understands: add a scanner here (see LanguageScanner.h). */
 static const std::vector<const LanguageScanner*>&
 Scanners()
 {
 	static const CFamilyScanner cFamily;
+	static const GoScanner go;
 	static const JavaScanner java;
 	static const PythonScanner python;
-	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &java, &python};
+	static const RustScanner rust;
+	static const std::vector<const LanguageScanner*> scanners = {&cFamily, &go, &java, &python, &rust};
 	return scanners;
 }
 
 
-const LanguageScanner*
-ScannerForFile(const std::string& path)
+bool
+LanguageScanner::HandlesType(const std::string& type) const
 {
-	// the semantic type names the language (Haiku only knows that it is source code)
-	BNode node(path.c_str());
-	BString semanticType;
-	if (node.InitCheck() == B_OK && node.ReadAttrString(sen::attr::kType, &semanticType) == B_OK) {
+	for (const FileKind& kind : FileKinds()) {
+		if (kind.semanticType == type)
+			return true;
+	}
+	return false;
+}
+
+
+Identification
+IdentifyFile(const std::string& path, const std::string& text)
+{
+	Identification result;
+
+	// by the extension
+	size_t dot = path.rfind('.');
+	size_t slash = path.rfind('/');
+	if (dot != std::string::npos && (slash == std::string::npos || dot > slash)) {
+		std::string extension = path.substr(dot + 1);
+		std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return std::tolower(c); });
 		for (const LanguageScanner* scanner : Scanners()) {
-			const std::vector<std::string>& types = scanner->SemanticTypes();
-			if (std::find(types.begin(), types.end(), semanticType.String()) != types.end())
-				return scanner;
+			for (const FileKind& kind : scanner->FileKinds()) {
+				if (kind.extension == extension) {
+					result.scanner = scanner;
+					result.semanticType = scanner->RefineType(kind.semanticType, text);
+					return result;
+				}
+			}
 		}
 	}
 
-	size_t dot = path.rfind('.');
-	size_t slash = path.rfind('/');
-	if (dot == std::string::npos || (slash != std::string::npos && dot < slash))
-		return NULL;
-
-	std::string extension = path.substr(dot + 1);
-	std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return std::tolower(c); });
-
+	// by what the content tells (scripts without an extension)
 	for (const LanguageScanner* scanner : Scanners()) {
-		const std::vector<std::string>& extensions = scanner->Extensions();
-		if (std::find(extensions.begin(), extensions.end(), extension) != extensions.end())
-			return scanner;
+		std::string type = scanner->TypeFromContent(text);
+		if (!type.empty()) {
+			result.scanner = scanner;
+			result.semanticType = type;
+			return result;
+		}
 	}
-	return NULL;
+
+	// by a type that the file has (set by someone else)
+	BNode node(path.c_str());
+	BString existing;
+	if (node.InitCheck() == B_OK && node.ReadAttrString(sen::attr::kType, &existing) == B_OK) {
+		for (const LanguageScanner* scanner : Scanners()) {
+			if (scanner->HandlesType(existing.String())) {
+				result.scanner = scanner;
+				result.semanticType = existing.String();
+				return result;
+			}
+		}
+	}
+	return result;
 }
 
 

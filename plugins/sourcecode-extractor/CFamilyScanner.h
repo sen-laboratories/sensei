@@ -21,8 +21,8 @@
 class CFamilyScanner : public LanguageScanner {
 public:
 	const char*	Name() const;
-	const std::vector<std::string>&	Extensions() const;
-	const std::vector<std::string>&	SemanticTypes() const;
+	const std::vector<FileKind>&	FileKinds() const;
+	std::string	RefineType(const std::string& type, const std::string& text) const;
 	void		Scan(const std::string& text, std::vector<Dependency>* dependencies) const;
 	void		Resolve(Dependency* dependency, const std::string& sourcePath) const;
 

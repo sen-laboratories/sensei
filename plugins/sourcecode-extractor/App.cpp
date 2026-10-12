@@ -35,6 +35,12 @@ void App::ArgvReceived(int32 argc, char ** argv) {
     BMessage refsMsg(B_REFS_RECEIVED);
     int32 arg = 1;
 
+    // the option --identify: only the language of the file is found out (and set as META:TYPE)
+    if (strcmp(argv[arg], "--identify") == 0 && argc > arg + 1) {
+        refsMsg.what = sensei::cmd::kIdentify;
+        arg++;
+    }
+
     // parse optional "self" param
     if (strncmp(argv[arg], sensei::kOptionSelf, strlen(sensei::kOptionSelf)) == 0) {
         refsMsg.AddBool(sen::conf::kSelf, true);
@@ -47,6 +53,18 @@ void App::ArgvReceived(int32 argc, char ** argv) {
     refsMsg.AddRef("refs", &ref);
 
     RefsReceived(&refsMsg);
+}
+
+void App::MessageReceived(BMessage* message)
+{
+    switch (message->what) {
+        case sensei::cmd::kIdentify:
+            // find out the language of the file and set its semantic type, without reading its references
+            RefsReceived(message);
+            break;
+        default:
+            BApplication::MessageReceived(message);
+    }
 }
 
 void App::RefsReceived(BMessage *message)
@@ -65,7 +83,15 @@ void App::RefsReceived(BMessage *message)
     bool self = message->GetBool(sen::conf::kSelf, false);
 
     BMessage reply(sensei::cmd::kResult);
-    status_t result = ExtractIncludes(const_cast<const entry_ref*>(&ref), self, &reply);
+    status_t result;
+    if (message->what == sensei::cmd::kIdentify) {
+        BPath path(&ref);
+        IncludeScanner scanner(path.Path(), false);
+        int status = scanner.identify(&reply);
+        result = status == 0 ? B_OK : (status == 2 ? B_ENTRY_NOT_FOUND : B_ERROR);
+    } else {
+        result = ExtractIncludes(const_cast<const entry_ref*>(&ref), self, &reply);
+    }
 
     // the result of the plugin is an int32 status_t (the server reads it), with a text for people and logs
     reply.AddInt32(sensei::key::kResult, result);

@@ -267,19 +267,11 @@ JavaScanner::Name() const
 }
 
 
-const std::vector<std::string>&
-JavaScanner::Extensions() const
+const std::vector<FileKind>&
+JavaScanner::FileKinds() const
 {
-	static const std::vector<std::string> extensions = {"java"};
-	return extensions;
-}
-
-
-const std::vector<std::string>&
-JavaScanner::SemanticTypes() const
-{
-	static const std::vector<std::string> types = {"text/x-java-source"};
-	return types;
+	static const std::vector<FileKind> kinds = {{"java", "text/x-java-source"}};
+	return kinds;
 }
 
 

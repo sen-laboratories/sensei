@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 -->
 # SEN source code extractor
 
-Finds the references of a source file to other files (`#include`, later `import` of other languages) and gives them to the SEN server as relations
+Identifies the language of a source file and sets its semantic type, finds its references to other files (`#include`, `import`, `mod`, `use`) and gives them to the SEN server as relations
 inside the file (normal relations to the files it includes), as described in the developer guide of `sento`.
 
 It **reads** the file, it does not compile it: no compiler libraries, no compile command and no project files are needed, it is fast (a few
@@ -14,22 +14,30 @@ file itself are reported, not those of the headers it includes.
 Result (one item, an entry per reference in each field): `_label` the name as written, `path` where it was found, `global` for `<name>`,
 and for relations inside the file `line` of the directive.
 
+## Identify, then scan
+
+The plugin is called for files of the Haiku type `text/x-source-code`, which every language has. It has the features **extract** and **identify**: first it finds out
+the language of the file and sets its **semantic type**, the attribute `META:TYPE` (`text/x-csrc`, `text/x-c++src`, `text/x-chdr`, `text/x-c++hdr`, `text/x-objcsrc`,
+`text/x-python`, `text/x-java-source`, `text/x-go`, `text/x-rust`), then it lets the scanner of that language read the references. The language is found
+
+1. by the extension (a `.h` file is a C++ header if it has classes, namespaces, templates or the like, else a C header),
+2. else by the content (a script: `#!/usr/bin/env python3`),
+3. else by a semantic type that the file has already.
+
+Before it sets `META:TYPE` it makes sure that the file has its Haiku type (`BEOS:TYPE`): without it Haiku takes a file with `META:TYPE` for an entry of the MIME
+database. The type is in the reply (`META:TYPE`, `sensei::key::kSemanticType`), too. `SenCodeExtractor --identify <file>` only identifies and sets the type.
+
 ## Languages
-
-Haiku gives every source file the one type `text/x-source-code`, which is the type that the plugin handles. The language comes from the **semantic type** of the file,
-the attribute `META:TYPE` (`text/x-csrc`, `text/x-c++src`, `text/x-python`, `text/x-java-source`...), and, for a file that has none, from its extension. (A file
-that has `META:TYPE` must also have its `BEOS:TYPE`: without it Haiku takes the file for an entry of the MIME database.)
-
-A language is a `LanguageScanner` (`LanguageScanner.h`): the extensions of its files, `Scan()` that finds the references in the text and `Resolve()` that
-looks for the file that a reference names. `IncludeScanner` chooses the scanner by the extension of the file (`ScannerRegistry.cpp`).
 
 | Language | Scanner | What it finds |
 |---|---|---|
 | C, C++, Objective-C | `CFamilyScanner` | `#include`, `#include_next`, `#import`; skips comments, strings (also raw strings), line continuations and blocks that are off (`#if 0`) |
+| Go | `GoScanner` | `import "x"`, aliased, `.`, `_` and groups `import ( ... )`; skips comments, strings, raw strings; a package is resolved to its **folder** (module from `go.mod`, `vendor`, GOROOT/GOPATH, `go/src` in the library folders) |
 | Java | `JavaScanner` | `import a.b.C;`, `import a.b.*;`, `import static a.b.C.member;` (the class); skips comments, strings, text blocks; imports at the top level only |
 | Python | `PythonScanner` | `import a.b as c, d`, `from a.b import c`, `from . import x`, `from ..pkg import y`; skips comments, strings and docstrings; finds statements after `;` and `if x:` |
+| Rust | `RustScanner` | `mod name;` (also `#[path = ".."]` and inside inline modules), `use` trees expanded to one reference per path, `extern crate`; skips nested comments, strings, raw strings, characters (lifetimes are told apart); module paths resolve to `a.rs` or `a/mod.rs` from the crate root, the module of the file or `super` |
 
-To add a language (Go `import`, Rust `mod`/`use`, ...): write a subclass like `JavaScanner` or `PythonScanner` (about 300 lines with the lexer), implement the functions (a small lexer that skips
+To add a language (C#, PHP, JavaScript, ...): write a subclass like `JavaScanner` or `PythonScanner` (about 300 lines with the lexer), name its file kinds (extension and semantic type), implement the functions (a small lexer that skips
 comments and strings, and the naming rules of the language: Java maps `a.b.C` to `a/b/C.java` below a source root), add it to the list in `ScannerRegistry.cpp`
 and the file types to `Resources.rdef`. `Resolve()` may also correct `global`: a Python module found in the project is not a library.
 

@@ -15,7 +15,7 @@ sensei
     ├── pdf-navigator         navigate
     ├── reference-navigator   navigate
     ├── relation-navigator    navigate
-    ├── sourcecode-extractor  extract
+    ├── sourcecode-extractor  extract, identify
     └── text-navigator        navigate
 ```
 
@@ -28,7 +28,7 @@ sensei
 | `pdf-navigator` (SENSEI PDF Navigator) | `sen_plugin_pdf_navigator` 0.0.1~dev | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.pdf-navigator` |
 | `reference-navigator` (SENSEI Reference Navigator) | `sen_plugin_reference_navigator` 0.1.0~dev | navigate | `relation/x-vnd.sen-labs.relation.reference`, `relation/x-vnd.sen-labs.relation.dependency`, `relation/x-vnd.sen-labs.relation.contains`, `meta/x-vnd.sen-labs.meta-mime-attribute` | - | `application/x-vnd.sen-plugin.sen-labs.reference-navigator` |
 | `relation-navigator` (SENSEI Relation Navigator) | `sen_plugin_relation_navigator` 0.1.0~dev | navigate | `relation` | - | `application/x-vnd.sen-plugin.sen-labs.relation-navigator` |
-| `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0~dev | extract | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
+| `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0~dev | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
 | `text-navigator` (SENSEI Text Navigator) | `sen_plugin_text_navigator` 0.0.1~dev | navigate | `relation/x-vnd.sen-labs.relation.textref`, `relation/x-vnd.sen-labs.relation.sourcecode.include` | - | `application/x-vnd.sen-plugin.sen-labs.text-navigator` |
 
 **book-enricher**: SEN module to grab metadata for books from online services.
@@ -45,6 +45,6 @@ sensei
 
 **relation-navigator**: SEN module to open a file of a relation: the target is shown in Tracker, in its folder, selected.
 
-**sourcecode-extractor**: SEN module to extract the references of source code files to other files: includes (C, C++) and imports (Java, Python).
+**sourcecode-extractor**: SEN module to identify the language of source code files (sets their semantic type) and to extract their references to other files: includes, imports and modules (C, C++, Go, Java, Python, Rust).
 
 **text-navigator**: SEN module to resolve textual relations with well-known properties.
