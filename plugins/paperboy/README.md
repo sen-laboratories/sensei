@@ -55,6 +55,8 @@ The attributes are the same for all formats and use the vocabularies that exist 
 
 The attributes live in BFS: they are lost when the file is copied to another file system. `dc:identifier` is indexed on the volume of an enriched file (needed to find cited papers on this computer); packagefs cannot be indexed.
 
+The type `document/scientific-paper` and the attribute info of these attributes (public names, the columns that Tracker offers, the `dc:identifier` index on every volume) come from the ontology package **`sen_ontology_papers`** of [sen-oni](https://github.com/sen-laboratories/sen-oni), which this plugin requires: `pkgman install sen_plugin_paperboy` brings it along. The attributes that hold a message (`schema:author`, `schema:encoding`, `paperboy:state`) have no column, Tracker cannot show a message. Tracker takes the columns from the Haiku type (`BEOS:TYPE`), which stays `application/pdf`: the semantic type `META:TYPE` is what SEN works with.
+
 ## Citations
 
 Extraction returns one item with an entry for each cited work in each field (the format of the server): `_label` (title, else DOI), `path` (the file on this computer that has the cited DOI as `dc:identifier`, else `https://doi.org/<doi>`), `doi`, `title`, `year`. The type is the generic reference (`relation/x-vnd.sen-labs.relation.reference`), the fields are mapped to `SEN:TO:PATH`, `dc:identifier`, `dc:title` and `SEN:REL:year`. A paper has no contained relations: a request for them (`--self`) is answered with nothing.

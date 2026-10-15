@@ -2,3 +2,4 @@ lib:libmupdf1.28 >= 1.28
 lib:libspdlog
 lib:libfmt
 sen_ontology_core
+sen_ontology_papers
