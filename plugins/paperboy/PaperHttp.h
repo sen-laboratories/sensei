@@ -21,7 +21,7 @@ public:
 
 	/**
 	 * @brief Fetches a document.
-	 * @return B_OK; B_ENTRY_NOT_FOUND if the service does not know the document (404); B_BUSY if it kept asking to slow down;
+	 * @return B_OK; B_ENTRY_NOT_FOUND if the service does not know the document (404); B_BUSY if it kept asking to slow down (or the daily budget is used up); B_NOT_ALLOWED for 401 and 403 (a wrong key);
 	 *         B_TIMED_OUT or another error from the network, B_ERROR for any other HTTP status
 	 */
 	status_t					Get(const std::string& url, std::string* body);

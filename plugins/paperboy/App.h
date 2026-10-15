@@ -6,6 +6,8 @@
 
 #include <Application.h>
 
+#include <string>
+
 #include "PaperSettings.h"
 
 class Paperboy;
@@ -28,11 +30,14 @@ public:
 private:
 	/** Does what the message asks (its `what`) with its first ref and sends the reply. */
 	status_t					_Handle(BMessage* message);
+	void						_Notify(const entry_ref& file, status_t result, const std::string& headline, const std::string& text);
 	Paperboy*					_Service();
 	void						_PrintUsage(const char* error = NULL) const;
 
 	paperboy::Settings			fSettings;
 	Paperboy*					fPaperboy;
 	bool						fDebug;
+	/** the answer to an enrichment is a notification: it was asked for in Tracker, which shows nothing else (the command line prints) */
+	bool						fNotify;
 	int							fExitCode;
 };

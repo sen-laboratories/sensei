@@ -113,6 +113,10 @@ HttpClient::Get(const std::string& url, std::string* body)
 		}
 		if (status.code == 404)
 			return B_ENTRY_NOT_FOUND;
+		if (status.code == 401 || status.code == 403) {
+			spdlog::warn("HTTP {} from {}: {}", status.code, url, status.text.String());
+			return B_NOT_ALLOWED;
+		}
 		if (status.code == 429 || status.code == 503) {
 			if (backoff > kMaxBackoff)
 				backoff = kMaxBackoff;

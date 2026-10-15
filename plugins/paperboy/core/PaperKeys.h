@@ -53,7 +53,7 @@ inline constexpr char kOaStatus[]      = "SEN:oaStatus";
 inline constexpr char kVersion[]       = "SEN:version";			///< publishedVersion, acceptedVersion, submittedVersion
 inline constexpr char kIsBest[]        = "SEN:isBest";
 // paperboy:state
-inline constexpr char kStatus[]        = "status";				///< ok, doi_not_found or not_in_openalex
+inline constexpr char kStatus[]        = "status";				///< ok, doi_not_found, not_in_openalex or title_from_document
 inline constexpr char kChecked[]       = "checked";				///< B_TIME_TYPE
 inline constexpr char kDoiSource[]     = "doiSource";			///< attribute, metadata, text, arxiv or title
 inline constexpr char kOpenAlexId[]    = "openAlexId";
@@ -70,6 +70,7 @@ namespace outcome {
 inline constexpr char kOk[]            = "ok";
 inline constexpr char kDoiNotFound[]   = "doi_not_found";
 inline constexpr char kNotInOpenAlex[] = "not_in_openalex";
+inline constexpr char kTitleFromDocument[] = "title_from_document";	///< not found online; the title is the one of the document
 }
 
 /** Where the DOI came from, in the order of how much it is trusted (values of key::kDoiSource). */

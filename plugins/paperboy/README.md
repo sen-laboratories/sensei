@@ -21,7 +21,7 @@ SenPaperboy --identify paper.pdf          # is it a paper? (sets the semantic ty
 SenPaperboy --enrich --email me@example.org *.pdf    # look up and write the attributes
 SenPaperboy --extract --local paper.pdf   # cited papers that are on this computer
 ```
-The server calls the plugin with the file (`B_REFS_RECEIVED` for the extraction, `'SEer'` for enrich, `'SEid'` for identify); `SenPaperboy --help` lists the options.
+The server calls the plugin with the file (`B_REFS_RECEIVED` with `SEN:self` for the extraction, `'SEer'` for enrich, `'SEid'` for identify). **Tracker's Enrich** sends `B_REFS_RECEIVED` *without* `SEN:self` and with `wipe` (Shift held): that is an enrichment, and the answer is a **notification** ("Paper enriched" with what was found, or why nothing was). `SenPaperboy --help` lists the options, `--facts` shows what is read from a document.
 
 **Why the feature flag `extract` is off.** The server asks every plugin with this flag for the *contained* relations of a file and uses the first one that it finds for a file type; the signature of Paperboy sorts before that of the PDF extractor, so with both installed the bookmarks of PDFs would disappear from the menus. The citations are outgoing relations, which the server does not ask extractors for yet. When it does, set `SEN:plugin:extract` to 1 in `Resources.rdef`.
 
@@ -34,6 +34,8 @@ In this order, the first that OpenAlex knows wins:
 3. the text of the **first page**; an arXiv stamp (`arXiv:1706.03762v5`) gives the DOI that DataCite registers for it, `10.48550/arxiv.1706.03762`
 4. a DOI on the following pages (the first 3 pages are read, `max_pages`): only the first two, they are most likely cited papers, and *identify* does not take them as a sign of a paper
 5. the **title** (the Title field of the document if it looks like a title, else the biggest text of the first page) searched in OpenAlex; a hit is taken only if its title is at least 85 % the same words
+
+If no service knows the paper (a new demo paper, a report), the title of the **document** itself becomes `dc:title` (the status in `paperboy:state` is `title_from_document`) and the file is named after it: papers come with names like `paper354.pdf`. Nothing else is guessed. A document without a usable title is left alone and the notification says so.
 
 The text comes from MuPDF (PDF and EPUB; a book is laid out first). A file that needs a password is not read.
 
@@ -76,9 +78,11 @@ A plugin has no window: `~/config/settings/sen/paperboy.settings`, lines of `key
 |---|---|---|
 | `email` | - | Your address for the "polite pool": OpenAlex gets it as `mailto` and in the user agent, and **Unpaywall requires it**. Without it only OpenAlex is asked, which has the open access data of Unpaywall, too |
 | `unpaywall` | yes | ask Unpaywall for the open access status and the locations |
-| `rename` | no | rename the file after `rename_pattern` once it is enriched |
-| `rename_pattern` | `{year}_{first_author}_{title}` | tokens `{year}` `{first_author}` `{title}` `{doi}`; `2015_LeCun_Deep_learning.pdf`. A name that exists gets `_2`, `_3`, ... |
-| `overwrite` | no | replace title, authors, ... that the file already has |
+| `rename` | yes | rename the file after `rename_pattern` once it is enriched: the names of papers say nothing |
+| `rename_pattern` | `{title}` | tokens `{year}` `{first_author}` `{title}` `{doi}`: `{title}` gives `Deep learning.pdf`, `{year}_{first_author}_{title}` gives `2015_LeCun_Deep learning.pdf` |
+| `rename_underscores` | no | blanks in the new name become `_` (`Deep_learning.pdf`) |
+| `overwrite` | no | replace title, authors, ... that the file already has (Tracker: Shift on Enrich) |
+| `api_key` | - | your free key of OpenAlex ([openalex.org/settings/api](https://openalex.org/settings/api)). Without one all requests from your address share a small daily budget that can be used up (the notification then says so) |
 | `title_search` | yes | look a paper up by its title if there is no DOI |
 | `max_pages` | 3 | pages from the start that are searched for a DOI |
 | `local_only` | no | extraction: only cited papers that are on this computer |
@@ -113,7 +117,7 @@ On Haiku (needs `mupdf1.28_devel`, `spdlog_devel`, `nlohmann_json`):
 * **Two plugins in one:** the "Enricher" (Unpaywall) and the "Extractor" (OpenAlex) are the features *enrich* and *extract* of one plugin; OpenAlex also supplies the bibliographic data and the open access data when Unpaywall cannot be asked (no address) or does not know the DOI (arXiv).
 * **Keywords** come from the OpenAlex `keywords` (the `concepts` are deprecated and only the fallback).
 * **DOI search** uses MuPDF (no GROBID or PDFMiner), the fields of the document and the arXiv stamp, and looks first on the first page. The title search uses `search=` (ranked) and checks the hit instead of taking the first.
-* **Renaming** is off unless the settings say so.
+* **Renaming** is on, after the title (`{title}`): legal and tidy (`/` becomes `-`, `:` becomes ` - `, `\ * ? " < > |` go, at most 100 bytes, cut at a word); a name that exists gets ` 2`, ` 3`, ... The pattern of the specification is `rename_pattern = {year}_{first_author}_{title}` with `rename_underscores = yes`.
 
 ## Licenses
 

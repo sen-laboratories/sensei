@@ -14,6 +14,7 @@
 
 #include <Alert.h>
 #include <Entry.h>
+#include <Notification.h>
 #include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
@@ -62,6 +63,7 @@ App::App()
 	BApplication(kApplicationSignature),
 	fPaperboy(NULL),
 	fDebug(false),
+	fNotify(true),
 	fExitCode(0)
 {
 	if (const char* level = getenv(kLogVariable))
@@ -101,10 +103,12 @@ App::_PrintUsage(const char* error) const
 		"  --extract         print the papers that it cites (the default)\n"
 		"  --self            ask for the contained relations (a paper has none)\n"
 		"  --local           extract: only the cited papers that are on this computer\n"
-		"  --rename          enrich: rename the file after the pattern of the settings\n"
+		"  --rename          enrich: rename the file after its title (the default, see the settings rename and rename_pattern)\n"
+		"  --no-rename       enrich: keep the name of the file\n"
 		"  --overwrite       enrich: replace title, authors and so on that the file already has\n"
 		"  --email <address> address for the polite pool of OpenAlex and Unpaywall (or " << kEmailVariable << ")\n"
 		"  --no-unpaywall    do not ask Unpaywall, use the open access data of OpenAlex\n"
+		"  --facts           print what is read from the beginning of the document (the fields, the title, the first page)\n"
 		"  --debug           print the reply\n"
 		"\n"
 		"Settings: ~/config/settings/" << kSettingsFile << " (key = value lines: email, unpaywall, rename, rename_pattern,\n"
@@ -115,8 +119,9 @@ App::_PrintUsage(const char* error) const
 void
 App::ArgvReceived(int32 argc, char** argv)
 {
+	fNotify = false;		// a person at the command line reads the output
 	uint32 what = sensei::cmd::kExtract;
-	bool self = false, local = false, rename = false, overwrite = false;
+	bool self = false, local = false, rename = false, noRename = false, overwrite = false, facts = false;
 	std::vector<std::string> files;
 
 	for (int32 i = 1; i < argc; i++) {
@@ -137,6 +142,10 @@ App::ArgvReceived(int32 argc, char** argv)
 			local = true;
 		} else if (strcmp(arg, "--rename") == 0) {
 			rename = true;
+		} else if (strcmp(arg, "--no-rename") == 0) {
+			noRename = true;
+		} else if (strcmp(arg, "--facts") == 0) {
+			facts = true;
 		} else if (strcmp(arg, "--overwrite") == 0) {
 			overwrite = true;
 		} else if (strcmp(arg, "--no-unpaywall") == 0) {
@@ -169,6 +178,8 @@ App::ArgvReceived(int32 argc, char** argv)
 	// the options of the command line are those of the settings, too
 	if (rename)
 		fSettings.rename = true;
+	if (noRename)
+		fSettings.rename = false;
 	if (overwrite)
 		fSettings.overwrite = true;
 	if (local)
@@ -182,9 +193,14 @@ App::ArgvReceived(int32 argc, char** argv)
 			fExitCode = 1;
 			continue;
 		}
+		if (facts) {
+			_Service()->PrintFacts(ref);
+			continue;
+		}
 		BMessage message(what);
 		message.AddRef("refs", &ref);
 		message.AddBool(sen::conf::kSelf, self);
+		message.AddBool("wipe", overwrite);
 		_Handle(&message);
 	}
 	Quit();
@@ -197,6 +213,19 @@ App::RefsReceived(BMessage* message)
 	// B_REFS_RECEIVED is how the server asks for the extraction
 	_Handle(message);
 	Quit();
+}
+
+
+void
+App::_Notify(const entry_ref& file, status_t result, const std::string& headline, const std::string& text)
+{
+	BNotification notification(result == B_OK ? B_INFORMATION_NOTIFICATION : B_ERROR_NOTIFICATION);
+	notification.SetGroup("SEN Paperboy");
+	notification.SetTitle(headline.empty() ? "Paper not enriched" : headline.c_str());
+	notification.SetContent(text.empty() ? strerror(result) : text.c_str());
+	if (result == B_OK)
+		notification.SetOnClickFile(&file);
+	notification.Send();
 }
 
 
@@ -229,14 +258,24 @@ App::_Handle(BMessage* message)
 		return B_BAD_VALUE;
 	}
 
+	// What the server sends for an extraction is B_REFS_RECEIVED with SEN:self (true or false). Tracker asks for an enrichment with
+	// B_REFS_RECEIVED, too, without it, and with "wipe" (the Shift key: replace what the file has).
+	uint32 what = message->what;
+	if (what == B_REFS_RECEIVED)
+		what = message->HasBool(sen::conf::kSelf) ? sensei::cmd::kExtract : sensei::cmd::kEnrich;
+
 	BMessage reply(sensei::cmd::kResult);
 	status_t result;
-	switch (message->what) {
+	switch (what) {
 		case sensei::cmd::kIdentify:
 			result = _Service()->Identify(ref, &reply);
 			break;
 		case sensei::cmd::kEnrich:
-			result = _Service()->Enrich(&ref, &reply);
+			result = _Service()->Enrich(&ref, &reply, message->GetBool("wipe", false));
+			if (fNotify)
+				_Notify(ref, result, _Service()->SummaryTitle(), _Service()->Summary());
+			else if (!_Service()->Summary().empty())
+				std::cout << _Service()->Summary() << std::endl;
 			break;
 		default:
 			result = _Service()->Extract(ref, message->GetBool(sen::conf::kSelf, false), &reply);
@@ -245,7 +284,8 @@ App::_Handle(BMessage* message)
 
 	// the result of the plugin is an int32 status_t (the server reads it), with a text for people and logs
 	reply.AddInt32(sensei::key::kResult, result);
-	reply.AddString(sen::key::kDetail, result == B_ENTRY_NOT_FOUND ? "no paper found" : strerror(result));
+	reply.AddString(sen::key::kDetail, (what == sensei::cmd::kEnrich && !_Service()->Summary().empty()) ? _Service()->Summary().c_str()
+		: (result == B_ENTRY_NOT_FOUND ? "no paper found" : strerror(result)));
 
 	if (result != B_OK)
 		fExitCode = 1;

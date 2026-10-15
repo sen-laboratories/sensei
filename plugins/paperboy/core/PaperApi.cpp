@@ -15,11 +15,13 @@ const char* const kOpenAlex = "https://api.openalex.org/works";
 const char* const kSelectList = "id,doi,title,publication_year";
 
 std::string
-WithMailto(const std::string& url, const std::string& mailto)
+WithAccess(std::string url, const OpenAlexAccess& access)
 {
-	if (mailto.empty())
-		return url;
-	return url + (url.find('?') == std::string::npos ? '?' : '&') + "mailto=" + UrlEncode(mailto);
+	if (!access.mailto.empty())
+		url += (url.find('?') == std::string::npos ? '?' : '&') + std::string("mailto=") + UrlEncode(access.mailto);
+	if (!access.apiKey.empty())
+		url += (url.find('?') == std::string::npos ? '?' : '&') + std::string("api_key=") + UrlEncode(access.apiKey);
+	return url;
 }
 
 }	// namespace
@@ -46,25 +48,25 @@ UrlEncode(const std::string& text, const char* keep)
 
 
 std::string
-OpenAlexWorkUrl(const std::string& doi, const std::string& mailto)
+OpenAlexWorkUrl(const std::string& doi, const OpenAlexAccess& access)
 {
 	// the DOI stays readable: its slashes belong to the path, and ;:() are legal there
-	return WithMailto(std::string(kOpenAlex) + "/https://doi.org/" + UrlEncode(doi, "/;:()"), mailto);
+	return WithAccess(std::string(kOpenAlex) + "/https://doi.org/" + UrlEncode(doi, "/;:()"), access);
 }
 
 
 std::string
-OpenAlexSearchUrl(const std::string& title, const std::string& mailto)
+OpenAlexSearchUrl(const std::string& title, const OpenAlexAccess& access)
 {
 	std::string clean;
 	for (char c : title)
 		clean += (c == ',' || c == '|' || c == ':' || c == '\n' || c == '\r') ? ' ' : c;
-	return WithMailto(std::string(kOpenAlex) + "?search=" + UrlEncode(clean) + "&per-page=5&select=" + kSelectList, mailto);
+	return WithAccess(std::string(kOpenAlex) + "?search=" + UrlEncode(clean) + "&per-page=5&select=" + kSelectList, access);
 }
 
 
 std::string
-OpenAlexBatchUrl(const std::vector<std::string>& ids, const std::string& mailto)
+OpenAlexBatchUrl(const std::vector<std::string>& ids, const OpenAlexAccess& access)
 {
 	std::string filter;
 	size_t count = 0;
@@ -74,8 +76,8 @@ OpenAlexBatchUrl(const std::vector<std::string>& ids, const std::string& mailto)
 		filter += (filter.empty() ? "" : "|") + id;
 		count++;
 	}
-	return WithMailto(std::string(kOpenAlex) + "?filter=openalex:" + UrlEncode(filter) + "&per-page="
-		+ std::to_string(count) + "&select=" + kSelectList, mailto);
+	return WithAccess(std::string(kOpenAlex) + "?filter=openalex:" + UrlEncode(filter) + "&per-page="
+		+ std::to_string(count) + "&select=" + kSelectList, access);
 }
 
 

@@ -79,6 +79,11 @@ ParseSettings(const std::string& text, Settings* settings)
 			settings->unpaywall = ParseBool(value, settings->unpaywall);
 		} else if (key == "rename") {
 			settings->rename = ParseBool(value, settings->rename);
+		} else if (key == "api_key") {
+			if (value.find_first_of(" \t&?=") == std::string::npos)
+				settings->apiKey = value;
+		} else if (key == "rename_underscores") {
+			settings->renameUnderscores = ParseBool(value, settings->renameUnderscores);
 		} else if (key == "rename_pattern") {
 			if (!value.empty())
 				settings->renamePattern = value;

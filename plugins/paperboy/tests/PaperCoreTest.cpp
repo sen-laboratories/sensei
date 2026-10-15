@@ -240,16 +240,25 @@ TestNames()
 	CHECK_EQ(FamilyName("Plato"), "Plato");
 	CHECK_EQ(FamilyName(""), "");
 
-	CHECK_EQ(SanitizeForFileName("Semantic Integration: of \"Biodiversity\" Data?"), "Semantic_Integration_of_Biodiversity_Data");
-	CHECK_EQ(SanitizeForFileName("  a / b \\ c  "), "a_b_c");
-	CHECK_EQ(SanitizeForFileName("..hidden"), "hidden");
-	CHECK_EQ(SanitizeForFileName("Über größere Räume"), "Über_größere_Räume");
+	// blanks stay, what is illegal or unloved goes
+	CHECK_EQ(SanitizeForFileName("Semantic Integration of Biodiversity Data"), "Semantic Integration of Biodiversity Data");
+	CHECK_EQ(SanitizeForFileName("FS2KG: From File Systems to Knowledge Graphs (Demo)"), "FS2KG - From File Systems to Knowledge Graphs (Demo)");
+	CHECK_EQ(SanitizeForFileName("Is \"AI\" a fad? A/B <test> | or *not*"), "Is AI a fad A-B test or not");
+	CHECK_EQ(SanitizeForFileName("  a   b \\ c  "), "a b c");
+	CHECK_EQ(SanitizeForFileName("..hidden: -name."), "hidden - -name");
+	CHECK_EQ(SanitizeForFileName("Über größere Räume"), "Über größere Räume");
+	CHECK_EQ(SanitizeForFileName("Cats, dogs & it's 100% fine; really"), "Cats, dogs & it's 100% fine; really");
+	CHECK_EQ(SanitizeForFileName("tab\tand\nnewline\x01here"), "tab and newlinehere");
+	// with underscores
+	CHECK_EQ(SanitizeForFileName("Semantic Integration: of \"Biodiversity\" Data?", 100, true), "Semantic_Integration_of_Biodiversity_Data");
+	CHECK_EQ(SanitizeForFileName("  a / b \\ c  ", 100, true), "a_-_b_c");
 	// cut at a word boundary, and never inside a UTF-8 sequence
 	std::string cut = SanitizeForFileName("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen", 30);
 	CHECK(cut.size() <= 30);
-	CHECK_EQ(cut, "one_two_three_four_five_six");
+	CHECK_EQ(cut, "one two three four five six");
 	std::string umlauts = SanitizeForFileName("ääääääääääääääääääääää", 11);
 	CHECK(umlauts.size() <= 11 && umlauts.size() % 2 == 0);
+	CHECK(SanitizeForFileName(std::string(300, 'x')).size() <= 100);
 
 	Paper paper;
 	paper.title = "Semantic Integration of Biodiversity Data";
@@ -258,12 +267,19 @@ TestNames()
 	Author author;
 	author.name = "Jane Doe";
 	paper.authors.push_back(author);
-	CHECK_EQ(BuildFileName(kDefaultNamePattern, paper, ".pdf"), "2025_Doe_Semantic_Integration_of_Biodiversity_Data.pdf");
-	CHECK_EQ(BuildFileName("", paper, ".epub"), "2025_Doe_Semantic_Integration_of_Biodiversity_Data.epub");
+	// the default: the title
+	CHECK_EQ(BuildFileName(kDefaultNamePattern, paper, ".pdf"), "Semantic Integration of Biodiversity Data.pdf");
+	CHECK_EQ(BuildFileName("", paper, ".epub"), "Semantic Integration of Biodiversity Data.epub");
+	CHECK_EQ(BuildFileName("{year}_{first_author}_{title}", paper, ".pdf", true), "2025_Doe_Semantic_Integration_of_Biodiversity_Data.pdf");
+	CHECK_EQ(BuildFileName("{year}_{first_author}_{title}", paper, ".pdf"), "2025_Doe_Semantic Integration of Biodiversity Data.pdf");
 	CHECK_EQ(BuildFileName("{doi}", paper, ".pdf"), "10.1000_182.pdf");
 	paper.authors.clear();
-	CHECK_EQ(BuildFileName(kDefaultNamePattern, paper, ".pdf"), "2025_Semantic_Integration_of_Biodiversity_Data.pdf");
+	CHECK_EQ(BuildFileName("{year}_{first_author}_{title}", paper, ".pdf", true), "2025_Semantic_Integration_of_Biodiversity_Data.pdf");
+	paper.title = "A: B/C";
+	CHECK_EQ(BuildFileName(kDefaultNamePattern, paper, ""), "A - B-C");
 	paper.title.clear();
+	CHECK_EQ(BuildFileName(kDefaultNamePattern, paper, ".pdf"), "");
+	paper.title = "???";
 	CHECK_EQ(BuildFileName(kDefaultNamePattern, paper, ".pdf"), "");
 }
 
@@ -272,18 +288,23 @@ static void
 TestSettings()
 {
 	Settings settings;
-	CHECK(settings.unpaywall && !settings.rename && !settings.overwrite && settings.maxPages == 3);
+	CHECK(settings.unpaywall && settings.rename && !settings.overwrite && settings.maxPages == 3);
+	CHECK_EQ(settings.renamePattern, "{title}");
+	CHECK(!settings.renameUnderscores && settings.apiKey.empty());
 
 	ParseSettings("# paperboy\nemail = reader@example.org   # for the polite pool\nrename = yes\nrename_pattern = {year}-{title}\n"
-		"unpaywall = off\nmax_pages=5\nlocal_only = true\nbogus line\nunknown = 1\n", &settings);
+		"unpaywall = off\nmax_pages=5\nlocal_only = true\nrename_underscores = yes\napi_key = abc123\nbogus line\nunknown = 1\n", &settings);
 	CHECK_EQ(settings.email, "reader@example.org");
 	CHECK(settings.rename);
+	CHECK(settings.renameUnderscores);
+	CHECK_EQ(settings.apiKey, "abc123");
 	CHECK_EQ(settings.renamePattern, "{year}-{title}");
 	CHECK(!settings.unpaywall);
 	CHECK(settings.maxPages == 5);
 	CHECK(settings.localOnly);
 
-	ParseSettings("email = not an address\nmax_pages = 500\nrename = maybe\n", &settings);
+	ParseSettings("email = not an address\nmax_pages = 500\nrename = maybe\napi_key = has space\n", &settings);
+	CHECK_EQ(settings.apiKey, "abc123");
 	CHECK_EQ(settings.email, "reader@example.org");
 	CHECK(settings.maxPages == 5);
 	CHECK(settings.rename);
@@ -315,17 +336,20 @@ TestTitleAndApi()
 
 	CHECK_EQ(UrlEncode("a b&c/d"), "a%20b%26c%2Fd");
 	CHECK_EQ(UrlEncode("a b/c", "/"), "a%20b/c");
-	CHECK_EQ(OpenAlexWorkUrl("10.1038/nature14539", ""), "https://api.openalex.org/works/https://doi.org/10.1038/nature14539");
-	CHECK_EQ(OpenAlexWorkUrl("10.1002/(sici)1097:8", "me@example.org"),
+	CHECK_EQ(OpenAlexWorkUrl("10.1038/nature14539", {}), "https://api.openalex.org/works/https://doi.org/10.1038/nature14539");
+	CHECK_EQ(OpenAlexWorkUrl("10.1002/(sici)1097:8", {"me@example.org", ""}),
 		"https://api.openalex.org/works/https://doi.org/10.1002/(sici)1097:8?mailto=me%40example.org");
-	CHECK_EQ(OpenAlexSearchUrl("Deep, learning | a: review", ""),
+	CHECK_EQ(OpenAlexSearchUrl("Deep, learning | a: review", {}),
 		"https://api.openalex.org/works?search=Deep%20%20learning%20%20%20a%20%20review&per-page=5&select=id,doi,title,publication_year");
-	CHECK_EQ(OpenAlexBatchUrl({"W1", "W2"}, ""),
+	CHECK_EQ(OpenAlexBatchUrl({"W1", "W2"}, {}),
 		"https://api.openalex.org/works?filter=openalex:W1%7CW2&per-page=2&select=id,doi,title,publication_year");
 	std::vector<std::string> many;
 	for (int i = 0; i < 80; i++)
 		many.push_back("W" + std::to_string(i));
-	CHECK(OpenAlexBatchUrl(many, "").find("per-page=50") != std::string::npos);
+	CHECK(OpenAlexBatchUrl(many, {}).find("per-page=50") != std::string::npos);
+	CHECK_EQ(OpenAlexWorkUrl("10.1/abc", {"me@example.org", "k3y"}),
+		"https://api.openalex.org/works/https://doi.org/10.1/abc?mailto=me%40example.org&api_key=k3y");
+	CHECK_EQ(OpenAlexSearchUrl("x", {"", "k3y"}), "https://api.openalex.org/works?search=x&per-page=5&select=id,doi,title,publication_year&api_key=k3y");
 	CHECK_EQ(UnpaywallUrl("10.1038/nature14539", "me@example.org"), "https://api.unpaywall.org/v2/10.1038/nature14539?email=me%40example.org");
 	CHECK_EQ(UserAgent(""), "paperboy/0.1 (SEN Labs; sen-labs.org)");
 	CHECK_EQ(UserAgent("me@example.org"), "paperboy/0.1 (mailto:me@example.org)");

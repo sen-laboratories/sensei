@@ -19,9 +19,13 @@ struct Settings {
 	std::string email;
 	/** ask Unpaywall for the open access status (needs an address), else the data of OpenAlex is used */
 	bool unpaywall = true;
-	/** rename the file after the pattern when it was enriched (off: a plugin does not rename files unasked) */
-	bool rename = false;
+	/** The key of OpenAlex (free, https://openalex.org/settings/api): without one all requests of an address share a small daily budget. */
+	std::string apiKey;
+	/** rename the file after the title once it was enriched: papers come with names that say nothing (the numbers of a conference) */
+	bool rename = true;
 	std::string renamePattern = kDefaultNamePattern;
+	/** blanks in the new name become `_` (`Deep_learning.pdf`) */
+	bool renameUnderscores = false;
 	/** replace bibliographic attributes that already have a value (title, authors, ...); off: only fill the missing ones */
 	bool overwrite = false;
 	/** look a paper up by its title when no DOI is found */

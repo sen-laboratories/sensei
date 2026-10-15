@@ -44,6 +44,12 @@ status_t WritePaper(BNode& node, const Paper& paper, const char* doiSource, bool
 status_t WriteNotFound(BNode& node, const char* status);
 
 /**
+ * @brief Writes the title that the document itself gives, for a paper that no service knows. The title fills what is missing (unless
+ * @p overwrite), and the state says that it comes from the document and not from OpenAlex.
+ */
+status_t WriteDocumentTitle(BNode& node, const std::string& title, bool overwrite);
+
+/**
  * @brief The file on this computer that has a DOI as its dc:identifier, searched on the volume of @p near first, then on all.
  * Needs the index on dc:identifier, which this makes for the volume of the file that is enriched (see EnsureIndex()).
  */

@@ -302,6 +302,18 @@ WriteNotFound(BNode& node, const char* statusName)
 }
 
 
+status_t
+WriteDocumentTitle(BNode& node, const std::string& title, bool overwrite)
+{
+	status_t result = PutString(node, attr::kTitle, title, overwrite);
+	if (result == B_OK)
+		result = PutMessage(node, attr::kState,
+			StateMessage(outcome::kTitleFromDocument, "", "", false, std::vector<Reference>()));
+	node.Sync();
+	return result;
+}
+
+
 void
 EnsureIndex(const entry_ref& file)
 {

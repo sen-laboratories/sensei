@@ -46,22 +46,40 @@ FamilyName(const std::string& displayName)
 
 
 std::string
-SanitizeForFileName(const std::string& text, size_t maxBytes)
+SanitizeForFileName(const std::string& text, size_t maxBytes, bool underscores)
 {
+	const std::string blank = underscores ? "_" : " ";
 	std::string out;
-	bool lastUnderscore = true;		// also drops leading blanks
-	for (unsigned char c : text) {
-		bool drop = c < 0x20 || c == 0x7F || std::string("/\\:*?\"<>|;,!$&'`~#%{}[]=+^@").find((char) c) != std::string::npos;
-		if (drop)
-			continue;
-		if (std::isspace(c) || c == '_') {
-			if (!lastUnderscore)
-				out += '_';
-			lastUnderscore = true;
-			continue;
+	bool lastBlank = true;		// also drops leading blanks
+	auto put = [&](const std::string& piece, bool isBlank) {
+		if (isBlank) {
+			if (!lastBlank)
+				out += blank;
+			lastBlank = true;
+		} else {
+			out += piece;
+			lastBlank = false;
 		}
-		out += (char) c;
-		lastUnderscore = false;
+	};
+
+	for (unsigned char c : text) {
+		if (!std::isspace(c) && (c < 0x20 || c == 0x7F || std::string("\\*?\"<>|").find((char) c) != std::string::npos))
+			continue;
+		if (c == '/') {
+			put("-", false);
+		} else if (c == ':') {
+			if (underscores) {
+				put("", true);
+			} else {
+				put("", true);
+				put("-", false);
+				put("", true);
+			}
+		} else if (std::isspace(c) || (underscores && c == '_')) {
+			put("", true);
+		} else {
+			put(std::string(1, (char) c), false);
+		}
 	}
 
 	if (out.size() > maxBytes) {
@@ -69,27 +87,28 @@ SanitizeForFileName(const std::string& text, size_t maxBytes)
 		// not inside a UTF-8 sequence, and preferably at the end of a word
 		while (cut > 0 && IsContinuation((unsigned char) out[cut]))
 			cut--;
-		size_t word = out.rfind('_', cut);
+		size_t word = out.rfind(blank, cut);
 		if (word != std::string::npos && word > maxBytes / 2)
 			cut = word;
 		out.erase(cut);
 	}
-	while (!out.empty() && (out.back() == '_' || out.back() == '.' || out.back() == '-'))
+	auto trailing = [](char c) { return c == '_' || c == '.' || c == '-' || c == ' '; };
+	while (!out.empty() && trailing(out.back()))
 		out.pop_back();
-	while (!out.empty() && (out.front() == '.' || out.front() == '-'))
+	while (!out.empty() && (out.front() == '.' || out.front() == '-' || out.front() == ' ' || out.front() == '_'))
 		out.erase(out.begin());
 	return out;
 }
 
 
 std::string
-BuildFileName(const std::string& pattern, const Paper& paper, const std::string& extension)
+BuildFileName(const std::string& pattern, const Paper& paper, const std::string& extension, bool underscores)
 {
 	if (paper.title.empty())
 		return "";
 
 	std::string year = paper.year > 0 ? std::to_string(paper.year) : paper.date.substr(0, 4);
-	std::string author = paper.authors.empty() ? "" : SanitizeForFileName(FamilyName(paper.authors.front().name), 40);
+	std::string author = paper.authors.empty() ? "" : SanitizeForFileName(FamilyName(paper.authors.front().name), 40, underscores);
 
 	std::string doi = paper.doi;
 	ReplaceAll(&doi, "/", "_");
@@ -97,17 +116,17 @@ BuildFileName(const std::string& pattern, const Paper& paper, const std::string&
 	std::string name = pattern.empty() ? kDefaultNamePattern : pattern;
 	ReplaceAll(&name, "{year}", year);
 	ReplaceAll(&name, "{first_author}", author);
-	ReplaceAll(&name, "{title}", SanitizeForFileName(paper.title));
-	ReplaceAll(&name, "{doi}", SanitizeForFileName(doi, 80));
+	ReplaceAll(&name, "{title}", SanitizeForFileName(paper.title, 100, underscores));
+	ReplaceAll(&name, "{doi}", SanitizeForFileName(doi, 80, true));
 
-	// an empty token leaves a gap: "2015__Deep_learning" -> "2015_Deep_learning"
+	// an empty token leaves a gap: "2015__Deep learning" -> "2015_Deep learning"
 	for (size_t pos = name.find("__"); pos != std::string::npos; pos = name.find("__"))
 		name.erase(pos, 1);
 	while (!name.empty() && name.front() == '_')
 		name.erase(name.begin());
 	while (!name.empty() && name.back() == '_')
 		name.pop_back();
-	name = SanitizeForFileName(name, 200);
+	name = SanitizeForFileName(name, 200, underscores);
 	return name.empty() ? "" : name + extension;
 }
 
