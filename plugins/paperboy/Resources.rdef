@@ -22,7 +22,10 @@ resource app_version {
 resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
 
 // set supported feature flags
-resource(1, "SEN:plugin:extract")  1;
+// extract is off for now: the server asks every extractor of a file type for its contained relations and uses the FIRST one it finds, and
+// the signature of paperboy sorts before that of the PDF extractor, so the bookmarks of PDFs would be gone. The citations are an outgoing
+// relation, which the server does not ask extractors for yet (see the developer guide, "Extractors"). SenPaperboy --extract works.
+resource(1, "SEN:plugin:extract")  0;
 resource(2, "SEN:plugin:enrich")   1;
 resource(3, "SEN:plugin:identify") 1;
 resource(4, "SEN:plugin:navigate") 0;

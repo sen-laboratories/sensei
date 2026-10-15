@@ -14,7 +14,7 @@ Finds out what a scientific paper is, fetches its metadata and tells you where i
 |---|---|---|
 | **identify** | A DOI that the document states (a field of the file, the first page, an arXiv stamp) says "paper": sets the semantic type `META:TYPE` = `document/scientific-paper` | no |
 | **enrich** | Looks the paper up in [OpenAlex](https://openalex.org) and [Unpaywall](https://unpaywall.org) and writes title, authors with ORCID and affiliation, date, keywords, abstract, venue, the open access status and links, the number of citations and the cited works into the attributes of the file | yes |
-| **extract** | The papers that this one cites, as references (outgoing relations); a cited paper that is on this computer is told by its path | only if not enriched |
+| **extract** | The papers that this one cites, as references (outgoing relations); a cited paper that is on this computer is told by its path. **Off for the server for now** (see below), `SenPaperboy --extract` works | only if not enriched |
 
 ```sh
 SenPaperboy --identify paper.pdf          # is it a paper? (sets the semantic type)
@@ -22,6 +22,8 @@ SenPaperboy --enrich --email me@example.org *.pdf    # look up and write the att
 SenPaperboy --extract --local paper.pdf   # cited papers that are on this computer
 ```
 The server calls the plugin with the file (`B_REFS_RECEIVED` for the extraction, `'SEer'` for enrich, `'SEid'` for identify); `SenPaperboy --help` lists the options.
+
+**Why the feature flag `extract` is off.** The server asks every plugin with this flag for the *contained* relations of a file and uses the first one that it finds for a file type; the signature of Paperboy sorts before that of the PDF extractor, so with both installed the bookmarks of PDFs would disappear from the menus. The citations are outgoing relations, which the server does not ask extractors for yet. When it does, set `SEN:plugin:extract` to 1 in `Resources.rdef`.
 
 ## How the DOI is found
 
