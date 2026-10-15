@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 SEN Labs e.U.
+#
+# The plugin is linked to MuPDF (the package mupdf1.28, which it requires): the notice that goes with that.
+set -e
+stage=$1
+mkdir -p "$stage/documentation/packages/sen_plugin_paperboy"
+cat > "$stage/documentation/packages/sen_plugin_paperboy/NOTICE-mupdf" <<'NOTICE'
+This plugin is linked to MuPDF (https://mupdf.com), (c) Artifex Software, Inc., licensed under the GNU Affero General Public License,
+version 3 (https://www.gnu.org/licenses/agpl-3.0.html). The source of the plugin is under the MIT license; as the plugin is distributed
+linked to MuPDF, the package as a whole is under the terms of the AGPL. Its source code is at https://github.com/sen-laboratories/sensei.
+NOTICE

@@ -11,6 +11,7 @@ sensei
     ├── book-enricher         enrich
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
+    ├── paperboy              extract, enrich, identify
     ├── pdf-extractor         extract
     ├── pdf-navigator         navigate
     ├── reference-navigator   navigate
@@ -24,6 +25,7 @@ sensei
 | `book-enricher` (SEN Book Enrichment Tool (BERT)) | `sen_plugin_book_enricher` 0.1.0~dev | enrich | `entity/x-vnd.sen-labs.entity.book` | - | `application/x-vnd.sen-plugin.sen-labs.book-enricher` |
 | `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0~dev | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
 | `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1~dev | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
+| `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0~dev | extract, enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.reference` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
 | `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0~dev | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
 | `pdf-navigator` (SENSEI PDF Navigator) | `sen_plugin_pdf_navigator` 0.0.1~dev | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.pdf-navigator` |
 | `reference-navigator` (SENSEI Reference Navigator) | `sen_plugin_reference_navigator` 0.1.0~dev | navigate | `relation/x-vnd.sen-labs.relation.reference`, `relation/x-vnd.sen-labs.relation.dependency`, `relation/x-vnd.sen-labs.relation.contains`, `meta/x-vnd.sen-labs.meta-mime-attribute` | - | `application/x-vnd.sen-plugin.sen-labs.reference-navigator` |
@@ -36,6 +38,8 @@ sensei
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
 
 **mime-extractor**: SEN module to extract the attributes of a MIME type as its contents.
+
+**paperboy**: SEN module to identify scientific papers, to look up their metadata and open access copies (OpenAlex, Unpaywall) and to extract the papers that they cite.
 
 **pdf-extractor**: SEN module to extract structure outline from PDFs.
 

@@ -1,0 +1,47 @@
+{
+ "meta": {
+  "notice": "No API key, so this request shares one free daily budget ($0.10) with everyone on your network's IP address. Get a free key with its own $1/day at https://openalex.org/settings/api and add api_key=YOUR_KEY to your requests. Docs for agents: https://help.openalex.org/llms.txt",
+  "count": 3217266,
+  "db_response_time_ms": 541,
+  "page": 1,
+  "per_page": 3,
+  "groups_count": null,
+  "x_query": {
+   "oql": "get works where full text has (Attention is all you need)",
+   "x_new_oql": "get works with (Attention is all you need) in the full text",
+   "oqo": {
+    "get_rows": "works",
+    "filter_rows": [
+     {
+      "column_id": "fulltext.search",
+      "value": "Attention is all you need",
+      "operator": "has"
+     }
+    ]
+   },
+   "url": "/works?filter=fulltext.search:Attention is all you need&per_page=3"
+  },
+  "cost_usd": 0.001
+ },
+ "results": [
+  {
+   "id": "https://openalex.org/W2626778328",
+   "doi": "https://doi.org/10.65215/2q58a426",
+   "title": "Attention Is All You Need",
+   "publication_year": 2025
+  },
+  {
+   "id": "https://openalex.org/W3163652268",
+   "doi": "https://doi.org/10.1109/icassp39728.2021.9413901",
+   "title": "Attention Is All You Need In Speech Separation",
+   "publication_year": 2021
+  },
+  {
+   "id": "https://openalex.org/W2997150500",
+   "doi": "https://doi.org/10.1609/aaai.v34i07.6693",
+   "title": "Channel Attention Is All You Need for Video Frame Interpolation",
+   "publication_year": 2020
+  }
+ ],
+ "group_by": []
+}

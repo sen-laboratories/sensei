@@ -1,0 +1,294 @@
+{
+ "id": "https://openalex.org/W2919115771",
+ "doi": "https://doi.org/10.1038/nature14539",
+ "title": "Deep learning",
+ "display_name": "Deep learning",
+ "publication_year": 2015,
+ "publication_date": "2015-05-26",
+ "ids": {
+  "openalex": "https://openalex.org/W2919115771",
+  "doi": "https://doi.org/10.1038/nature14539",
+  "mag": "2919115771",
+  "pmid": "https://pubmed.ncbi.nlm.nih.gov/26017442"
+ },
+ "language": "en",
+ "primary_location": {
+  "id": "doi:10.1038/nature14539",
+  "doi": "https://doi.org/10.1038/nature14539",
+  "is_oa": false,
+  "landing_page_url": "https://doi.org/10.1038/nature14539",
+  "pdf_url": null,
+  "source": {
+   "id": "https://openalex.org/S137773608",
+   "display_name": "Nature",
+   "type": "journal",
+   "host_organization_name": "Nature Portfolio"
+  },
+  "license": null,
+  "license_id": null,
+  "version": "publishedVersion",
+  "is_accepted": true,
+  "is_published": true,
+  "raw_source_name": "Nature",
+  "raw_type": "journal-article"
+ },
+ "volume": null,
+ "type": "article",
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "green",
+  "oa_url": "https://hal.science/hal-04206682",
+  "any_repository_has_fulltext": true
+ },
+ "authorships": [
+  {
+   "author_position": "first",
+   "author": {
+    "id": "https://openalex.org/A5001226970",
+    "display_name": "Yann LeCun",
+    "orcid": "https://orcid.org/0000-0002-1992-2684",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-1992-2684"
+    ]
+   },
+   "institutions": [
+    {
+     "display_name": "Meta (United States)"
+    },
+    {
+     "display_name": "New York University"
+    }
+   ],
+   "is_corresponding": true,
+   "raw_author_name": "Yann LeCun",
+   "raw_orcid": null
+  },
+  {
+   "author_position": "middle",
+   "author": {
+    "id": "https://openalex.org/A5086198262",
+    "display_name": "Yoshua Bengio",
+    "orcid": "https://orcid.org/0000-0002-9322-3515",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-9322-3515"
+    ]
+   },
+   "institutions": [
+    {
+     "display_name": "Université de Montréal"
+    }
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Yoshua Bengio",
+   "raw_orcid": null
+  },
+  {
+   "author_position": "last",
+   "author": {
+    "id": "https://openalex.org/A5108093963",
+    "display_name": "Geoffrey E. Hinton",
+    "orcid": null,
+    "observed_orcids": []
+   },
+   "institutions": [
+    {
+     "display_name": "Google (United States)"
+    },
+    {
+     "display_name": "University of Toronto"
+    }
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Geoffrey Hinton",
+   "raw_orcid": null
+  }
+ ],
+ "countries_distinct_count": 2,
+ "institutions_distinct_count": 5,
+ "corresponding_author_ids": [
+  "https://openalex.org/A5001226970"
+ ],
+ "corresponding_institution_ids": [
+  "https://openalex.org/I4210114444",
+  "https://openalex.org/I57206974"
+ ],
+ "fwci": 3037.5845,
+ "has_fulltext": false,
+ "cited_by_count": 83660,
+ "biblio": {
+  "volume": "521",
+  "issue": "7553",
+  "first_page": "436",
+  "last_page": "444"
+ },
+ "is_retracted": false,
+ "is_paratext": false,
+ "is_xpac": false,
+ "primary_topic": {
+  "id": "https://openalex.org/T10320",
+  "display_name": "Neural Networks and Applications",
+  "score": 0.7842000126838684,
+  "subfield": {
+   "id": "https://openalex.org/subfields/1702",
+   "display_name": "Artificial Intelligence"
+  },
+  "field": {
+   "id": "https://openalex.org/fields/17",
+   "display_name": "Computer Science"
+  },
+  "domain": {
+   "id": "https://openalex.org/domains/3",
+   "display_name": "Physical Sciences"
+  }
+ },
+ "keywords": [
+  {
+   "id": "https://openalex.org/keywords/deep-learning",
+   "display_name": "deep learning",
+   "score": 1.0
+  },
+  {
+   "id": "https://openalex.org/keywords/deep-neural-network",
+   "display_name": "deep neural network",
+   "score": 0.6269999742507935
+  },
+  {
+   "id": "https://openalex.org/keywords/backpropagation",
+   "display_name": "backpropagation",
+   "score": 0.7739999890327454
+  },
+  {
+   "id": "https://openalex.org/keywords/convolutional-neural-networks",
+   "display_name": "convolutional neural networks",
+   "score": 0.8029999732971191
+  },
+  {
+   "id": "https://openalex.org/keywords/recurrent-neural-networks",
+   "display_name": "recurrent neural networks",
+   "score": 0.9990000128746033
+  },
+  {
+   "id": "https://openalex.org/keywords/hierarchical-representation-learning",
+   "display_name": "hierarchical feature learning",
+   "score": 0.5640000104904175
+  },
+  {
+   "id": "https://openalex.org/keywords/speech-recognition",
+   "display_name": "speech recognition",
+   "score": 0.925000011920929
+  },
+  {
+   "id": "https://openalex.org/keywords/object-recognition",
+   "display_name": "object recognition",
+   "score": 0.875
+  },
+  {
+   "id": "https://openalex.org/keywords/drug-discovery",
+   "display_name": "drug discovery",
+   "score": 0.7390000224113464
+  },
+  {
+   "id": "https://openalex.org/keywords/genomics",
+   "display_name": "genomics",
+   "score": 0.9679999947547913
+  }
+ ],
+ "locations_count": 3,
+ "locations": [
+  {
+   "id": "doi:10.1038/nature14539",
+   "doi": "https://doi.org/10.1038/nature14539",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.1038/nature14539",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S137773608",
+    "display_name": "Nature",
+    "type": "journal",
+    "host_organization_name": "Nature Portfolio"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "Nature",
+   "raw_type": "journal-article"
+  },
+  {
+   "id": "pmid:26017442",
+   "doi": null,
+   "is_oa": false,
+   "landing_page_url": "https://pubmed.ncbi.nlm.nih.gov/26017442",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306525036",
+    "display_name": "PubMed",
+    "type": "repository",
+    "host_organization_name": "National Institutes of Health"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "Nature",
+   "raw_type": "Journal Article"
+  },
+  {
+   "id": "pmh:oai:HAL:hal-04206682v1",
+   "doi": null,
+   "is_oa": true,
+   "landing_page_url": "https://hal.science/hal-04206682",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306402512",
+    "display_name": "HAL (Le Centre pour la Communication Scientifique Directe)",
+    "type": "repository",
+    "host_organization_name": "Centre National de la Recherche Scientifique"
+   },
+   "license": "other-oa",
+   "license_id": "https://openalex.org/licenses/other-oa",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "Nature, 2015, 521 (7553), pp.436-444. &#x27E8;10.1038/nature14539&#x27E9;",
+   "raw_type": "info:eu-repo/semantics/article"
+  }
+ ],
+ "best_oa_location": {
+  "id": "pmh:oai:HAL:hal-04206682v1",
+  "doi": null,
+  "is_oa": true,
+  "landing_page_url": "https://hal.science/hal-04206682",
+  "pdf_url": null,
+  "source": {
+   "id": "https://openalex.org/S4306402512",
+   "display_name": "HAL (Le Centre pour la Communication Scientifique Directe)",
+   "type": "repository",
+   "host_organization_name": "Centre National de la Recherche Scientifique"
+  },
+  "license": "other-oa",
+  "license_id": "https://openalex.org/licenses/other-oa",
+  "version": "submittedVersion",
+  "is_accepted": false,
+  "is_published": false,
+  "raw_source_name": "Nature, 2015, 521 (7553), pp.436-444. &#x27E8;10.1038/nature14539&#x27E9;",
+  "raw_type": "info:eu-repo/semantics/article"
+ },
+ "has_content": {
+  "pdf": false,
+  "grobid_xml": false
+ },
+ "referenced_works_count": 53,
+ "referenced_works": [
+  "https://openalex.org/W146900863",
+  "https://openalex.org/W170811313",
+  "https://openalex.org/W407547601",
+  "https://openalex.org/W1487583988",
+  "https://openalex.org/W1498436455"
+ ],
+ "abstract_inverted_index": null,
+ "updated_date": "2026-10-15T10:00:46.086208",
+ "created_date": "2019-03-11T00:00:00"
+}

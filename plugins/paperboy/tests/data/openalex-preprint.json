@@ -1,0 +1,781 @@
+{
+ "id": "https://openalex.org/W2626778328",
+ "doi": "https://doi.org/10.65215/2q58a426",
+ "title": "Attention Is All You Need",
+ "display_name": "Attention Is All You Need",
+ "publication_year": 2025,
+ "publication_date": "2025-08-23",
+ "ids": {
+  "openalex": "https://openalex.org/W2626778328",
+  "doi": "https://doi.org/10.65215/2q58a426",
+  "mag": "2626778328"
+ },
+ "language": "en",
+ "primary_location": {
+  "id": "doi:10.65215/2q58a426",
+  "doi": "https://doi.org/10.65215/2q58a426",
+  "is_oa": false,
+  "landing_page_url": "https://doi.org/10.65215/2q58a426",
+  "pdf_url": null,
+  "source": null,
+  "license": null,
+  "license_id": null,
+  "version": "acceptedVersion",
+  "is_accepted": true,
+  "is_published": false,
+  "raw_source_name": null,
+  "raw_type": "posted-content"
+ },
+ "volume": null,
+ "type": "preprint",
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "gold",
+  "oa_url": "https://langtaosha.org.cn/index.php/lts/preprint/download/10/108",
+  "any_repository_has_fulltext": true
+ },
+ "authorships": [
+  {
+   "author_position": "first",
+   "author": {
+    "id": "https://openalex.org/A5103024730",
+    "display_name": "Ashish Vaswani",
+    "orcid": "https://orcid.org/0000-0002-7794-2085",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-7794-2085"
+    ]
+   },
+   "institutions": [
+    {
+     "display_name": "Google (United States)"
+    }
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Ashish Vaswani",
+   "raw_orcid": null
+  },
+  {
+   "author_position": "middle",
+   "author": {
+    "id": "https://openalex.org/A5021878400",
+    "display_name": "Noam Shazeer",
+    "orcid": null,
+    "observed_orcids": []
+   },
+   "institutions": [
+    {
+     "display_name": "Google (United States)"
+    }
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Noam Shazeer",
+   "raw_orcid": null
+  },
+  {
+   "author_position": "middle",
+   "author": {
+    "id": "https://openalex.org/A5005777963",
+    "display_name": "Niki Parmar",
+    "orcid": null,
+    "observed_orcids": []
+   },
+   "institutions": [
+    {
+     "display_name": "University of Southern California"
+    },
+    {
+     "display_name": "Google (United States)"
+    }
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Niki Parmar",
+   "raw_orcid": null
+  }
+ ],
+ "countries_distinct_count": 2,
+ "institutions_distinct_count": 3,
+ "corresponding_author_ids": [],
+ "corresponding_institution_ids": [],
+ "fwci": null,
+ "has_fulltext": false,
+ "cited_by_count": 24501,
+ "biblio": {
+  "volume": "30",
+  "issue": null,
+  "first_page": "5998",
+  "last_page": "6008"
+ },
+ "is_retracted": false,
+ "is_paratext": false,
+ "is_xpac": false,
+ "primary_topic": {
+  "id": "https://openalex.org/T10181",
+  "display_name": "Natural Language Processing Techniques",
+  "score": 0.7821999788284302,
+  "subfield": {
+   "id": "https://openalex.org/subfields/1702",
+   "display_name": "Artificial Intelligence"
+  },
+  "field": {
+   "id": "https://openalex.org/fields/17",
+   "display_name": "Computer Science"
+  },
+  "domain": {
+   "id": "https://openalex.org/domains/3",
+   "display_name": "Physical Sciences"
+  }
+ },
+ "keywords": [
+  {
+   "id": "https://openalex.org/keywords/transformer",
+   "display_name": "transformer models",
+   "score": 0.9100000262260437
+  },
+  {
+   "id": "https://openalex.org/keywords/attention-mechanism",
+   "display_name": "attention mechanism",
+   "score": 0.8870000243186951
+  },
+  {
+   "id": "https://openalex.org/keywords/machine-translation",
+   "display_name": "machine translation",
+   "score": 0.8980000019073486
+  },
+  {
+   "id": "https://openalex.org/keywords/english-german-translation",
+   "display_name": "English-German translation",
+   "score": 0.8180000185966492
+  },
+  {
+   "id": "https://openalex.org/keywords/constituency-parsing",
+   "display_name": "constituency parsing",
+   "score": 0.9210000038146973
+  },
+  {
+   "id": "https://openalex.org/keywords/parallel-training",
+   "display_name": "parallel training",
+   "score": 0.5609999895095825
+  },
+  {
+   "id": "https://openalex.org/keywords/encoder-decoder-architecture",
+   "display_name": "encoder-decoder architecture",
+   "score": 0.5699999928474426
+  }
+ ],
+ "locations_count": 11,
+ "locations": [
+  {
+   "id": "doi:10.65215/2q58a426",
+   "doi": "https://doi.org/10.65215/2q58a426",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/2q58a426",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/ctdc8e75",
+   "doi": "https://doi.org/10.65215/ctdc8e75",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/ctdc8e75",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/mdcm8z23",
+   "doi": "https://doi.org/10.65215/mdcm8z23",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/mdcm8z23",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/ne77pf66",
+   "doi": "https://doi.org/10.65215/ne77pf66",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/ne77pf66",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/nxvz2v36",
+   "doi": "https://doi.org/10.65215/nxvz2v36",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/nxvz2v36",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/pc26a033",
+   "doi": "https://doi.org/10.65215/pc26a033",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/pc26a033",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/r5bs2d54",
+   "doi": "https://doi.org/10.65215/r5bs2d54",
+   "is_oa": true,
+   "landing_page_url": "https://doi.org/10.65215/r5bs2d54",
+   "pdf_url": "https://langtaosha.org.cn/index.php/lts/preprint/download/10/108",
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "doi:10.65215/ysbyhc05",
+   "doi": "https://doi.org/10.65215/ysbyhc05",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.65215/ysbyhc05",
+   "pdf_url": null,
+   "source": null,
+   "license": null,
+   "license_id": null,
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "pmh:oai:arXiv.org:1706.03762",
+   "doi": null,
+   "is_oa": true,
+   "landing_page_url": "http://arxiv.org/abs/1706.03762",
+   "pdf_url": "https://arxiv.org/pdf/1706.03762",
+   "source": {
+    "id": "https://openalex.org/S4306400194",
+    "display_name": "arXiv (Cornell University)",
+    "type": "repository",
+    "host_organization_name": "Cornell University"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": null,
+   "raw_type": "text"
+  },
+  {
+   "id": "doi:10.48550/arxiv.1706.03762",
+   "doi": "https://doi.org/10.48550/arxiv.1706.03762",
+   "is_oa": true,
+   "landing_page_url": "https://doi.org/10.48550/arxiv.1706.03762",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306400194",
+    "display_name": "arXiv (Cornell University)",
+    "type": "repository",
+    "host_organization_name": "Cornell University"
+   },
+   "license": null,
+   "license_id": null,
+   "version": null,
+   "is_accepted": false,
+   "is_published": null,
+   "raw_source_name": null,
+   "raw_type": "Preprint"
+  },
+  {
+   "id": "mag:2963403868",
+   "doi": null,
+   "is_oa": true,
+   "landing_page_url": "https://arxiv.org/pdf/1706.03762v5",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306400194",
+    "display_name": "arXiv (Cornell University)",
+    "type": "repository",
+    "host_organization_name": "Cornell University"
+   },
+   "license": null,
+   "license_id": null,
+   "version": null,
+   "is_accepted": false,
+   "is_published": null,
+   "raw_source_name": "arXiv (Cornell University)",
+   "raw_type": null
+  }
+ ],
+ "best_oa_location": {
+  "id": "doi:10.65215/r5bs2d54",
+  "doi": "https://doi.org/10.65215/r5bs2d54",
+  "is_oa": true,
+  "landing_page_url": "https://doi.org/10.65215/r5bs2d54",
+  "pdf_url": "https://langtaosha.org.cn/index.php/lts/preprint/download/10/108",
+  "source": null,
+  "license": null,
+  "license_id": null,
+  "version": "acceptedVersion",
+  "is_accepted": true,
+  "is_published": false,
+  "raw_source_name": null,
+  "raw_type": "posted-content"
+ },
+ "has_content": {
+  "grobid_xml": true,
+  "pdf": true
+ },
+ "referenced_works_count": 28,
+ "referenced_works": [
+  "https://openalex.org/W1632114991",
+  "https://openalex.org/W1810943226",
+  "https://openalex.org/W1902237438",
+  "https://openalex.org/W2113691817",
+  "https://openalex.org/W2126433015"
+ ],
+ "abstract_inverted_index": {
+  "The": [
+   0,
+   18
+  ],
+  "dominant": [
+   1
+  ],
+  "sequence": [
+   2
+  ],
+  "transduction": [
+   3
+  ],
+  "models": [
+   4,
+   21,
+   60,
+   137
+  ],
+  "are": [
+   5
+  ],
+  "based": [
+   6,
+   41
+  ],
+  "on": [
+   7,
+   43,
+   53,
+   82,
+   124
+  ],
+  "complex": [
+   8
+  ],
+  "recurrent": [
+   9
+  ],
+  "or": [
+   10
+  ],
+  "convolutional": [
+   11
+  ],
+  "neural": [
+   12
+  ],
+  "networks": [
+   13
+  ],
+  "in": [
+   14,
+   64
+  ],
+  "an": [
+   15,
+   29
+  ],
+  "encoder-decoder": [
+   16
+  ],
+  "configuration.": [
+   17
+  ],
+  "best": [
+   19,
+   93,
+   136
+  ],
+  "performing": [
+   20
+  ],
+  "also": [
+   22
+  ],
+  "connect": [
+   23
+  ],
+  "the": [
+   24,
+   39,
+   83,
+   91,
+   102,
+   131,
+   135,
+   139,
+   144
+  ],
+  "encoder": [
+   25
+  ],
+  "and": [
+   26,
+   49,
+   70,
+   162
+  ],
+  "decoder": [
+   27
+  ],
+  "through": [
+   28
+  ],
+  "attention": [
+   30,
+   44
+  ],
+  "mechanism.": [
+   31
+  ],
+  "We": [
+   32,
+   141
+  ],
+  "propose": [
+   33
+  ],
+  "a": [
+   34,
+   111,
+   127
+  ],
+  "new": [
+   35,
+   112
+  ],
+  "simple": [
+   36
+  ],
+  "network": [
+   37
+  ],
+  "architecture,": [
+   38
+  ],
+  "Transformer,": [
+   40
+  ],
+  "solely": [
+   42
+  ],
+  "mechanisms,": [
+   45
+  ],
+  "dispensing": [
+   46
+  ],
+  "with": [
+   47,
+   160
+  ],
+  "recurrence": [
+   48
+  ],
+  "convolutions": [
+   50
+  ],
+  "entirely.": [
+   51
+  ],
+  "Experiments": [
+   52
+  ],
+  "two": [
+   54
+  ],
+  "machine": [
+   55
+  ],
+  "translation": [
+   56,
+   87,
+   106
+  ],
+  "tasks": [
+   57,
+   150
+  ],
+  "show": [
+   58,
+   142
+  ],
+  "these": [
+   59
+  ],
+  "to": [
+   61,
+   75,
+   148,
+   155
+  ],
+  "be": [
+   62
+  ],
+  "superior": [
+   63
+  ],
+  "quality": [
+   65
+  ],
+  "while": [
+   66
+  ],
+  "being": [
+   67
+  ],
+  "more": [
+   68
+  ],
+  "parallelizable": [
+   69
+  ],
+  "requiring": [
+   71
+  ],
+  "significantly": [
+   72
+  ],
+  "less": [
+   73
+  ],
+  "time": [
+   74
+  ],
+  "train.": [
+   76
+  ],
+  "Our": [
+   77
+  ],
+  "model": [
+   78,
+   109
+  ],
+  "achieves": [
+   79
+  ],
+  "28.4": [
+   80
+  ],
+  "BLEU": [
+   81,
+   115
+  ],
+  "WMT": [
+   84,
+   103
+  ],
+  "2014": [
+   85,
+   104
+  ],
+  "English-to-German": [
+   86
+  ],
+  "task,": [
+   88,
+   107
+  ],
+  "improving": [
+   89
+  ],
+  "over": [
+   90,
+   98
+  ],
+  "existing": [
+   92
+  ],
+  "results,": [
+   94
+  ],
+  "including": [
+   95
+  ],
+  "ensembles": [
+   96
+  ],
+  "by": [
+   97,
+   151
+  ],
+  "2": [
+   99
+  ],
+  "BLEU.": [
+   100
+  ],
+  "On": [
+   101
+  ],
+  "English-to-French": [
+   105
+  ],
+  "our": [
+   108
+  ],
+  "establishes": [
+   110
+  ],
+  "single-model": [
+   113
+  ],
+  "state-of-the-art": [
+   114
+  ],
+  "score": [
+   116
+  ],
+  "of": [
+   117,
+   130,
+   134
+  ],
+  "41.8": [
+   118
+  ],
+  "after": [
+   119
+  ],
+  "training": [
+   120,
+   132,
+   164
+  ],
+  "for": [
+   121
+  ],
+  "3.5": [
+   122
+  ],
+  "days": [
+   123
+  ],
+  "eight": [
+   125
+  ],
+  "GPUs,": [
+   126
+  ],
+  "small": [
+   128
+  ],
+  "fraction": [
+   129
+  ],
+  "costs": [
+   133
+  ],
+  "from": [
+   138
+  ],
+  "literature.": [
+   140
+  ],
+  "that": [
+   143
+  ],
+  "Transformer": [
+   145
+  ],
+  "generalizes": [
+   146
+  ],
+  "well": [
+   147
+  ],
+  "other": [
+   149
+  ],
+  "applying": [
+   152
+  ],
+  "it": [
+   153
+  ],
+  "successfully": [
+   154
+  ],
+  "English": [
+   156
+  ],
+  "constituency": [
+   157
+  ],
+  "parsing": [
+   158
+  ],
+  "both": [
+   159
+  ],
+  "large": [
+   161
+  ],
+  "limited": [
+   163
+  ],
+  "data.": [
+   165
+  ]
+ },
+ "updated_date": "2026-10-15T10:00:46.086208",
+ "created_date": "2017-06-23T00:00:00"
+}

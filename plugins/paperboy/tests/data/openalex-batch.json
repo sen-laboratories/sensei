@@ -1,0 +1,49 @@
+{
+ "meta": {
+  "notice": "No API key, so this request shares one free daily budget ($0.10) with everyone on your network's IP address. Get a free key with its own $1/day at https://openalex.org/settings/api and add api_key=YOUR_KEY to your requests. Docs for agents: https://help.openalex.org/llms.txt",
+  "count": 2,
+  "db_response_time_ms": 20,
+  "page": 1,
+  "per_page": 50,
+  "groups_count": null,
+  "x_query": {
+   "oql": "get works where openalex id is (W146900863 or W170811313)",
+   "x_new_oql": "get works where openalex id is (W146900863 or W170811313)",
+   "oqo": {
+    "get_rows": "works",
+    "filter_rows": [
+     {
+      "join": "or",
+      "filters": [
+       {
+        "column_id": "ids.openalex",
+        "value": "W146900863"
+       },
+       {
+        "column_id": "ids.openalex",
+        "value": "W170811313"
+       }
+      ]
+     }
+    ]
+   },
+   "url": "/works?filter=ids.openalex:W146900863|W170811313&per_page=50"
+  },
+  "cost_usd": 0.0001
+ },
+ "results": [
+  {
+   "id": "https://openalex.org/W146900863",
+   "doi": "https://doi.org/10.7551/mitpress/11474.003.0014",
+   "title": "Neural Information Processing Systems",
+   "publication_year": 2018
+  },
+  {
+   "id": "https://openalex.org/W170811313",
+   "doi": null,
+   "title": "17th International Joint Conference on Artificial Intelligence 2001.",
+   "publication_year": 2001
+  }
+ ],
+ "group_by": []
+}

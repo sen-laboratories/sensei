@@ -1,0 +1,114 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
+ */
+
+#include "PaperName.h"
+
+#include <cctype>
+
+namespace paperboy {
+
+namespace {
+
+/** a byte that continues a UTF-8 sequence (10xxxxxx) */
+bool
+IsContinuation(unsigned char c)
+{
+	return (c & 0xC0) == 0x80;
+}
+
+void
+ReplaceAll(std::string* text, const std::string& what, const std::string& with)
+{
+	for (size_t pos = text->find(what); pos != std::string::npos; pos = text->find(what, pos + with.size()))
+		text->replace(pos, what.size(), with);
+}
+
+}	// namespace
+
+
+std::string
+FamilyName(const std::string& displayName)
+{
+	std::string name = displayName;
+	size_t comma = name.find(',');
+	if (comma != std::string::npos)
+		return name.substr(0, comma);
+
+	size_t end = name.find_last_not_of(" \t");
+	if (end == std::string::npos)
+		return "";
+	name.erase(end + 1);
+	size_t blank = name.find_last_of(" \t");
+	return blank == std::string::npos ? name : name.substr(blank + 1);
+}
+
+
+std::string
+SanitizeForFileName(const std::string& text, size_t maxBytes)
+{
+	std::string out;
+	bool lastUnderscore = true;		// also drops leading blanks
+	for (unsigned char c : text) {
+		bool drop = c < 0x20 || c == 0x7F || std::string("/\\:*?\"<>|;,!$&'`~#%{}[]=+^@").find((char) c) != std::string::npos;
+		if (drop)
+			continue;
+		if (std::isspace(c) || c == '_') {
+			if (!lastUnderscore)
+				out += '_';
+			lastUnderscore = true;
+			continue;
+		}
+		out += (char) c;
+		lastUnderscore = false;
+	}
+
+	if (out.size() > maxBytes) {
+		size_t cut = maxBytes;
+		// not inside a UTF-8 sequence, and preferably at the end of a word
+		while (cut > 0 && IsContinuation((unsigned char) out[cut]))
+			cut--;
+		size_t word = out.rfind('_', cut);
+		if (word != std::string::npos && word > maxBytes / 2)
+			cut = word;
+		out.erase(cut);
+	}
+	while (!out.empty() && (out.back() == '_' || out.back() == '.' || out.back() == '-'))
+		out.pop_back();
+	while (!out.empty() && (out.front() == '.' || out.front() == '-'))
+		out.erase(out.begin());
+	return out;
+}
+
+
+std::string
+BuildFileName(const std::string& pattern, const Paper& paper, const std::string& extension)
+{
+	if (paper.title.empty())
+		return "";
+
+	std::string year = paper.year > 0 ? std::to_string(paper.year) : paper.date.substr(0, 4);
+	std::string author = paper.authors.empty() ? "" : SanitizeForFileName(FamilyName(paper.authors.front().name), 40);
+
+	std::string doi = paper.doi;
+	ReplaceAll(&doi, "/", "_");
+
+	std::string name = pattern.empty() ? kDefaultNamePattern : pattern;
+	ReplaceAll(&name, "{year}", year);
+	ReplaceAll(&name, "{first_author}", author);
+	ReplaceAll(&name, "{title}", SanitizeForFileName(paper.title));
+	ReplaceAll(&name, "{doi}", SanitizeForFileName(doi, 80));
+
+	// an empty token leaves a gap: "2015__Deep_learning" -> "2015_Deep_learning"
+	for (size_t pos = name.find("__"); pos != std::string::npos; pos = name.find("__"))
+		name.erase(pos, 1);
+	while (!name.empty() && name.front() == '_')
+		name.erase(name.begin());
+	while (!name.empty() && name.back() == '_')
+		name.pop_back();
+	name = SanitizeForFileName(name, 200);
+	return name.empty() ? "" : name + extension;
+}
+
+}	// namespace paperboy
