@@ -2,7 +2,11 @@
 SPDX-License-Identifier: MIT
 SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 -->
-# SEN Paperboy
+<p align="center">
+  <img src="images/paperboy-logo.jpg" alt="Paperboy: an open book whose text turns into a graph" width="320" />
+</p>
+
+<h1 align="center">SEN Paperboy</h1>
 
 Finds out what a scientific paper is, fetches its metadata and tells you where it can be read for free. For PDF and EPUB files, with the features
 
