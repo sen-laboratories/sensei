@@ -32,7 +32,7 @@ for name in $plugins; do
 	variety=$(sed -n 's/^[[:space:]]*variety[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
 	version="$major.$middle.$minor"
 	# 0 = development, 2 = beta
-	[ "$variety" = 0 ] && version="$version~dev"
+	[ "$variety" = 0 ] && version="$version~${SEN_VERSION_SUFFIX:-dev}"
 	[ "$variety" = 2 ] && version="$version~beta$(sed -n 's/^[[:space:]]*internal[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)"
 	version="$version-$REVISION"
 
@@ -80,9 +80,9 @@ if [ -n "$all" ]; then
 	stage=$ROOT/package-build/meta
 	rm -rf "$stage"
 	mkdir -p "$stage"
-	sed -e "s|@VERSION@|1.0.0~dev-$REVISION|g" -e "s|@REQUIRES@|$requires|" package/PackageInfo.meta.in > "$stage/.PackageInfo"
+	sed -e "s|@VERSION@|1.0.0~${SEN_VERSION_SUFFIX:-dev}-$REVISION|g" -e "s|@REQUIRES@|$requires|" package/PackageInfo.meta.in > "$stage/.PackageInfo"
 	rm -f sen_plugins-*.hpkg
-	package create -C "$stage" "sen_plugins-1.0.0~dev-$REVISION-any.hpkg" >/dev/null
-	echo "created sen_plugins-1.0.0~dev-$REVISION-any.hpkg"
+	package create -C "$stage" "sen_plugins-1.0.0~${SEN_VERSION_SUFFIX:-dev}-$REVISION-any.hpkg" >/dev/null
+	echo "created sen_plugins-1.0.0~${SEN_VERSION_SUFFIX:-dev}-$REVISION-any.hpkg"
 fi
 rm -rf package-build
