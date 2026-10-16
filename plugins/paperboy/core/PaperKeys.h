@@ -14,7 +14,7 @@
 namespace paperboy {
 
 /** The semantic type that the identify feature sets (the attribute META:TYPE, see sen::attr::kType). */
-inline constexpr char kSemanticType[] = "document/scientific-paper";
+inline constexpr char kSemanticType[] = "org.sen-labs.paper";
 
 namespace attr {
 inline constexpr char kIdentifier[]    = "dc:identifier";		///< the DOI, bare: 10.1038/nature14539

@@ -12,7 +12,7 @@ Finds out what a scientific paper is, fetches its metadata and tells you where i
 
 | Feature | What it does | Network |
 |---|---|---|
-| **identify** | A DOI that the document states (a field of the file, the first page, an arXiv stamp) says "paper": sets the semantic type `META:TYPE` = `document/scientific-paper` | no |
+| **identify** | A DOI that the document states (a field of the file, the first page, an arXiv stamp) says "paper": sets the semantic type `META:TYPE` = `org.sen-labs.paper` | no |
 | **enrich** | Looks the paper up in [OpenAlex](https://openalex.org) and [Unpaywall](https://unpaywall.org) and writes title, authors with ORCID and affiliation, date, keywords, abstract, venue, the open access status and links, the number of citations and the cited works into the attributes of the file | yes |
 | **extract** | The papers that this one cites, as references (outgoing relations); a cited paper that is on this computer is told by its path. **Off for the server for now** (see below), `SenPaperboy --extract` works | only if not enriched |
 
@@ -59,11 +59,11 @@ The attributes are the same for all formats and use the vocabularies that exist 
 | `schema:encoding` | message | one `schema:MediaObject` per place to read the paper (best first): `schema:contentUrl`, `schema:encodingFormat`, `SEN:source` (`unpaywall` or `openalex`), `SEN:oaStatus`, `SEN:version`, `schema:license`, `SEN:isBest` |
 | `SEN:citationCount` | int32 | how often the paper is cited |
 | `paperboy:state` | message | what the plugin found out: `status` (`ok`, `doi_not_found`, `not_in_openalex`), `checked`, `doiSource`, `openAlexId`, `unpaywall`, and a `reference` message per cited work (`id`, `doi`, `title`, `year`; up to 500), so that the extraction needs no network |
-| `META:TYPE` | string | `document/scientific-paper` (with the Haiku type `BEOS:TYPE` made sure first) |
+| `META:TYPE` | string | `org.sen-labs.paper` (with the Haiku type `BEOS:TYPE` made sure first) |
 
 The attributes live in BFS: they are lost when the file is copied to another file system. `dc:identifier` is indexed on the volume of an enriched file (needed to find cited papers on this computer); packagefs cannot be indexed.
 
-The type `document/scientific-paper` and the attribute info of these attributes (public names, the columns that Tracker offers, the `dc:identifier` index on every volume) come from the ontology package **`sen_ontology_papers`** of [sen-oni](https://github.com/sen-laboratories/sen-oni), which this plugin requires: `pkgman install sen_plugin_paperboy` brings it along. The attributes that hold a message (`schema:author`, `schema:encoding`, `paperboy:state`) have no column, Tracker cannot show a message. Tracker takes the columns from the Haiku type (`BEOS:TYPE`), which stays `application/pdf`: the semantic type `META:TYPE` is what SEN works with.
+The type `org.sen-labs.paper` and the attribute info of these attributes (public names, the columns that Tracker offers, the `dc:identifier` index on every volume) come from the ontology package **`sen_ontology_papers`** of [sen-oni](https://github.com/sen-laboratories/sen-oni), which this plugin requires: `pkgman install sen_plugin_paperboy` brings it along. The attributes that hold a message (`schema:author`, `schema:encoding`, `paperboy:state`) have no column, Tracker cannot show a message. Tracker takes the columns from the Haiku type (`BEOS:TYPE`), which stays `application/pdf`: the semantic type `META:TYPE` is what SEN works with.
 
 ## Citations
 
