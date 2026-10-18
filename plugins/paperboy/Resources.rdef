@@ -48,8 +48,7 @@ resource(5, "SEN:typeMapping") message {
 resource(6, "SEN:attrMapping") message {
     "path"  = "SEN:TO:PATH",
     "doi"   = "dc:identifier",
-    "title" = "dc:title",
-    "year"  = "SEN:REL:year"
+    "title" = "dc:title"
 };
 
 resource vector_icon {

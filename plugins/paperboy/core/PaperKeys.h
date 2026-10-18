@@ -88,7 +88,6 @@ namespace itemfield {
 inline constexpr char kPath[]          = "path";				///< mapped to sen::attr::kToPath
 inline constexpr char kDoi[]           = "doi";					///< mapped to dc:identifier
 inline constexpr char kTitle[]         = "title";				///< mapped to dc:title
-inline constexpr char kYear[]          = "year";
 }
 
 }	// namespace paperboy
