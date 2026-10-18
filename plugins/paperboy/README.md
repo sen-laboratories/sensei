@@ -67,7 +67,7 @@ The type `document/scientific-paper` and the attribute info of these attributes 
 
 ## Citations
 
-Extraction returns one item with an entry for each cited work in each field (the format of the server): `_label` (title, else DOI), `path` (the file on this computer that has the cited DOI as `dc:identifier`, else `https://doi.org/<doi>`), `doi`, `title`. The type is the generic reference (`relation/x-vnd.sen-labs.relation.reference`), the fields are mapped to `SEN:TO:PATH`, `dc:identifier` and `dc:title`. A paper has no contained relations: a request for them (`--self`) is answered with nothing.
+Extraction returns one item with an entry for each cited work in each field (the format of the server): `_label` (title, else DOI), `path` (the file on this computer that has the cited DOI as `dc:identifier`, else `https://doi.org/<doi>`), `doi`, `title`, `year`. The type is the citation (`relation/x-vnd.sen-labs.relation.citation` of the papers ontology: the generic reference with the year of the cited work), the fields are mapped to `SEN:TO:PATH`, `dc:identifier`, `dc:title` and `SEN:REL:year`. A paper has no contained relations: a request for them (`--self`) is answered with nothing.
 The papers that cite this one are not stored (only their number); relations are the business of the server, the plugin writes none.
 
 ## Settings

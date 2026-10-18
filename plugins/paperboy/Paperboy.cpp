@@ -487,6 +487,7 @@ Paperboy::Extract(const entry_ref& file, bool self, BMessage* reply)
 		item.AddString(itemfield::kPath, location.c_str());
 		item.AddString(itemfield::kDoi, reference.doi.c_str());
 		item.AddString(itemfield::kTitle, reference.title.c_str());
+		item.AddInt32(itemfield::kYear, reference.year);
 		count++;
 	}
 	if (count > 0)
