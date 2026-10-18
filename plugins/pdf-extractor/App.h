@@ -17,6 +17,7 @@
 class App : public BApplication
 {
 public:
+	virtual void	AboutRequested();
                         App();
 	virtual			    ~App();
 	virtual void        RefsReceived(BMessage* message);

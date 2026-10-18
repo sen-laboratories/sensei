@@ -4,6 +4,7 @@
  */
 
 #include "App.h"
+#include <sen/SenAbout.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -306,4 +307,11 @@ main()
 		return 1;
 	app.Run();
 	return app.ExitCode();
+}
+
+
+void
+App::AboutRequested()
+{
+	sen::ShowAbout();
 }

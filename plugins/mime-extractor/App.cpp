@@ -4,6 +4,7 @@
  */
 
 #include "App.h"
+#include <sen/SenAbout.h>
 
 #include <Alert.h>
 #include <Node.h>
@@ -229,4 +230,11 @@ App::ArgvReceived(int32 argc, char** argv)
 		refs.AddRef("refs", &ref);
 		RefsReceived(&refs);
 	}
+}
+
+
+void
+App::AboutRequested()
+{
+	sen::ShowAbout();
 }

@@ -19,6 +19,7 @@
 class App : public BApplication
 {
 public:
+	virtual void	AboutRequested();
                         App();
 	virtual			    ~App();
     virtual void        ArgvReceived(int32 argc, char ** argv);

@@ -9,6 +9,7 @@
 #include <Roster.h>
 
 #include "App.h"
+#include <sen/SenAbout.h>
 #include <sen/Sen.h>
 #include <spdlog/spdlog.h>
 
@@ -163,4 +164,11 @@ status_t App::MapRelationPropertiesToArguments(BMessage *message)
         result = B_OK;
 
     return result;
+}
+
+
+void
+App::AboutRequested()
+{
+	sen::ShowAbout();
 }
