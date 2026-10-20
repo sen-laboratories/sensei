@@ -56,6 +56,14 @@ for name in $plugins; do
 	[ -f "$dir/README.md" ] && cp "$dir/README.md" "$stage/documentation/packages/$package/"
 	[ -f "$dir/package.stage" ] && sh "$dir/package.stage" "$stage"
 
+	# the logo of the About window of the plugin (sen/SenAbout.h): the picture in the folder images of the plugin, else the one of SENSEI
+	logo=$(ls "$dir"/images/*logo*.jpg 2>/dev/null | head -n1)
+	[ -n "$logo" ] || logo=$ROOT/images/sensei-logo.jpg
+	if [ -f "$logo" ]; then
+		mkdir -p "$stage/data/sen/plugins/$signature"
+		cp "$logo" "$stage/data/sen/plugins/$signature/logo.jpg"
+	fi
+
 	# the signature must be there as the attribute that the server queries for
 	attr=$(catattr -d BEOS:APP_SIG "$stage/add-ons/sen/plugins/$binary" 2>/dev/null || true)
 	if [ "$attr" != "$signature" ]; then
