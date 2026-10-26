@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "App.h"
+#include <sen/SenAbout.h>
 #include <sen/Sen.h>
 #include <sen/Sensei.h>
 
@@ -613,4 +614,11 @@ void App::PrintUsage(const char* errorMsg)
     std::cout << "Usage: bert <input file>" << std::endl;
     std::cout << "retrieves book metadata from online sources, currently OpenLibrary.org." << std::endl;
     Quit();
+}
+
+
+void
+App::AboutRequested()
+{
+	sen::ShowAbout();
 }

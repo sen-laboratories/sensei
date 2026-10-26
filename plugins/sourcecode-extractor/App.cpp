@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include "App.h"
+#include <sen/SenAbout.h>
 #include "IncludeScanner.h"
 #include <sen/Sen.h>
 #include <sen/Sensei.h>
@@ -141,4 +142,11 @@ int main()
     }
 	app.Run();
 	return 0;
+}
+
+
+void
+App::AboutRequested()
+{
+	sen::ShowAbout();
 }

@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "App.h"
+#include <sen/SenAbout.h>
 #include <sen/Sen.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.pdf-navigator";
@@ -211,4 +212,11 @@ status_t App::MapRelationPropertiesToArguments(const BMessage *inputMessage, BMe
 
     printf("no known way to pass the page to viewer '%s', opening the file only.\n", viewer);
     return B_OK;
+}
+
+
+void
+App::AboutRequested()
+{
+	sen::ShowAbout();
 }

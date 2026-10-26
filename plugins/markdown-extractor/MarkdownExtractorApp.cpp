@@ -18,6 +18,7 @@
 
 // Core SEN includes
 #include <sen/Sen.h>
+#include <sen/SenAbout.h>
 #include <sen/Sensei.h>
 
 const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.markdown-extractor";
@@ -39,6 +40,7 @@ class MarkdownExtractorApp : public BApplication {
 public:
     MarkdownExtractorApp();
     virtual void ArgvReceived(int32 argc, char** argv) override;
+    virtual void AboutRequested() override { sen::ShowAbout(); }
     virtual void RefsReceived(BMessage* message) override;
 
 private:

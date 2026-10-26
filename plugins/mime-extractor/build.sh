@@ -7,7 +7,7 @@
 # adds the attributes from the resource: the server finds a plugin by its signature and reads its type and features from the attributes.
 mkdir -p bin && make && \
 rc Resources.rdef && \
-resattr -o bin/SenMimeExtractor Resources.rsrc
+resattr -o bin/SenMimeExtractor Resources.rsrc && ../../tools/set-version-attr.sh Resources.rdef bin/SenMimeExtractor
 
 # in any case, clean up, but don't fail if file does not exist
 rm -f Resources.rsrc

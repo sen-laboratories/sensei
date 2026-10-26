@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">SENSEI</h1>
-<h2 align="center">Semantic Extraction, Navigation, Search, Enrichment and Inference</h2>
+<h2 align="center">Semantic Extraction, Navigation, Search, Enrichment and Identification</h2>
 
 SENSEI is a core part of SEN and provides an infrastructure for:
 * *S*emantic *E*xtraction: extract semantics hidden in files, like structure, entities or relations
