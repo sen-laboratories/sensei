@@ -18,6 +18,7 @@ REVISION=${REVISION:-1}
 
 plugins="$*"
 all=
+allrequires=
 [ -n "$plugins" ] || { plugins=$(cd plugins && ls); all=1; }
 
 # build what is not up to date (a plugin is out of date if a file of its folder or of common/ is newer than its binary)
@@ -60,6 +61,8 @@ for name in $plugins; do
 	features=$(for f in extract enrich identify navigate search; do grep -q "\"SEN:plugin:$f\")[[:space:]]*1" $rdef && echo $f; done | tr '\n' ',' | sed 's/,$//; s/,/, /g')
 	types=$(sed -n '/resource file_types message/,/};/p' $rdef | sed -n 's/.*"types"[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | tr '\n' ',' | sed 's/,$//; s/,/, /g')
 	package=sen_plugin_$(echo $name | tr '-' '_')
+	# the package of all plugins requires each of them at least in this version (an older one in a repository must not do)
+	allrequires="$allrequires$(printf '\\n\\t%s >= %s' "$package" "${version%-$REVISION}")"
 
 	requires=
 	[ -f "$dir/requires" ] && requires=$(awk 'NF { printf "\\n\\t%s", $0 }' "$dir/requires")
@@ -100,7 +103,7 @@ done
 
 # the package that brings all of them (only when all plugins were packaged)
 if [ -n "$all" ]; then
-	requires=$(for name in $plugins; do printf '\\n\\tsen_plugin_%s' "$(echo $name | tr '-' '_')"; done)
+	requires=$allrequires
 	stage=$ROOT/package-build/meta
 	rm -rf "$stage"
 	mkdir -p "$stage"
