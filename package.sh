@@ -3,7 +3,8 @@
 # SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 #
 # Builds the HPKG of each plugin (or of the named ones: ./package.sh pdf-navigator text-navigator) from plugins/<name>/bin/<binary>
-# (run the build.sh of the plugin first). The packages are written to the repository root; REVISION overrides the revision (default 1).
+# (./build.sh is run first for the plugins whose binary is missing or older than their sources or common/, FORCE=1 builds all of them;
+# headers outside this repository (sen-core) are not tracked: build.sh by hand after changing them). The packages are written to the repository root; REVISION overrides the revision (default 1).
 #
 # From the plugin folder it takes: Resources.rdef (signature, version, descriptions, features, file types), the Makefile (name of the binary),
 # the optional file "requires" (one HaikuPorts requirement per line, e.g. lib:libspdlog) and the optional script "package.stage" that is
@@ -19,12 +20,27 @@ plugins="$*"
 all=
 [ -n "$plugins" ] || { plugins=$(cd plugins && ls); all=1; }
 
+# build what is not up to date (a plugin is out of date if a file of its folder or of common/ is newer than its binary)
+stale=
+for name in $plugins; do
+	dir=$ROOT/plugins/$name
+	[ -f "$dir/Resources.rdef" ] || { echo "no such plugin: $name" >&2; exit 1; }
+	binary=$(sed -n 's/^NAME[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "$dir/Makefile" | head -n1)
+	if [ -n "$FORCE" ] || [ ! -f "$dir/bin/$binary" ] || [ -n "$(find "$dir" "$ROOT/common" "$ROOT/tools" -type f ! -path '*/bin/*' ! -path '*/objects.*' ! -name '*.rsrc' -newer "$dir/bin/$binary" 2>/dev/null | head -n1)" ]; then
+		stale="$stale $name"
+	fi
+done
+if [ -n "$stale" ]; then
+	echo "building:$stale"
+	./build.sh $stale
+fi
+
 for name in $plugins; do
 	dir=$ROOT/plugins/$name
 	[ -f "$dir/Resources.rdef" ] || { echo "no such plugin: $name" >&2; exit 1; }
 	rdef=$dir/Resources.rdef
 	binary=$(sed -n 's/^NAME[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "$dir/Makefile" | head -n1)
-	[ -f "$dir/bin/$binary" ] || { echo "$name: bin/$binary not found, run build.sh in plugins/$name first" >&2; exit 1; }
+	[ -f "$dir/bin/$binary" ] || { echo "$name: bin/$binary not found" >&2; exit 1; }
 
 	major=$(sed -n 's/^[[:space:]]*major[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
 	middle=$(sed -n 's/^[[:space:]]*middle[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
