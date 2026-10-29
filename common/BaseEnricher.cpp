@@ -32,11 +32,15 @@
 using namespace BPrivate::Network;
 using namespace std::literals;
 
-BaseEnricher::BaseEnricher(entry_ref* srcRef, MappingUtil* mapper)
+// a search with all fields of many results is not small, and the connection of a VM is not fast
+static const bigtime_t kRequestTimeout = 10000;	// ms
+
+BaseEnricher::BaseEnricher(const entry_ref* srcRef, MappingUtil* mapper)
+    :
+    fMapper(mapper),
+    fHttpSession(new BHttpSession()),
+    fSourceRef(*srcRef)
 {
-    fSourceRef = srcRef;
-    fHttpSession = new BHttpSession();
-    fMapper = mapper;
 }
 
 BaseEnricher::~BaseEnricher()
@@ -84,8 +88,8 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
             if (! valueStr.IsEmpty()) {
                 BStringList valueList;
                 valueStr.Split(";", true, valueList);
-                for (int i = 0; i < valueList.CountStrings(); i++) {
-                    serviceParamMsg->AddString(paramName, valueList.StringAt(i));
+                for (int32 v = 0; v < valueList.CountStrings(); v++) {
+                    serviceParamMsg->AddString(paramName, valueList.StringAt(v));
                 }
             } else {
                 printf("ignoring empty string value for attribute '%s' [%s]\n", paramName, key);
@@ -109,7 +113,7 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
     // get attribute definitions from MIME type
     BMessage mimeAttrs;
 
-    status_t result = fMapper->GetMimeTypeAttrs(fSourceRef, &mimeAttrs);
+    status_t result = fMapper->GetMimeTypeAttrs(&fSourceRef, &mimeAttrs);
     if (result != B_OK) {
         printf("failed to get MIME attribute definitions: %s\n", strerror(result));
         return result;
@@ -155,13 +159,13 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                 BStringList values;
                 BString val;
 
-                for (int i = 0; i < count; i++) {
-                	val = serviceParamMsg->GetString(paramName, i, "");
+                for (int32 v = 0; v < count; v++) {
+                	val = serviceParamMsg->GetString(paramName, v, "");
                 	if (! val.Trim().IsEmpty()) {
 	                    values.Add(val);
                 	}
                 }
-                BString value = values.Join(";", B_ATTR_NAME_LENGTH);
+                BString value = values.Join(";");
                 attrMsg->AddString(key, value);
 
                 break;
@@ -169,50 +173,52 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
             default: {
                 // get attribute type for mapped key
                 attrType = mimeAttrs.GetInt32(key, B_STRING_TYPE);
-                void* value = NULL;
+
+                if (type == attrType) {
+                    // the service gives what the attribute is: nothing to convert (these values were dropped before)
+                    attrMsg->AddData(key, type, data, dataSize, false);
+                    break;
+                }
 
                 // convert values if necessary
-                if (type != attrType) {
-                    printf("conflicting types for key %s: %d (service) vs %d (attr)...\n", key, type, attrType);
+                printf("conflicting types for key %s: %d (service) vs %d (attr)...\n", key, (int) type, (int) attrType);
 
-                    // todo: naive quick solution for current pain points, see also https://dev.haiku-os.org/ticket/19444
-                    switch(type) {
-                        case B_DOUBLE_TYPE: {
-                            double val = std::floor(*(reinterpret_cast<const double*>(data)));
-                            int32 intVal = static_cast<int32>(val);
+                // todo: naive quick solution for current pain points, see also https://dev.haiku-os.org/ticket/19444
+                switch(type) {
+                    case B_DOUBLE_TYPE: {
+                        double val = std::floor(*(reinterpret_cast<const double*>(data)));
+                        int32 intVal = static_cast<int32>(val);
 
-                            switch(attrType) {
-                                case B_INT32_TYPE:
-                                    attrMsg->AddInt32(key, intVal);
-                                    printf("  successfully converted Double to Int32: %u\n", intVal);
-                                    break;
-                                case B_TIME_TYPE: {
-                                    // a year (e.g. the year of publication) becomes the first moment of that year (UTC)
-                                    struct tm firstOfYear = {};
-                                    firstOfYear.tm_year = intVal - 1900;
-                                    firstOfYear.tm_mon  = 0;
-                                    firstOfYear.tm_mday = 1;
-                                    time_t time = timegm(&firstOfYear);
-                                    attrMsg->AddData(key, B_TIME_TYPE, &time, sizeof(time_t), true);
-                                    printf("  successfully converted year %d to Time\n", intVal);
-                                    break;
-                                }
-                                case B_STRING_TYPE: {
-                                    std::string strVal = std::to_string(intVal).c_str();
-                                    attrMsg->AddString(key, strVal.c_str());
-                                    printf("  successfully converted Double to String: %s\n", strVal.c_str());
-                                    break;
-                                }
-                                default:
-                                    printf("  unsupported conversion, skipping.\n");
+                        switch(attrType) {
+                            case B_INT32_TYPE:
+                                attrMsg->AddInt32(key, intVal);
+                                printf("  successfully converted Double to Int32: %d\n", (int) intVal);
+                                break;
+                            case B_TIME_TYPE: {
+                                // a year (e.g. the year of publication) becomes the first moment of that year (UTC)
+                                struct tm firstOfYear = {};
+                                firstOfYear.tm_year = intVal - 1900;
+                                firstOfYear.tm_mon  = 0;
+                                firstOfYear.tm_mday = 1;
+                                time_t time = timegm(&firstOfYear);
+                                attrMsg->AddData(key, B_TIME_TYPE, &time, sizeof(time_t), true);
+                                printf("  successfully converted year %d to Time\n", (int) intVal);
+                                break;
                             }
-                            break;
+                            case B_STRING_TYPE: {
+                                std::string strVal = std::to_string(intVal);
+                                attrMsg->AddString(key, strVal.c_str());
+                                printf("  successfully converted Double to String: %s\n", strVal.c_str());
+                                break;
+                            }
+                            default:
+                                printf("  unsupported conversion, skipping.\n");
                         }
-                        default: {
-                            printf("  not covered, falling back to system method.\n");
-                            attrMsg->AddData(key, attrType, (value != NULL) ? value : data, dataSize, false);
-                        }
+                        break;
                     }
+                    default:
+                        // (it was added with the type of the attribute but the bytes of another: a wrong value that looks right)
+                        printf("  no conversion from type %d to %d, skipping.\n", (int) type, (int) attrType);
                 }
             }
         }
@@ -252,7 +258,11 @@ status_t BaseEnricher::ConvertMessageMapsToArray(const BMessage* srcMessage, BMe
         }
 
         BMessage valueMapMsg;
-        valueMapMsg.Unflatten(reinterpret_cast<const char*>(data));
+        result = valueMapMsg.Unflatten(reinterpret_cast<const char*>(data));
+        if (result != B_OK) {
+            printf("could not read the value map of key %s, skipping: %s\n", key, strerror(result));
+            continue;
+        }
 
         result = ConvertSingleMessageMapToArray(&valueMapMsg, key, resultMsg);
         if (result != B_OK) {
@@ -287,19 +297,18 @@ status_t BaseEnricher::ConvertSingleMessageMapToArray(const BMessage* msg, const
             return result;
         }
         // check if we can/should map the entry, i.e. key is a number
-        int mapIndex;
         try {
-            mapIndex = std::stoi(mapKey);
+            (void) std::stoi(mapKey);
         }
         catch (std::invalid_argument const& ex)
         {
             printf("could not convert map key %s, skipping: %s\n", mapKey, ex.what());
-            return B_BAD_VALUE;
+            continue;
         }
         catch (std::out_of_range const& ex)
         {
             printf("could not convert map key %s, skipping: %s\n", mapKey, ex.what());
-            return B_BAD_VALUE;
+            continue;
         }
 
         result = msg->FindData(mapKey, type, &data, &dataSize);
@@ -388,9 +397,6 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
                 if (count > 1) {
                     printf("got value %s at index %d\n", (const char*)data, valIndex);
                 }
-                if (! request.IsEmpty()) {
-                    request << "&";
-                }
                 BString value;
                 switch(type){
                     case B_STRING_TYPE: {
@@ -420,12 +426,15 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
                         value << (*(const float*) data);
                         break;
                     case B_BOOL_TYPE:
-                        value << *((bool*) data);
+                        value << (int) *((const bool*) data);
                         break;
                     // TODO: cover remaining types!
                     default:
-                        printf("unsupported type %u, skipping.\n", type);
-                        break;
+                        printf("unsupported type %u, skipping.\n", (unsigned) type);
+                        continue;
+                }
+                if (! request.IsEmpty()) {
+                    request << "&";
                 }
                 request << key << "=" << BUrl::UrlEncode(value);
             } else {
@@ -452,34 +461,10 @@ status_t BaseEnricher::FetchRemoteJson(const BUrl& httpUrl, BMessage& jsonMsgRes
     return BJson::Parse(resultBody.c_str(), jsonMsgResult);
 }
 
-status_t BaseEnricher::FetchRemoteImage(const BUrl& httpUrl, BBitmap* resultImage, size_t* imageSize)
-{
-    std::string imageData;
-
-    status_t result = FetchRemoteContent(httpUrl, &imageData);
-    if (result != B_OK) {
-        printf("could not access remote Url %s: %s.\n", httpUrl.UrlString().String(), strerror(result));
-        return result;
-    }
-
-    *imageSize = imageData.length();
-    printf("fetched image data (%zu bytes), translating...\n", *imageSize);
-
-    BMemoryIO memBuffer(imageData.c_str(), *imageSize);
-    resultImage = BTranslationUtils::GetBitmap(&memBuffer);
-
-    if (resultImage == NULL || !resultImage->IsValid()) {
-        printf("could not handle image from %s\n", httpUrl.UrlString().String());
-        return B_BAD_DATA;
-    }
-
-    return B_OK;
-}
-
 status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody)
 {
     auto request = BHttpRequest(httpUrl);
-    request.SetTimeout(3000 /*ms*/);
+    request.SetTimeout(kRequestTimeout);
 
     auto fields = request.Fields();
     fields.AddField("User-Agent"sv, "Haiku/SEN (Senity Book Enricher)"sv);
@@ -498,13 +483,11 @@ status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resu
     } catch (const BPrivate::Network::BNetworkRequestError& err) {
         return err.ErrorCode();
     }
-    if (status.code >= 200 && status.code <= 400) {
+    if (status.code >= 200 && status.code < 400) {
         try {
             std::string bodyContent = std::string(reinterpret_cast<const char*>(body->Buffer()), body->BufferLength());
-            bool hasBody = ! bodyContent.empty();
-
             *resultBody = bodyContent;
-            printf("got HTTP result with BODY length %d\n", body->BufferLength());
+            printf("got HTTP result with BODY length %zu\n", (size_t) body->BufferLength());
          } catch (const BPrivate::Network::BBorrowError& err) {
             return B_ERROR;
          }

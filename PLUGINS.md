@@ -33,7 +33,10 @@ sensei
 | `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0~dev | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
 | `text-navigator` (SENSEI Text Navigator) | `sen_plugin_text_navigator` 0.0.1~dev | navigate | `relation/x-vnd.sen-labs.relation.textref`, `relation/x-vnd.sen-labs.relation.sourcecode.include` | - | `application/x-vnd.sen-plugin.sen-labs.text-navigator` |
 
-**book-enricher**: SEN module to grab metadata for books from online services.
+**book-enricher**: SEN module to grab metadata for books from online services (OpenLibrary): the attributes (title, authors, ISBN, pages, publisher, subjects...), the cover as the thumbnail
+(`Media:Thumbnail`) and the first author as a person. If OpenLibrary finds **more than one book** (up to 20), the user chooses in a window (`sen::ChooseCandidate`, sento): the best first, rated by the rank of
+OpenLibrary (35%), how close the title is to the one asked for (30%), how complete the entry is (20%) and how well known the book is (15%, editions and readers). `bert --auto <file>` takes the best without asking
+(for scripts); cancelling the window changes nothing. Other plugins that find several candidates (papers from different sources and formats) use the same window.
 
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
 
