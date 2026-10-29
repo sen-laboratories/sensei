@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <set>
 
 #include <Directory.h>
 #include <Entry.h>
@@ -15,11 +16,17 @@
 #include <Path.h>
 #include <String.h>
 
+#include <Application.h>
+#include <Roster.h>
+
 #include <sen/Sen.h>
+#include <sen/SenAbout.h>
+#include <sen/SenChoice.h>
 #include <sen/Sensei.h>
 #include <spdlog/spdlog.h>
 
 #include "PaperApi.h"
+#include "PaperChoice.h"
 #include "PaperDoi.h"
 #include "PaperJson.h"
 #include "PaperKeys.h"
@@ -183,8 +190,8 @@ Paperboy::_LookUp(const std::string& doi, Paper* paper, bool withAccess)
 }
 
 
-std::string
-Paperboy::_FindByTitle(const DocumentFacts& facts)
+status_t
+Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 {
 	std::vector<std::string> titles;
 	for (const std::string& title : { facts.infoTitle, facts.headline }) {
@@ -192,18 +199,69 @@ Paperboy::_FindByTitle(const DocumentFacts& facts)
 			titles.push_back(title);
 	}
 
+	// every hit that is like the title and has a DOI (once), with how good it is; the first title that finds any is the one
+	struct Match {
+		Reference	hit;
+		double		score;
+	};
+	std::vector<Match> matches;
+	std::set<std::string> seen;
 	for (const std::string& title : titles) {
 		std::string body;
 		if (fHttp.Get(OpenAlexSearchUrl(title, fAccess), &body) != B_OK)
 			continue;
-		for (const Reference& hit : ParseOpenAlexList(body)) {
-			if (!hit.doi.empty() && TitleSimilarity(title, hit.title) >= kMinTitleSimilarity) {
-				spdlog::info("title '{}' matches '{}' ({})", title, hit.title, hit.doi);
-				return hit.doi;
-			}
+		const std::vector<Reference> hits = ParseOpenAlexList(body);
+		for (size_t rank = 0; rank < hits.size(); rank++) {
+			const Reference& hit = hits[rank];
+			if (hit.doi.empty())
+				continue;
+			const double similarity = TitleSimilarity(title, hit.title);
+			if (similarity < kMinTitleSimilarity || !seen.insert(hit.doi).second)
+				continue;
+			spdlog::info("title '{}' matches '{}' ({})", title, hit.title, hit.doi);
+			matches.push_back({hit, ScoreHit(similarity, (int) rank, (int) hits.size(), hit.year)});
 		}
+		if (!matches.empty())
+			break;
 	}
-	return "";
+	if (matches.empty())
+		return B_ENTRY_NOT_FOUND;
+
+	size_t best = 0;
+	for (size_t i = 1; i < matches.size(); i++) {
+		if (matches[i].score > matches[best].score)
+			best = i;
+	}
+	if (matches.size() == 1 || !fSettings.choose) {
+		*doi = matches[best].hit.doi;
+		return B_OK;
+	}
+
+	// several papers have this title: the user says which one is it
+	std::vector<sen::Candidate> candidates;
+	for (const Match& match : matches) {
+		sen::Candidate candidate;
+		candidate.title = match.hit.title.empty() ? "(no title)" : match.hit.title.c_str();
+		if (match.hit.year > 0)
+			candidate.subtitle << match.hit.year;
+		candidate.detail << "DOI " << match.hit.doi.c_str();
+		candidate.source = SourceOfDoi(match.hit.doi).c_str();
+		candidate.score = (float) match.score;
+		candidates.push_back(candidate);
+	}
+
+	BBitmap* logo = NULL;
+	app_info info;
+	if (be_app != NULL && be_app->GetAppInfo(&info) == B_OK)
+		logo = sen::LoadPluginLogo(info.signature);
+
+	const int32 picked = sen::ChooseCandidate("Choose a paper", "Several papers have this title. Which one is it?", candidates, logo);
+	if (picked < 0 || picked >= (int32) matches.size())
+		return B_CANCELED;
+
+	*doi = matches[picked].hit.doi;
+	spdlog::info("the user chose {}", *doi);
+	return B_OK;
 }
 
 
@@ -369,8 +427,14 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 	}
 
 	if (!found && fSettings.titleSearch && factsRead) {
-		std::string doi = _FindByTitle(facts);
-		if (!doi.empty()) {
+		std::string doi;
+		const status_t search = _FindByTitle(facts, &doi);
+		if (search == B_CANCELED) {
+			// the user did not choose: nothing is written, not even the title of the document
+			fSummary = std::string("No paper was chosen for ") + file->name + ": nothing was changed.";
+			return B_CANCELED;
+		}
+		if (search == B_OK && !doi.empty()) {
 			Paper attempt;
 			status_t status = _LookUp(doi, &attempt, true);
 			if (status == B_OK) {

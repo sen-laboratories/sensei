@@ -34,6 +34,7 @@ In this order, the first that OpenAlex knows wins:
 3. the text of the **first page**; an arXiv stamp (`arXiv:1706.03762v5`) gives the DOI that DataCite registers for it, `10.48550/arxiv.1706.03762`
 4. a DOI on the following pages (the first 3 pages are read, `max_pages`): only the first two, they are most likely cited papers, and *identify* does not take them as a sign of a paper
 5. the **title** (the Title field of the document if it looks like a title, else the biggest text of the first page) searched in OpenAlex; a hit is taken only if its title is at least 85 % the same words
+   Several hits can be this like the title: they are rated (how like the title, then the rank of OpenAlex, then that a year is known) and shown in the window of SEN for choices, the best first, with where each comes from (the registrant of its DOI: arXiv, Zenodo, bioRxiv, a publisher...). Cancel, and nothing is written. `--auto` or `choose = no` takes the best without asking, which is what a batch of files wants.
 
 If no service knows the paper (a new demo paper, a report), the title of the **document** itself becomes `dc:title` (the status in `paperboy:state` is `title_from_document`) and the file is named after it: papers come with names like `paper354.pdf`. Nothing else is guessed. A document without a usable title is left alone and the notification says so.
 
@@ -84,6 +85,7 @@ A plugin has no window: `~/config/settings/sen/paperboy.settings`, lines of `key
 | `overwrite` | no | replace title, authors, ... that the file already has (Tracker: Shift on Enrich) |
 | `api_key` | - | your free key of OpenAlex ([openalex.org/settings/api](https://openalex.org/settings/api)). Without one all requests from your address share a small daily budget that can be used up (the notification then says so) |
 | `title_search` | yes | look a paper up by its title if there is no DOI |
+| `choose` | yes | if the title search finds **several papers** (a preprint and the published one, copies in a repository), ask in a window which one it is; `no` (or `--auto`) takes the best |
 | `max_pages` | 3 | pages from the start that are searched for a DOI |
 | `local_only` | no | extraction: only cited papers that are on this computer |
 
