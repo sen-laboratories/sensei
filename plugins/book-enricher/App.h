@@ -11,8 +11,6 @@
 
 #define BOOK_MIME_TYPE          sen::onto::books::mime::kBook
 #define AUTHOR_MIME_TYPE        "application/x-person"
-#define THUMBNAIL_ATTR_NAME     "Media:Thumbnail"
-#define THUMBNAIL_CREATION_TIME THUMBNAIL_ATTR_NAME ":CreationTime"
 
 #define API_BASE_URL            "http://openlibrary.org/"
 #define API_AUTHORS_URL         API_BASE_URL "authors/$id.json"
@@ -48,7 +46,6 @@ private:
     status_t            FetchAuthor(const char* authorId, BMessage *msgResult);
     status_t            FetchCover(const char* coverId, std::string* coverImage);
     status_t            FetchPhoto(const char* photoId, std::string* photo);
-    status_t            WriteThumbnail(const entry_ref* ref, const std::string& image);
 
     void                ShowError(const char* message);
     void                PrintUsage(const char* errorMsg = NULL);
