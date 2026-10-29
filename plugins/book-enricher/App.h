@@ -31,20 +31,32 @@ public:
 	virtual void        RefsReceived(BMessage* message);
     virtual void        ArgvReceived(int32 argc, char ** argv);
 
+    /** the exit code of the program: 0, or 1 if something went wrong (a cancelled choice is no error) */
+    int32               ExitCode() const { return fExitCode; }
+
     /**
-     * call lookup service with params in message.
+     * call lookup service with params in message. If it finds more than one book, the user chooses (see ChooseBook()).
+     * @return B_OK, B_CANCELED if the user did not choose, B_ENTRY_NOT_FOUND if there is no such book, or the error of the lookup
      */
     status_t            FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg);
 
 private:
+    status_t            Enrich(BMessage* message, BMessage* reply);
+
     // query handling
+    status_t            ChooseBook(const BMessage& books, const BString& wanted, int32* chosen);
     status_t            FetchAuthor(const char* authorId, BMessage *msgResult);
     status_t            FetchCover(const char* coverId, std::string* coverImage);
     status_t            FetchPhoto(const char* photoId, std::string* photo);
+    status_t            WriteThumbnail(const entry_ref* ref, const std::string& image);
 
+    void                ShowError(const char* message);
     void                PrintUsage(const char* errorMsg = NULL);
+
     bool                fDebugMode;
     bool                fOverwrite;
+    bool                fAuto;          // take the best book without asking
+    int32               fExitCode;
 
     BaseEnricher*       fBaseEnricher;
     MappingUtil*        fMapper;

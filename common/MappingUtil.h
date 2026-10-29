@@ -17,7 +17,7 @@ public:
 
     status_t AddAlias(const char* source, const char* target, bool bidir = true);
 
-    const char* ResolveAlias(const char* alias, char* defaultValue = NULL);
+    const char* ResolveAlias(const char* alias, const char* defaultValue = NULL);
     /**
     * reads fs attributes with an associated mapping from the file @ref into @attrMsg,
     * using attribute names as keys.

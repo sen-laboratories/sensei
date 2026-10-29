@@ -18,7 +18,7 @@ using namespace BPrivate::Network;
 class BaseEnricher {
 
 public:
-    BaseEnricher(entry_ref* sourceRef, MappingUtil* mapper);
+    BaseEnricher(const entry_ref* sourceRef, MappingUtil* mapper);
     virtual ~BaseEnricher();
 
     /*
@@ -37,7 +37,6 @@ public:
     // these need a valid HTTP session and are bound to the lifecycle of this class
     status_t FetchRemoteJson(const BUrl& httpUrl, BMessage& jsonMsgResult);
     status_t FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage* msgQuery, BMessage* msgResult);
-    status_t FetchRemoteImage(const BUrl& httpUrl, BBitmap* resultImage, size_t* imageSize);
     // Note: std::string will not alter binary content unlike BString does.
     status_t FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody);
 
@@ -46,5 +45,5 @@ protected:
 
 private:
     BHttpSession*       fHttpSession;
-    entry_ref*          fSourceRef;
+    entry_ref           fSourceRef;     // our own copy: the caller's one may be gone
 };

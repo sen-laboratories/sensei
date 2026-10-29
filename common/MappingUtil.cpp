@@ -6,6 +6,9 @@
 #include <NodeInfo.h>
 #include <fs_attr.h>
 #include <stdio.h>
+#include <string.h>
+
+#include <vector>
 
 #include "MappingUtil.h"
 #include <sen/Sen.h>
@@ -27,8 +30,8 @@ status_t MappingUtil::AddAlias(const char* source, const char* target, bool bidi
     if (result == B_OK) {
         if (bidir) {
             // map in other direction, sanity check if different
-            if (strlen(source) == strlen(target) || strncmp(source, target, strlen(target)) == 0) {
-                printf("invalid arguments: bidirectional mapping for identical values requested! Skipping.");
+            if (strcmp(source, target) == 0) {
+                printf("invalid arguments: bidirectional mapping for identical values requested! Skipping.\n");
             } else {
                 result = fMappingTable->AddString(target, source);
             }
@@ -41,7 +44,7 @@ status_t MappingUtil::AddAlias(const char* source, const char* target, bool bidi
     return B_OK;
 }
 
-const char* MappingUtil::ResolveAlias(const char* alias, char* defaultValue)
+const char* MappingUtil::ResolveAlias(const char* alias, const char* defaultValue)
 {
     return fMappingTable->GetString(alias, defaultValue);
 }
@@ -60,13 +63,13 @@ status_t MappingUtil::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
 		return result;
     }
 
-	char *attrName = new char[B_ATTR_NAME_LENGTH];
+	char attrName[B_ATTR_NAME_LENGTH];
     attr_info attrInfo;
-    type_code attrType;
 
+    node.RewindAttrs();
 	while (node.GetNextAttrName(attrName) == B_OK) {
         if (IsInternalAttr(attrName)) {
-            printf("skippinng internal attribute %s.\n", attrName);
+            printf("skipping internal attribute %s.\n", attrName);
             continue;
         }
 
@@ -81,25 +84,20 @@ status_t MappingUtil::MapAttrsToMsg(const entry_ref* ref, BMessage *attrMsg)
             return result;
         }
 
-        char attrValue[attrInfo.size + 1];
-        attrType = attrInfo.type;
+        // an empty attribute has nothing to map (and is no error)
+        if (attrInfo.size == 0)
+            continue;
 
-        ssize_t bytesRead = node.ReadAttr(
-            attrName,
-            attrType,
-            0,
-            attrValue,
-            attrInfo.size);
+        // (on the heap: an attribute can be large)
+        std::vector<char> attrValue(attrInfo.size);
 
-        if (bytesRead == 0) {
-            printf("attribute %s has unexpeted type %u in file %s.\n", attrName, attrType, ref->name);
-            return B_ERROR;
-        } else if (bytesRead < 0) {
-            printf("failed to read value of attribute '%s' from file %s.\n", attrName, ref->name);
-            return B_ERROR;
+        ssize_t bytesRead = node.ReadAttr(attrName, attrInfo.type, 0, attrValue.data(), attrInfo.size);
+        if (bytesRead < 0) {
+            printf("failed to read value of attribute '%s' from file %s: %s\n", attrName, ref->name, strerror(bytesRead));
+            return (status_t) bytesRead;
         }
 
-        result = attrMsg->AddData(attrName, attrType, attrValue, bytesRead, false);
+        result = attrMsg->AddData(attrName, attrInfo.type, attrValue.data(), bytesRead, false);
         if (result != B_OK) {
             break;
         }
@@ -146,17 +144,21 @@ status_t MappingUtil::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetRe
             if (result == B_OK && dataSize > 0) {
                 // check for internal file name attribute and rename file if different
                 if (strncmp(key, sensei::key::kName, strlen(sensei::key::kName)) == 0) {
-                	BString fileName;
-                	fileName << (const char*) data;
-                	if (! fileName.Trim().IsEmpty()) {
+                	BString fileName((const char*) data, strnlen((const char*) data, dataSize));
+                	fileName.Trim();
+                	fileName.ReplaceAll('/', '-');	// (a name cannot hold a path)
+                	if (! fileName.IsEmpty() && fileName != targetRef->name) {
                 		BEntry targetEntry(targetRef);
                 		// overewriting existing name is not checked again here, has to be
                 		// one by specific enricher based on its settings and other logic.
                 		if (targetEntry.InitCheck() == B_OK) {
-                			result = targetEntry.Rename(fileName.String());
-                			if (result != B_OK) {
+                			status_t renamed = targetEntry.Rename(fileName.String());
+                			if (renamed != B_OK) {
                 				printf("error renaming outupt file '%s' to '%s', ignoring: %s\n",
-                						targetRef->name, fileName.String(), strerror(result));
+                						targetRef->name, fileName.String(), strerror(renamed));
+                			} else {
+                				// the reference of the caller has to follow, or it names a file that is not there any more
+                				targetEntry.GetRef(targetRef);
                 			}
                 		}
                 	}
@@ -198,11 +200,14 @@ status_t MappingUtil::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrM
     char type[B_MIME_TYPE_LENGTH];
 
     BNodeInfo nodeInfo(&node);
-    status_t result = nodeInfo.GetType(type);
+    status_t result = nodeInfo.InitCheck();
+    if (result == B_OK)
+        result = nodeInfo.GetType(type);
 
     if (result == B_OK) {
-        mimeType.SetType(type);
-    } else {
+        result = mimeType.SetTo(type);
+    }
+    if (result != B_OK) {
         result = BMimeType::GuessMimeType(ref, &mimeType);
         if (result != B_OK) {
             printf("failed to get MIME info for input file %s: %s\n", ref->name, strerror(result));
@@ -220,8 +225,10 @@ status_t MappingUtil::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrM
         return result;
     }
 
-    int32 count;
-    result = attrInfoMsg.GetInfo("attr:name", NULL, &count);
+    // a type without attributes has none (the count is not set when there is no field)
+    int32 count = 0;
+    if (attrInfoMsg.GetInfo("attr:name", NULL, &count) != B_OK)
+        return B_OK;
 
     // fill in name and type and return as msg
     for (int32 info = 0; info < count; info++) {
