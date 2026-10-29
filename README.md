@@ -37,9 +37,12 @@ pkgman install sen_plugin_pdf_navigator              # or one package per plugin
 Build and package on Haiku (each plugin has a `build.sh` that also writes the attributes from its resources, `package.sh` makes the packages):
 
 ```sh
-(cd plugins/pdf-navigator && ./build.sh)
-./package.sh pdf-navigator          # or without names: all plugins that are built
+./build.sh                          # all plugins (./build.sh pdf-navigator text-navigator: those); JOBS=8 for the number of jobs of make
+./package.sh pdf-navigator          # or without names: all plugins. The ones that are not up to date are built first (FORCE=1: all of them)
 ```
+
+A plugin that fails to build does not stop the others; the summary lists them. The package `sen_plugins` requires every plugin at least in the version that it was packaged with, so that an older version in a
+repository cannot take its place.
 
 # Colophon / About the Logo
 
