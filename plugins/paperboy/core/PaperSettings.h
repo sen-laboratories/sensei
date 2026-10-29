@@ -30,6 +30,8 @@ struct Settings {
 	bool overwrite = false;
 	/** look a paper up by its title when no DOI is found */
 	bool titleSearch = true;
+	/** if the title search finds several papers (a preprint and the published one, ...): ask which one; off: take the best (`--auto`) */
+	bool choose = true;
 	/** the pages (of the beginning) that are searched for a DOI */
 	int maxPages = 3;
 	/** extraction: report only the citations whose paper is on this computer */

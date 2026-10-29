@@ -91,6 +91,8 @@ ParseSettings(const std::string& text, Settings* settings)
 			settings->overwrite = ParseBool(value, settings->overwrite);
 		} else if (key == "title_search") {
 			settings->titleSearch = ParseBool(value, settings->titleSearch);
+		} else if (key == "choose") {
+			settings->choose = ParseBool(value, settings->choose);
 		} else if (key == "local_only") {
 			settings->localOnly = ParseBool(value, settings->localOnly);
 		} else if (key == "max_pages") {

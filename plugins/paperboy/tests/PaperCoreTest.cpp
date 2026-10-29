@@ -13,6 +13,7 @@
 #include "PaperAbstract.h"
 #include "PaperApi.h"
 #include "PaperDate.h"
+#include "PaperChoice.h"
 #include "PaperDoi.h"
 #include "PaperJson.h"
 #include "PaperName.h"
@@ -309,6 +310,11 @@ TestSettings()
 	CHECK(settings.maxPages == 5);
 	CHECK(settings.rename);
 
+	// choosing between several papers: off by default for a script, the settings and the command line can switch it
+	CHECK(settings.choose);
+	ParseSettings("choose = no\n", &settings);
+	CHECK(!settings.choose);
+
 	CHECK(LooksLikeEmail("a@b.org"));
 	CHECK(!LooksLikeEmail("a@b"));
 	CHECK(!LooksLikeEmail("@b.org"));
@@ -356,6 +362,28 @@ TestTitleAndApi()
 }
 
 
+/** the places that DOIs come from, and how hits are scored for the choice between several papers */
+static void
+TestChoice()
+{
+	CHECK_EQ(SourceOfDoi("10.48550/arxiv.1706.03762"), "arXiv");
+	CHECK_EQ(SourceOfDoi("10.48550/ARXIV.1706.03762"), "arXiv");
+	CHECK_EQ(SourceOfDoi("10.1101/2020.03.22.002386"), "bioRxiv/medRxiv");
+	CHECK_EQ(SourceOfDoi("10.5281/zenodo.1234"), "Zenodo");
+	CHECK_EQ(SourceOfDoi("10.1038/nature14539"), "Publisher");
+	CHECK_EQ(SourceOfDoi("10.1038"), "Publisher");		// (no slash: the registrant alone)
+	CHECK_EQ(SourceOfDoi(""), "");
+
+	// the best is the one that is most like the title, then the one that the service ranked higher
+	CHECK(ScoreHit(1.0, 3, 5, 2017) > ScoreHit(0.9, 0, 5, 2017));
+	CHECK(ScoreHit(0.9, 0, 5, 2017) > ScoreHit(0.9, 2, 5, 2017));
+	CHECK(ScoreHit(0.9, 2, 5, 2017) > ScoreHit(0.9, 2, 5, 0));		// (says its year)
+	CHECK(ScoreHit(1.0, 0, 5, 2017) <= 1.0 + 1e-9);
+	CHECK(ScoreHit(0.0, 4, 5, 0) >= 0.0);
+	CHECK(ScoreHit(7.0, -3, 1, 0) <= 1.0 + 1e-9);				// (out of range is cut)
+	CHECK(ScoreHit(-1.0, 99, 1, 0) >= 0.0);
+}
+
 int
 main(int argc, char** argv)
 {
@@ -369,6 +397,7 @@ main(int argc, char** argv)
 	TestNames();
 	TestSettings();
 	TestTitleAndApi();
+	TestChoice();
 
 	std::printf("%d checks, %d failed\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;

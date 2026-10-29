@@ -108,12 +108,13 @@ App::_PrintUsage(const char* error) const
 		"  --no-rename       enrich: keep the name of the file\n"
 		"  --overwrite       enrich: replace title, authors and so on that the file already has\n"
 		"  --email <address> address for the polite pool of OpenAlex and Unpaywall (or " << kEmailVariable << ")\n"
+		"  --auto            enrich: if several papers have the title, take the best without asking (see the setting choose)\n"
 		"  --no-unpaywall    do not ask Unpaywall, use the open access data of OpenAlex\n"
 		"  --facts           print what is read from the beginning of the document (the fields, the title, the first page)\n"
 		"  --debug           print the reply\n"
 		"\n"
 		"Settings: ~/config/settings/" << kSettingsFile << " (key = value lines: email, unpaywall, rename, rename_pattern,\n"
-		"overwrite, title_search, max_pages, local_only).\n";
+		"overwrite, title_search, choose, max_pages, local_only).\n";
 }
 
 
@@ -149,6 +150,8 @@ App::ArgvReceived(int32 argc, char** argv)
 			facts = true;
 		} else if (strcmp(arg, "--overwrite") == 0) {
 			overwrite = true;
+		} else if (strcmp(arg, "--auto") == 0) {
+			fSettings.choose = false;
 		} else if (strcmp(arg, "--no-unpaywall") == 0) {
 			fSettings.unpaywall = false;
 		} else if (strcmp(arg, "--debug") == 0) {
@@ -273,7 +276,7 @@ App::_Handle(BMessage* message)
 			break;
 		case sensei::cmd::kEnrich:
 			result = _Service()->Enrich(&ref, &reply, message->GetBool("wipe", false));
-			if (fNotify)
+			if (fNotify && result != B_CANCELED)	// (whoever cancelled knows)
 				_Notify(ref, result, _Service()->SummaryTitle(), _Service()->Summary());
 			else if (!_Service()->Summary().empty())
 				std::cout << _Service()->Summary() << std::endl;
@@ -288,7 +291,7 @@ App::_Handle(BMessage* message)
 	reply.AddString(sen::key::kDetail, (what == sensei::cmd::kEnrich && !_Service()->Summary().empty()) ? _Service()->Summary().c_str()
 		: (result == B_ENTRY_NOT_FOUND ? "no paper found" : strerror(result)));
 
-	if (result != B_OK)
+	if (result != B_OK && result != B_CANCELED)
 		fExitCode = 1;
 	if (fDebug)
 		reply.PrintToStream();
