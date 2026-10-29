@@ -30,6 +30,9 @@ public:
     */
     status_t MapMsgToAttrs(const BMessage* attrMsg, entry_ref* targetRef, bool overwrite = false);
 
+    /** the attribute info of the MIME type of a file, as Haiku gives it (parallel arrays: attr:name, attr:type, SEN:is_list, ...) */
+    static status_t GetMimeTypeAttrInfo(const entry_ref* ref, BMessage *attrInfo);
+    /** name -> type code of the attributes of the MIME type of a file */
     static status_t GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg);
     static bool IsInternalAttr(const char* attrName);
 

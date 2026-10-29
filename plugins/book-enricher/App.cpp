@@ -294,11 +294,8 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
 
     printf("All Book data retrieved successfully, done.\n");
 
-    // fetch author - todo: demo, outfactor later. OpenLibrary lists all authors, the first one is made.
+    // fetch author - todo: demo, outfactor later. OpenLibrary lists all authors, the first one is made (the key is no list: it holds the first).
     BString authorId(reply->GetString(OPENLIBRARY_API_AUTHOR_KEY, ""));
-    const int32 separator = authorId.FindFirst(';');
-    if (separator >= 0)
-        authorId.Truncate(separator);
 
     if (authorId.IsEmpty()) {
         printf("no author in the result, skipping.\n");
