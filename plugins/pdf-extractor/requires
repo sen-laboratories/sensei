@@ -1,5 +1,2 @@
-lib:libz
-lib:libjpeg
-lib:libssl
-lib:libcrypto
+lib:libqpdf
 sen_ontology_core

@@ -120,7 +120,7 @@ BMessage* App::AddBookmarkDetails(QPDFOutlineObjectHelper outline, BMessage* msg
 {
     int32 targetPage = 0;
     QPDFObjectHandle dest_page = outline.getDestPage();
-    if (dest_page.getObjectPtr() != NULL) {
+    if (dest_page.isInitialized()) {
         if (page_map.contains(dest_page.getObjGen())) {
             targetPage = page_map[dest_page.getObjGen()];
         }
