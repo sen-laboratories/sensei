@@ -37,3 +37,4 @@
 # packages
 *.hpkg
 package-build/
+.DS_Store
