@@ -11,6 +11,8 @@
 #include <Url.h>
 #include <private/netservices2/HttpSession.h>
 
+#include <sen/SenAttrInfo.h>
+
 #include "MappingUtil.h"
 
 using namespace BPrivate::Network;
@@ -44,6 +46,11 @@ protected:
     MappingUtil*        fMapper;
 
 private:
+    /** Is the attribute a list, and with what separator: from the attribute info of the type of the file (ontology), read once. */
+    sen::ListConfig     ListConfigOf(const char* attribute);
+
     BHttpSession*       fHttpSession;
     entry_ref           fSourceRef;     // our own copy: the caller's one may be gone
+    BMessage            fAttrInfo;
+    bool                fAttrInfoRead;
 };

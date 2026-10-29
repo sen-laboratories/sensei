@@ -48,10 +48,10 @@ The attributes are the same for all formats and use the vocabularies that exist 
 |---|---|---|
 | `dc:identifier` | string | the DOI, bare and lower case: `10.1038/nature14539` (another kind of identifier that is there stays) |
 | `dc:title`, `dc:type` | string | title; the kind of work (`article`, `preprint`, `book-chapter`, ...) |
-| `dc:creator` | string | the names of the authors, separated by `;` |
+| `dc:creator` | string | the names of the authors, a list separated by `,` (a name that has a comma is in quotes: `"Hunt, Andy",Dave Thomas`; programs that know the list, like Shoji, show the names one by one) |
 | `schema:author` | message | one `schema:author` entry per author: `schema:name`, `schema:identifier` (ORCID URL), `schema:affiliation` |
 | `dc:date` | time | day of publication |
-| `dc:subject` | string | keywords (OpenAlex `keywords` with a score of 0.3 or more; if there are none the `concepts`, else the `topics`), separated by `;` |
+| `dc:subject` | string | keywords (OpenAlex `keywords` with a score of 0.3 or more; if there are none the `concepts`, else the `topics`), a list separated by `,` |
 | `dc:description` | string | the abstract, rebuilt from the inverted index of OpenAlex |
 | `dc:publisher`, `dc:language`, `dcterms:isPartOf` | string | publisher, language, journal / conference / repository |
 | `schema:url` | string | landing page of the best open access copy, else `https://doi.org/<doi>` |

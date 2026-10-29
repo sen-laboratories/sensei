@@ -18,6 +18,7 @@
 #include <fs_index.h>
 
 #include <sen/Sen.h>
+#include <sen/SenList.h>
 #include <spdlog/spdlog.h>
 
 #include "PaperDate.h"
@@ -80,13 +81,11 @@ Replace(BNode& node, const char* name, const std::string& value)
 		PutString(node, name, value, true);
 }
 
+/** The values of a list attribute (authors, keywords) in one string: the papers ontology defines them as lists with a comma, a name that has one is quoted. */
 std::string
 Join(const std::vector<std::string>& values)
 {
-	std::string joined;
-	for (const std::string& value : values)
-		joined += (joined.empty() ? "" : ";") + value;
-	return joined;
+	return sen::list::Join(values, attr::kListSeparator);
 }
 
 BMessage

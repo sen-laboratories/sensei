@@ -193,7 +193,7 @@ status_t MappingUtil::MapMsgToAttrs(const BMessage *attrMsg, entry_ref* targetRe
     return B_OK;
 }
 
-status_t MappingUtil::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg)
+status_t MappingUtil::GetMimeTypeAttrInfo(const entry_ref* ref, BMessage* attrInfo)
 {
     BNode node(ref);
     BMimeType mimeType;
@@ -217,13 +217,18 @@ status_t MappingUtil::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrM
 
     printf("got MIME Type %s for ref '%s'.\n", mimeType.Type(), ref->name);
 
-    BMessage attrInfoMsg;
-    result = mimeType.GetAttrInfo(&attrInfoMsg);
-
-    if (result != B_OK) {
+    result = mimeType.GetAttrInfo(attrInfo);
+    if (result != B_OK)
         printf("failed to get attrInfo for MIME type %s: %s\n", mimeType.Type(), strerror(result));
+    return result;
+}
+
+status_t MappingUtil::GetMimeTypeAttrs(const entry_ref* ref, BMessage *mimeAttrMsg)
+{
+    BMessage attrInfoMsg;
+    status_t result = GetMimeTypeAttrInfo(ref, &attrInfoMsg);
+    if (result != B_OK)
         return result;
-    }
 
     // a type without attributes has none (the count is not set when there is no field)
     int32 count = 0;

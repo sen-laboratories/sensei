@@ -19,6 +19,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <fs_attr.h>
+#include <vector>
+
+#include <sen/SenList.h>
 #include <stdexcept>
 #include <string.h>
 
@@ -39,8 +42,18 @@ BaseEnricher::BaseEnricher(const entry_ref* srcRef, MappingUtil* mapper)
     :
     fMapper(mapper),
     fHttpSession(new BHttpSession()),
-    fSourceRef(*srcRef)
+    fSourceRef(*srcRef),
+    fAttrInfoRead(false)
 {
+}
+
+sen::ListConfig BaseEnricher::ListConfigOf(const char* attribute)
+{
+    if (!fAttrInfoRead) {
+        fAttrInfoRead = true;
+        fMapper->GetMimeTypeAttrInfo(&fSourceRef, &fAttrInfo);
+    }
+    return sen::ListConfigOf(fAttrInfo, attribute);
 }
 
 BaseEnricher::~BaseEnricher()
@@ -81,15 +94,18 @@ status_t BaseEnricher::MapAttrsToServiceParams(const BMessage *attrMsg, BMessage
             continue;
         }
 
-        // todo: handle collection values for Strings (similar to CSV with "," and enclosing values with "," in quotes)
+        // the values of an attribute that is a list (the attribute info of the type says so) are the values of the service parameter, one by one;
+        // any other string is one value, whatever it contains (sento SenList.h: quotes, separator)
         if (type == B_STRING_TYPE) {
-            BString valueStr(reinterpret_cast<const char*>(data), dataSize);
+            BString valueStr(reinterpret_cast<const char*>(data), strnlen(reinterpret_cast<const char*>(data), dataSize));
 
             if (! valueStr.IsEmpty()) {
-                BStringList valueList;
-                valueStr.Split(";", true, valueList);
-                for (int32 v = 0; v < valueList.CountStrings(); v++) {
-                    serviceParamMsg->AddString(paramName, valueList.StringAt(v));
+                const sen::ListConfig list = ListConfigOf(key);
+                if (list.isList) {
+                    for (const std::string& value : sen::list::Split(valueStr.String(), list.separator))
+                        serviceParamMsg->AddString(paramName, value.c_str());
+                } else {
+                    serviceParamMsg->AddString(paramName, valueStr);
                 }
             } else {
                 printf("ignoring empty string value for attribute '%s' [%s]\n", paramName, key);
@@ -153,19 +169,25 @@ status_t BaseEnricher::MapServiceParamsToAttrs(const BMessage *serviceParamMsg, 
                 printf("message mapping not supported here, try with ConvertMessageToArray().\n");
                 break;
             }
-            // handle collection values for Strings (stored as list
-            // in service msg but as semicolon separated list in attrs)
+            // handle collection values for Strings (stored as list in the service message): an attribute that is a list (the attribute info of
+            // the type says so) gets them in one string, written as sento SenList.h has it (quotes for a value that has the separator);
+            // any other attribute has one value, the first
             case B_STRING_TYPE: {
-                BStringList values;
+                std::vector<std::string> values;
                 BString val;
 
                 for (int32 v = 0; v < count; v++) {
                 	val = serviceParamMsg->GetString(paramName, v, "");
                 	if (! val.Trim().IsEmpty()) {
-	                    values.Add(val);
+	                    values.push_back(val.String());
                 	}
                 }
-                BString value = values.Join(";");
+                const sen::ListConfig list = ListConfigOf(key);
+                BString value;
+                if (list.isList)
+                    value = sen::list::Join(values, list.separator).c_str();
+                else if (! values.empty())
+                    value = values.front().c_str();
                 attrMsg->AddString(key, value);
 
                 break;
@@ -404,16 +426,7 @@ status_t BaseEnricher::FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage *msgQue
                         // omit empty values
                         if (value.Trim().IsEmpty())
                         	continue;
-                        // omit collections and just take first value
-                        if (value.FindFirst(";") > 0) { // if separator is first char, maybe it's significant
-                            printf("value list %s split to ", value.String());
-
-                            BStringList vals;
-                            value.Split(";", true, vals);
-                            value = vals.StringAt(0);
-
-                            printf("%s\n", value.String());
-                        }
+                        // (a list was split into values by MapAttrsToServiceParams: the first of them is taken above, a value is a value)
                         break;
                     }
                     case B_INT32_TYPE:

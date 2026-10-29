@@ -19,8 +19,10 @@ inline constexpr char kSemanticType[] = "document/scientific-paper";
 namespace attr {
 inline constexpr char kIdentifier[]    = "dc:identifier";		///< the DOI, bare: 10.1038/nature14539
 inline constexpr char kTitle[]         = "dc:title";
-inline constexpr char kCreator[]       = "dc:creator";			///< the names of the authors, separated by ';'
-inline constexpr char kSubject[]       = "dc:subject";			///< the keywords, separated by ';'
+/** the separator of the values of the attributes that are lists (the ontology of papers says is_list for them), see sento SenList.h: a name with a comma is in quotes */
+inline constexpr char kListSeparator   = ',';
+inline constexpr char kCreator[]       = "dc:creator";			///< the names of the authors, a list
+inline constexpr char kSubject[]       = "dc:subject";			///< the keywords, a list
 inline constexpr char kDescription[]   = "dc:description";		///< the abstract
 inline constexpr char kPublisher[]     = "dc:publisher";
 inline constexpr char kLanguage[]      = "dc:language";
