@@ -47,10 +47,17 @@ for name in $plugins; do
 	middle=$(sed -n 's/^[[:space:]]*middle[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
 	minor=$(sed -n 's/^[[:space:]]*minor[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
 	variety=$(sed -n 's/^[[:space:]]*variety[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
+	internal=$(sed -n 's/^[[:space:]]*internal[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)
 	version="$major.$middle.$minor"
-	# 0 = development, 2 = beta
-	[ "$variety" = 0 ] && version="$version~${SEN_VERSION_SUFFIX:-develop.1}"
-	[ "$variety" = 2 ] && version="$version~beta$(sed -n 's/^[[:space:]]*internal[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' $rdef | head -n1)"
+	# the stage and its count come from the resource (the About window of the plugin shows 0.1.0-beta.3 for the package 0.1.0~beta3);
+	# 0 = development, 2 = beta, a development version can be named with SEN_VERSION_SUFFIX (preview1: 0.1.0~preview1)
+	suffix=
+	case "$variety" in
+		0) suffix=develop; [ "${internal:-0}" -gt 0 ] && suffix=develop.$internal; suffix=${SEN_VERSION_SUFFIX:-$suffix} ;;
+		2) suffix=beta${internal:-1} ;;
+	esac
+	[ -n "$suffix" ] && version="$version~$suffix"
+	release=$suffix		# (the plugins of a release have the same stage: the package of all of them is named after it)
 	version="$version-$REVISION"
 
 	licenses='"MIT"'
@@ -107,9 +114,9 @@ if [ -n "$all" ]; then
 	stage=$ROOT/package-build/meta
 	rm -rf "$stage"
 	mkdir -p "$stage"
-	sed -e "s|@VERSION@|2.0.0~${SEN_VERSION_SUFFIX:-develop.1}-$REVISION|g" -e "s|@REQUIRES@|$requires|" package/PackageInfo.meta.in > "$stage/.PackageInfo"
+	sed -e "s|@VERSION@|2.0.0${release:+~$release}-$REVISION|g" -e "s|@REQUIRES@|$requires|" package/PackageInfo.meta.in > "$stage/.PackageInfo"
 	rm -f sen_plugins-*.hpkg
-	package create -C "$stage" "sen_plugins-2.0.0~${SEN_VERSION_SUFFIX:-develop.1}-$REVISION-any.hpkg" >/dev/null
-	echo "created sen_plugins-2.0.0~${SEN_VERSION_SUFFIX:-develop.1}-$REVISION-any.hpkg"
+	package create -C "$stage" "sen_plugins-2.0.0${release:+~$release}-$REVISION-any.hpkg" >/dev/null
+	echo "created sen_plugins-2.0.0${release:+~$release}-$REVISION-any.hpkg"
 fi
 rm -rf package-build

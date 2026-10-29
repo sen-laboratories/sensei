@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 0,
 
-	internal = 0,
+	internal = 1,
 
 	short_info = "SENSEI Text Navigator",
 	long_info  = "SEN module to resolve textual relations with well-known properties."

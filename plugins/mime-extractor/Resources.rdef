@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 0,
 
-	internal = 0,
+	internal = 1,
 
 	short_info = "SEN MIME Extractor",
 	long_info  = "SEN module to extract the attributes of a MIME type as its contents."
