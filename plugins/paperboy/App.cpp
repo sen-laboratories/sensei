@@ -4,6 +4,7 @@
  */
 
 #include "App.h"
+#include "../../common/Notice.h"
 #include <sen/SenAbout.h>
 
 #include <cstdio>
@@ -15,7 +16,6 @@
 
 #include <Alert.h>
 #include <Entry.h>
-#include <Notification.h>
 #include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
@@ -223,13 +223,7 @@ App::RefsReceived(BMessage* message)
 void
 App::_Notify(const entry_ref& file, status_t result, const std::string& headline, const std::string& text)
 {
-	BNotification notification(result == B_OK ? B_INFORMATION_NOTIFICATION : B_ERROR_NOTIFICATION);
-	notification.SetGroup("SEN Paperboy");
-	notification.SetTitle(headline.empty() ? "Paper not enriched" : headline.c_str());
-	notification.SetContent(text.empty() ? strerror(result) : text.c_str());
-	if (result == B_OK)
-		notification.SetOnClickFile(&file);
-	notification.Send();
+	sensei::Notify("SEN Paperboy", headline.empty() ? "Paper not enriched" : headline.c_str(), text.empty() ? strerror(result) : text.c_str(), result == B_OK, &file);
 }
 
 

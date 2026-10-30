@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2024-2026 SEN Labs e.U.
  */
-#include <Alert.h>
 #include <Entry.h>
 #include <Errors.h>
 #include <StringList.h>
@@ -19,6 +18,7 @@
 
 #include "App.h"
 #include "BookRanking.h"
+#include "../../common/Notice.h"
 #include "../../common/ThumbnailUtil.h"
 #include <sen/SenAbout.h>
 #include <sen/SenChoice.h>
@@ -154,11 +154,10 @@ void App::ArgvReceived(int32 argc, char ** argv) {
     RefsReceived(&refsMsg);
 }
 
+// (a notification, not a dialog: the plugin is not held up and nothing stays on the screen)
 void App::ShowError(const char* message)
 {
-    BAlert* alert = new BAlert("Error in SEN Book Enricher", message, "Oh no.");
-    alert->SetFlags(alert->Flags() | B_WARNING_ALERT | B_CLOSE_ON_ESCAPE);
-    alert->Go();
+    sensei::Notify("SEN Book Enricher", "Book not enriched", message, false);
 }
 
 void App::RefsReceived(BMessage *message)
@@ -170,6 +169,8 @@ void App::RefsReceived(BMessage *message)
         printf("cancelled, nothing was changed.\n");
     else if (result != B_OK)
         fExitCode = 1;
+    else if (!fAuto)
+        sensei::Notify("SEN Book Enricher", "Book enriched", fEnrichedRef.name, true, &fEnrichedRef);   // (a script that asked for --auto does not need to be told)
 
     reply.AddInt32(sensei::key::kResult, result);
     reply.AddString(sen::key::kDetail, strerror(result));
@@ -226,7 +227,9 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     if (result == B_CANCELED)
         return result;
     if (result == B_ENTRY_NOT_FOUND) {
-        ShowError("OpenLibrary does not know a book like this.");
+        BString text("OpenLibrary has no book called \"");
+        text << fWanted << "\". Set the title of the file (dc:title), or name the file after the book.";
+        ShowError(text.String());
         return result;
     }
     if (result != B_OK) {
@@ -269,6 +272,7 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
         ShowError("Failed to write back metadata.");
         return result;
     }
+    fEnrichedRef = resultRef;
     status_t bookResult = B_OK;
 
     // fetch cover image
@@ -395,21 +399,41 @@ status_t App::ChooseBook(const BMessage& books, const BString& wanted, int32* ch
     if (candidates.empty())
         return B_ENTRY_NOT_FOUND;
 
-    if (candidates.size() == 1) {
-        *chosen = keys[0];
-        return B_OK;
+    // which of them have the title that was asked for (an answer of another book is no help, however well OpenLibrary ranks it)
+    std::vector<bool> matches;
+    size_t matching = 0;
+    for (int32 key : keys) {
+        BString index;
+        index << key;
+        BMessage doc;
+        const bool matched = books.FindMessage(index.String(), &doc) == B_OK && TitleMatches(doc, wanted);
+        matches.push_back(matched);
+        if (matched)
+            matching++;
     }
 
     // the best one (the first of the best, which is the one that OpenLibrary ranks higher)
-    size_t best = 0;
-    for (size_t i = 1; i < candidates.size(); i++) {
-        if (candidates[i].score > candidates[best].score)
+    size_t best = candidates.size();
+    for (size_t i = 0; i < candidates.size(); i++) {
+        if (fAuto && !matches[i])
+            continue;
+        if (best == candidates.size() || candidates[i].score > candidates[best].score)
             best = i;
     }
 
     if (fAuto) {
+        if (best == candidates.size()) {
+            printf("got %zu books, none of them with the title '%s'.\n", candidates.size(), wanted.String());
+            return B_ENTRY_NOT_FOUND;
+        }
         printf("got %zu books, taking the best: '%s'.\n", candidates.size(), candidates[best].title.String());
         *chosen = keys[best];
+        return B_OK;
+    }
+
+    // one answer, and it is the book that was asked for: nothing to ask
+    if (candidates.size() == 1 && matching == 1) {
+        *chosen = keys[0];
         return B_OK;
     }
 
@@ -448,6 +472,7 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 
     // what is asked for: the title, to compare the answers with it
     BString wanted(paramsMsg.GetString("title", ""));
+    fWanted = wanted;
 
     // if the title was taken from the file name, we need to send it as a defined API query parameter "q"
     // because it may contain anything from author name to book title to year
