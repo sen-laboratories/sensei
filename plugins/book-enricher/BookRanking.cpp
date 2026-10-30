@@ -122,6 +122,16 @@ ScoreBook(const BMessage& doc, int32 position, int32 count, const BString& wante
     return rank * 0.35f + title * 0.30f + complete * 0.20f + known * 0.15f;
 }
 
+bool
+TitleMatches(const BMessage& doc, const BString& wanted)
+{
+    const BString asked = Normalized(wanted.String());
+    if (asked.IsEmpty())
+        return true;
+    const BString found = Normalized(doc.GetString("title", ""));
+    return !found.IsEmpty() && (found.FindFirst(asked) >= 0 || asked.FindFirst(found) >= 0);
+}
+
 /** an answer of OpenLibrary as it is shown in the list */
 sen::Candidate
 DescribeBook(const BMessage& doc, float score)

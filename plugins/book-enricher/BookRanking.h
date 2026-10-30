@@ -25,3 +25,6 @@ float ScoreBook(const BMessage& doc, int32 position, int32 count, const BString&
 
 /** An answer of OpenLibrary as it is shown in the list of sen::ChooseCandidate(): title, authors and year, ISBN and pages, the source. */
 sen::Candidate DescribeBook(const BMessage& doc, float score);
+
+/** Whether the title of an answer is the title that was asked for, or one holds the other ("The Pragmatic Programmer: from journeyman to master" for "The Pragmatic Programmer"); true if nothing was asked. */
+bool TitleMatches(const BMessage& doc, const BString& wanted);

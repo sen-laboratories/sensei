@@ -5,6 +5,8 @@
 #pragma once
 
 #include <Application.h>
+#include <Entry.h>
+#include <String.h>
 #include <sen/SenOntoBooks.h>
 
 #include "../../common/BaseEnricher.h"
@@ -53,6 +55,8 @@ private:
     bool                fDebugMode;
     bool                fOverwrite;
     bool                fAuto;          // take the best book without asking
+    BString             fWanted;        // the title that the last lookup asked for (for the message when nothing is found)
+    entry_ref           fEnrichedRef;   // the file that was enriched, as it is called now (it may have been renamed after its title)
     int32               fExitCode;
 
     BaseEnricher*       fBaseEnricher;
