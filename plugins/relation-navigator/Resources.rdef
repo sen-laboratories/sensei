@@ -17,7 +17,7 @@ resource app_version {
 	internal = 3,
 
 	short_info = "SENSEI Relation Navigator",
-	long_info  = "SEN module to open a file of a relation: the target is shown in Tracker, in its folder, selected."
+	long_info  = "SEN module to open a file of a relation: the target is opened with the application of its type."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */

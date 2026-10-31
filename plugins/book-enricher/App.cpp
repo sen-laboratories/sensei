@@ -410,6 +410,12 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         return result;
     }
 
+    // What an earlier lookup wrote to the file and only OpenLibrary knows (the keys of the authors, the cover, the class, the number of pages, the year) is the
+    // answer, not the question: OpenLibrary takes each parameter as a filter, and a book that has been enriched once would find nothing.
+    const char* const kAnswers[] = {"author_key", "cover_i", "lcc", "number_of_pages_median", "publish_year"};
+    for (const char* answer : kAnswers)
+        paramsMsg.RemoveName(answer);
+
     // what is asked for: the title, to compare the answers with it
     BString wanted(paramsMsg.GetString("title", ""));
     fWanted = wanted;
@@ -443,8 +449,51 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
         return result;
     }
 
-    // get docs
+    // Everything but the title narrows the search, and all of it must match. A file keeps what an earlier lookup wrote (the subjects are many), or what belonged to
+    // another book before the file was renamed: one value that OpenLibrary does not list is enough for no answer at all, which is hard to understand. So, if there
+    // is none: ask again without the subjects, the publisher and the format; and, if there is still none, with the title alone (the first answer is checked against it).
     BMessage books;
+    const char* const kStages[][4] = {{"subject", "publisher", "format", NULL}, {"isbn", "author_name", "language", NULL}};
+    for (const auto& stage : kStages) {
+        if (queryResult.FindMessage("docs", &books) == B_OK && books.CountNames(B_ANY_TYPE) > 0)
+            break;
+        bool narrowed = false;
+        for (const char* name : stage) {
+            if (name != NULL)
+                narrowed = (paramsMsg.RemoveName(name) == B_OK) || narrowed;
+        }
+        if (!narrowed)
+            continue;
+        printf("no answer for all of the attributes of the file, asking again without %s...\n", stage[0]);
+        queryResult.MakeEmpty();
+        result = fBaseEnricher->FetchByHttpQuery(queryUrl, &paramsMsg, &queryResult);
+        if (result != B_OK) {
+            printf("error in remote service call: %s\n", strerror(result));
+            return result;
+        }
+    }
+
+    // The last resort: the name of the file, as a free query (it may hold the title, the author, the year...), as when the file has no title at all. The answers are
+    // compared with it, too.
+    const BString fileName(inputAttrsMsg.GetString(sensei::key::kName, ""));
+    if (!(queryResult.FindMessage("docs", &books) == B_OK && books.CountNames(B_ANY_TYPE) > 0) && !fileName.IsEmpty()) {
+        printf("still no answer, asking for the name of the file '%s'.\n", fileName.String());
+        BMessage nameParams;
+        nameParams.AddString("q", fileName);
+        nameParams.AddString("fields", "*");
+        nameParams.AddString("limit", kMaxResults);
+        queryResult.MakeEmpty();
+        result = fBaseEnricher->FetchByHttpQuery(queryUrl, &nameParams, &queryResult);
+        if (result != B_OK) {
+            printf("error in remote service call: %s\n", strerror(result));
+            return result;
+        }
+        wanted = fileName;
+        fWanted = fileName;
+    }
+
+    // get docs
+    books.MakeEmpty();
     result = queryResult.FindMessage("docs", &books);
     if (result != B_OK) {
         printf("unexpected result format, could not find books in 'docs' list: %s\n", strerror(result));

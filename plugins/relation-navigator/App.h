@@ -9,7 +9,7 @@
 #include <Entry.h>
 
 /**
- * @brief Navigator for the files of relations: shows the target of a relation in Tracker.
+ * @brief Navigator for the files of relations: opens the target of a relation with the application of its type (the fallback for a relation without a navigator of its own).
  *
  * The file of a relation in a relation view is a proxy for the target of the relation (it carries SEN:REL:TRG). Opening it opens the
  * folder that the target is in, with the target selected; for a target that is a folder, the folder itself. This is the default for all
@@ -28,6 +28,6 @@ public:
 private:
 	/** The target of a relation file (itself for any other file). */
 	static entry_ref	TargetOf(const entry_ref& ref, bool* found);
-	/** Ask Tracker to open the folder of the target and select it. */
-	status_t			Reveal(const entry_ref& target);
+	/** Open the target the way a double click on it would. */
+	status_t			Open(const entry_ref& target);
 };

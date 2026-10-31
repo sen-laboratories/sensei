@@ -55,7 +55,7 @@ sensei
 
 **reference-navigator**: SEN module to open the targets of references: what they point to decides how (a MIME type, its attribute, any other file).
 
-**relation-navigator**: SEN module to open a file of a relation: the target is shown in Tracker, in its folder, selected.
+**relation-navigator**: SEN module to open a file of a relation: the target is opened with the application of its type.
 
 **sourcecode-extractor**: SEN module to identify the language of source code files (sets their semantic type) and to extract their references to other files: includes, imports and modules (C, C++, Go, Java, JavaScript, Python, Rust, TypeScript).
 
