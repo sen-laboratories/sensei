@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "App.h"
+#include "Authors.h"
 #include "BookRanking.h"
 #include "../../common/Notice.h"
 #include "../../common/ThumbnailUtil.h"
@@ -298,74 +299,13 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
 
     printf("All Book data retrieved successfully, done.\n");
 
-    // fetch author - todo: demo, outfactor later. OpenLibrary lists all authors, the first one is made (the key is no list: it holds the first).
-    BString authorId(reply->GetString(OPENLIBRARY_API_AUTHOR_KEY, ""));
-
-    if (authorId.IsEmpty()) {
+    // the authors: each one a person next to the book, with its photo as the thumbnail, and related to the book (see Authors.h)
+    if (fAuthorKeys.IsEmpty()) {
         printf("no author in the result, skipping.\n");
-        return bookResult;
-    }
-
-    BMessage authorResult;
-    result = FetchAuthor(authorId.String(), &authorResult);
-    if (result != B_OK) {
-        printf("could not look up the author %s, skipping: %s\n", authorId.String(), strerror(result));
-        return bookResult;
-    }
-
-    // create output file for result metadata in attributes
-    BString name = authorResult.GetString("META:name", "Unknown Author");
-    name.ReplaceAll('/', '-');  // (a file name cannot hold a path)
-    printf("creating Author with name '%s'...\n", name.String());
-
-    BFile outputFile(name.String(), B_CREATE_FILE | B_READ_WRITE);
-    BEntry entry(name.String());
-
-    entry_ref authorRef;
-    result = entry.InitCheck();
-    if (result == B_OK)
-        result = entry.GetRef(&authorRef);
-    if (result != B_OK) {
-        printf("could not create author file %s: %s\n", name.String(), strerror(result));
-        return bookResult;
-    }
-
-    outputFile.Sync();  // ensure file is created so we can access up-to-date attributes below
-
-    BNode node(&authorRef);
-    BNodeInfo nodeInfo(&node);
-    result = nodeInfo.InitCheck();
-
-    // always ensure to set correct file type
-    if (result == B_OK)
-        result = nodeInfo.SetType(AUTHOR_MIME_TYPE);
-    if (result != B_OK) {
-        printf("failed to write back metadata for author: %s\n", strerror(result));
-        return bookResult;
-    }
-
-    // write info to attrs
-    result = fMapper->MapMsgToAttrs(&authorResult, &authorRef, true);  // TODO: fOverwrite
-    if (result != B_OK)
-        printf("failed to write the metadata of the author: %s\n", strerror(result));
-
-    // fetch author photo
-    const char* photoId = authorResult.GetString(OPENLIBRARY_API_COVER_KEY);
-    if (photoId != NULL) {
-        std::string photo;
-
-        result = FetchPhoto(photoId, &photo);
-        if (result == B_OK && photo.length() > 0) {
-            result = WriteThumbnail(&authorRef, photo);
-            if (result == B_OK)
-                printf("Photo written to thumbnail successfully.\n");
-            else
-                printf("error writing thumbnail to file %s: %s\n", authorRef.name, strerror(result));
-        } else {
-            printf("error fetching author photo, skipping.\n");
-        }
     } else {
-        printf("could not get author photo ID from result, skipping.\n");
+        AuthorMaker authors(fBaseEnricher, fOverwrite, fDebugMode);
+        int32 made = authors.MakeAuthors(resultRef, fAuthorKeys, fAuthorNames);
+        printf("%d of %d authors made.\n", (int) made, (int) fAuthorKeys.CountStrings());
     }
 
     return bookResult;
@@ -554,6 +494,16 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
 
     BaseEnricher::ConvertMessageMapsToArray(&bookFound, &resultBook, &valueMapKeys);
 
+    // the authors as OpenLibrary has them (the keys and the names in the same order): the attributes of the book keep only the first key, the
+    // authors are made from these, see Authors.h
+    fAuthorKeys.MakeEmpty();
+    fAuthorNames.MakeEmpty();
+    const char* authorValue;
+    for (int32 index = 0; resultBook.FindString("author_key", index, &authorValue) == B_OK; index++)
+        fAuthorKeys.Add(authorValue);
+    for (int32 index = 0; resultBook.FindString("author_name", index, &authorValue) == B_OK; index++)
+        fAuthorNames.Add(authorValue);
+
 	if (!fOverwrite) {
 	   // use input attributes as base for result so they get updated and type converted below
 	   // todo: we need to merge same values here!
@@ -585,67 +535,6 @@ status_t App::FetchBookMetadata(const entry_ref* ref, BMessage *resultMsg)
     return B_OK;
 }
 
-// todo: make this on demand and bind to filetype application/x-person
-status_t App::FetchAuthor(const char* authorId, BMessage *resultMsg)
-{
-    if (authorId == NULL || authorId[0] == '\0')
-        return B_BAD_VALUE;
-
-    // add author attribute mapping
-    fMapper->AddAlias("META:name", "name");
-    fMapper->AddAlias("META:birthdate", "birth_date");
-    fMapper->AddAlias(OPENLIBRARY_API_COVER_KEY, "photos");
-
-    BUrl queryUrl;
-    BMessage queryParams;
-    queryParams.AddString("id", authorId);
-
-    status_t result = fBaseEnricher->CreateHttpApiUrl(API_AUTHORS_URL, &queryParams, &queryUrl);
-    if (result != B_OK) {
-        printf("error in constructing service call: %s\n", strerror(result));
-        return result;
-    }
-
-    BMessage authorResult;
-    result = fBaseEnricher->FetchRemoteJson(queryUrl, authorResult);
-
-    if (result != B_OK) {
-        printf("error accessing remote API: %s\n", strerror(result));
-        return result;
-    }
-
-    printf("got author result:\n");
-    authorResult.PrintToStream();
-
-    BMessage author;
-    BStringList valueMapKeys;
-    valueMapKeys.Add("photos");
-
-    BaseEnricher::ConvertMessageMapsToArray(&authorResult, &author, &valueMapKeys);
-
-    result = fBaseEnricher->MapServiceParamsToAttrs(&author, resultMsg);
-    if (result != B_OK) {
-        printf("error mapping back result: %s\n", strerror(result));
-        return result;
-    }
-    if (fDebugMode) {
-        printf("Got attribute result message:\n");
-        resultMsg->PrintToStream();
-    }
-
-    // update empty or default file name if we may overwrite
-    // todo: find a better (i.e. translation safe!) way to determine the default file name
-    if (fOverwrite) {
-        // the author is named after the person
-        BString personName = resultMsg->GetString("META:name", "");
-        if (!personName.IsEmpty()) {
-            resultMsg->AddString(sensei::key::kName, personName);
-        }
-    }
-
-    return B_OK;
-}
-
 status_t App::FetchCover(const char* coverId, std::string* coverImage)
 {
     BUrl queryUrl;
@@ -660,28 +549,6 @@ status_t App::FetchCover(const char* coverId, std::string* coverImage)
     }
 
     result = fBaseEnricher->FetchRemoteContent(queryUrl, coverImage);
-    if (result != B_OK) {
-        printf("error executing remote service call: %s\n", strerror(result));
-        return result;
-    }
-
-    return B_OK;
-}
-
-status_t App::FetchPhoto(const char* photoId, std::string* image)
-{
-    BUrl queryUrl;
-    BMessage queryParams;
-    queryParams.AddString("photoId", photoId);
-    queryParams.AddString("size", "M");
-
-    status_t result = fBaseEnricher->CreateHttpApiUrl(API_AUTHOR_IMG_URL, &queryParams, &queryUrl);
-    if (result != B_OK) {
-        printf("error in constructing service call: %s\n", strerror(result));
-        return result;
-    }
-
-    result = fBaseEnricher->FetchRemoteContent(queryUrl, image);
     if (result != B_OK) {
         printf("error executing remote service call: %s\n", strerror(result));
         return result;
