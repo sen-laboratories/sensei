@@ -8,6 +8,7 @@ One folder per plugin in `plugins/`, named for what it does; one package each. S
 sensei
 ├── common                      code that several plugins use
 └── plugins
+    ├── authorship-navigator  navigate
     ├── book-enricher         enrich
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
@@ -22,21 +23,21 @@ sensei
 
 | Plugin | Package | Features | Handles | Produces | Signature |
 |---|---|---|---|---|---|
-| `book-enricher` (SEN Book Enrichment Tool (BERT)) | `sen_plugin_book_enricher` 0.1.0~dev | enrich | `entity/x-vnd.sen-labs.entity.book` | - | `application/x-vnd.sen-plugin.sen-labs.book-enricher` |
-| `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0~dev | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
-| `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1~dev | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
-| `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0~dev | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.reference` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
-| `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0~dev | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
-| `pdf-navigator` (SENSEI PDF Navigator) | `sen_plugin_pdf_navigator` 0.0.1~dev | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.pdf-navigator` |
-| `reference-navigator` (SENSEI Reference Navigator) | `sen_plugin_reference_navigator` 0.1.0~dev | navigate | `relation/x-vnd.sen-labs.relation.reference`, `relation/x-vnd.sen-labs.relation.dependency`, `relation/x-vnd.sen-labs.relation.contains`, `meta/x-vnd.sen-labs.meta-mime-attribute` | - | `application/x-vnd.sen-plugin.sen-labs.reference-navigator` |
-| `relation-navigator` (SENSEI Relation Navigator) | `sen_plugin_relation_navigator` 0.1.0~dev | navigate | `relation` | - | `application/x-vnd.sen-plugin.sen-labs.relation-navigator` |
-| `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0~dev | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
-| `text-navigator` (SENSEI Text Navigator) | `sen_plugin_text_navigator` 0.0.1~dev | navigate | `relation/x-vnd.sen-labs.relation.textref`, `relation/x-vnd.sen-labs.relation.sourcecode.include` | - | `application/x-vnd.sen-plugin.sen-labs.text-navigator` |
+| `authorship-navigator` (SENSEI Authorship Navigator) | `sen_plugin_authorship_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.authorship` | - | `application/x-vnd.sen-plugin.sen-labs.authorship-navigator` |
+| `book-enricher` (SEN Book Enrichment Tool (BERT)) | `sen_plugin_book_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.book` | - | `application/x-vnd.sen-plugin.sen-labs.book-enricher` |
+| `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0 | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
+| `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1 | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
+| `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0 | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.citation` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
+| `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0 | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
+| `pdf-navigator` (SENSEI PDF Navigator) | `sen_plugin_pdf_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.pdf-navigator` |
+| `reference-navigator` (SENSEI Reference Navigator) | `sen_plugin_reference_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.reference`, `relation/x-vnd.sen-labs.relation.dependency`, `relation/x-vnd.sen-labs.relation.contains`, `meta/x-vnd.sen-labs.meta-mime-attribute` | - | `application/x-vnd.sen-plugin.sen-labs.reference-navigator` |
+| `relation-navigator` (SENSEI Relation Navigator) | `sen_plugin_relation_navigator` 0.1.0 | navigate | `relation` | - | `application/x-vnd.sen-plugin.sen-labs.relation-navigator` |
+| `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0 | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
+| `text-navigator` (SENSEI Text Navigator) | `sen_plugin_text_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.textref`, `relation/x-vnd.sen-labs.relation.sourcecode.include` | - | `application/x-vnd.sen-plugin.sen-labs.text-navigator` |
 
-**book-enricher**: SEN module to grab metadata for books from online services (OpenLibrary): the attributes (title, authors, ISBN, pages, publisher, subjects...), the cover as the thumbnail
-(`Media:Thumbnail`) and the first author as a person. If OpenLibrary finds **more than one book** (up to 20), the user chooses in a window (`sen::ChooseCandidate`, sento): the best first, rated by the rank of
-OpenLibrary (35%), how close the title is to the one asked for (30%), how complete the entry is (20%) and how well known the book is (15%, editions and readers). `bert --auto <file>` takes the best without asking
-(for scripts); cancelling the window changes nothing. Other plugins that find several candidates (papers from different sources and formats) use the same window.
+**authorship-navigator**: SEN module to open the author of a book (the target of an Authorship relation) with the application of the person.
+
+**book-enricher**: SEN module to grab metadata for books from online services.
 
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
 
