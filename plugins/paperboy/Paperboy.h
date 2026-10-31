@@ -10,6 +10,8 @@
 #include <Entry.h>
 #include <Message.h>
 
+#include <sen/SenChoice.h>
+
 #include "PaperApi.h"
 #include "PaperHttp.h"
 #include "PaperModel.h"
@@ -65,6 +67,16 @@ private:
 	 * @return B_OK, B_ENTRY_NOT_FOUND if no paper matches, B_CANCELED if the user did not choose
 	 */
 	status_t					_FindByTitle(const DocumentFacts& facts, paperboy::Reference* paper);
+	/**
+	 * The paper in the other sources, when OpenAlex does not know it: at arXiv by an identifier that the document names; then by the title at Semantic Scholar,
+	 * DBLP and arXiv (the settings say which are asked; a source that does not answer is skipped).
+	 * @param how source::kArxiv if the document named the identifier, else source::kTitle
+	 * @return B_OK, B_ENTRY_NOT_FOUND if none knows it, B_CANCELED if the user did not choose
+	 */
+	status_t					_FindElsewhere(const DocumentFacts& facts, bool factsRead, const std::vector<std::string>& arxivIds, paperboy::Paper* found,
+									const char** how);
+	/** The user says which of several papers is the one (a window), -1 if none was chosen. */
+	int32						_AskWhich(const std::vector<sen::Candidate>& candidates);
 	/** The works that a paper cites, with DOI and title where OpenAlex has them. */
 	void						_FetchReferences(const paperboy::Paper& paper, std::vector<paperboy::Reference>* references);
 	/** @return true if the file was renamed after the pattern of the settings */

@@ -5,6 +5,7 @@
 
 // Tests of core/: no Haiku needed. Build and run with tests/run.sh (needs the nlohmann/json headers).
 
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -17,7 +18,10 @@
 #include "PaperDoi.h"
 #include "PaperJson.h"
 #include "PaperName.h"
+#include "PaperPeople.h"
 #include "PaperSettings.h"
+#include "PaperSources.h"
+#include "PaperString.h"
 #include "PaperTitle.h"
 
 using namespace paperboy;
@@ -310,6 +314,25 @@ TestSettings()
 	CHECK(settings.maxPages == 5);
 	CHECK(settings.rename);
 
+	// the other sources: all on, each can be switched off
+	CHECK(settings.semanticScholar && settings.dblp && settings.arxiv);
+	ParseSettings("dblp = no\nsemantic_scholar = off\n", &settings);
+	CHECK(!settings.dblp && !settings.semanticScholar && settings.arxiv);
+
+	// the authors: all of them (the first ten) by default
+	CHECK_EQ(settings.authors, "all");
+	CHECK(settings.maxAuthors == 10);
+	ParseSettings("authors = orcid\nmax_authors = 3\n", &settings);
+	CHECK_EQ(settings.authors, "orcid");
+	CHECK(settings.maxAuthors == 3);
+	ParseSettings("authors = no\n", &settings);
+	CHECK_EQ(settings.authors, "no");
+	ParseSettings("authors = maybe\nmax_authors = 500\n", &settings);
+	CHECK_EQ(settings.authors, "no");		// (not a value: it stays)
+	CHECK(settings.maxAuthors == 3);
+	ParseSettings("authors = all\n", &settings);
+	CHECK_EQ(settings.authors, "all");
+
 	// choosing between several papers: off by default for a script, the settings and the command line can switch it
 	CHECK(settings.choose);
 	ParseSettings("choose = no\n", &settings);
@@ -387,6 +410,184 @@ TestChoice()
 	CHECK(ScoreHit(-1.0, 99, 1, 0) >= 0.0);
 }
 
+static void
+TestSources()
+{
+	// the addresses
+	CHECK_EQ(ArxivIdUrl("1706.03762"), "https://export.arxiv.org/api/query?id_list=1706.03762&max_results=1");
+	CHECK_EQ(ArxivIdUrl("hep-th/9901001"), "https://export.arxiv.org/api/query?id_list=hep-th/9901001&max_results=1");
+	CHECK_EQ(ArxivSearchUrl("Deep \"learning\""), "https://export.arxiv.org/api/query?search_query=ti%3A%22Deep%20%20learning%20%22&max_results=5");
+	CHECK(SemanticScholarSearchUrl("A b").find("paper/search?query=A%20b&limit=5&fields=title,year,") != std::string::npos);
+	CHECK_EQ(DblpSearchUrl("A b"), "https://dblp.org/search/publ/api?q=A%20b&format=json&h=5");
+
+	// arXiv: a search, with a title that the feed breaks into lines
+	std::vector<Paper> papers;
+	CHECK(ParseArxivFeed(ReadFixture("arxiv-search.xml"), &papers));
+	CHECK(papers.size() == 2 || papers.size() == 1);
+	CHECK(!papers.empty());
+	if (!papers.empty()) {
+		const Paper& paper = papers.front();
+		CHECK_EQ(paper.title, "Attention Is All You Need");
+		CHECK_EQ(paper.arxivId, "1706.03762");
+		CHECK_EQ(paper.doi, "10.48550/arxiv.1706.03762");
+		CHECK_EQ(paper.service, "arxiv");
+		CHECK_EQ(paper.type, "preprint");
+		CHECK_EQ(paper.date, "2017-06-12");
+		CHECK(paper.year == 2017);
+		CHECK(paper.authors.size() == 8);
+		CHECK_EQ(paper.authors.front().name, "Ashish Vaswani");
+		CHECK(paper.abstract.find("The dominant sequence transduction models") == 0);
+		CHECK(paper.abstract.find('\n') == std::string::npos);
+		CHECK(paper.keywords.size() == 2);
+		CHECK_EQ(paper.keywords.front(), "cs.CL");
+		CHECK(paper.isOa);
+		CHECK_EQ(paper.oaStatus, "green");
+		CHECK(paper.locations.size() == 1);
+		CHECK_EQ(paper.locations.front().pdfUrl, "https://arxiv.org/pdf/1706.03762v7");
+		CHECK_EQ(paper.locations.front().landingUrl, "https://arxiv.org/abs/1706.03762");
+		CHECK_EQ(paper.venue, "arXiv");
+	}
+
+	// arXiv: an old identifier, the journal reference and the DOI of the journal
+	papers.clear();
+	CHECK(ParseArxivFeed(ReadFixture("arxiv-id-old.xml"), &papers));
+	CHECK(papers.size() == 1);
+	if (papers.size() == 1) {
+		CHECK_EQ(papers.front().arxivId, "hep-th/9711200");
+		CHECK_EQ(papers.front().doi, "10.1023/a:1026654312961");
+		CHECK_EQ(papers.front().venue, "Adv.Theor.Math.Phys.2:231-252,1998");
+	}
+
+	// arXiv: an answer that is no feed, and a feed without a paper (its only entry is an error)
+	papers.clear();
+	CHECK(!ParseArxivFeed("<html>Making sure you are not a bot</html>", &papers));
+	CHECK(ParseArxivFeed("<feed><entry><id>http://arxiv.org/api/errors#incorrect_id_format</id><title>Error</title></entry></feed>", &papers));
+	CHECK(papers.empty());
+	papers.clear();
+	CHECK(ParseArxivFeed("<feed><entry><id>http://arxiv.org/abs/2001.00001v2</id><title>A &amp; B &lt;C&gt; &#945;</title><author><name>X Y</name></author></entry></feed>", &papers));
+	CHECK(papers.size() == 1);
+	if (papers.size() == 1) {
+		CHECK_EQ(papers.front().title, "A & B <C> \xCE\xB1");
+		CHECK_EQ(papers.front().arxivId, "2001.00001");
+	}
+
+	// Semantic Scholar
+	papers.clear();
+	CHECK(ParseSemanticScholarSearch(ReadFixture("semanticscholar-search.json"), &papers));
+	CHECK(papers.size() == 2);
+	if (papers.size() == 2) {
+		const Paper& open = papers[0];
+		CHECK_EQ(open.title, "Attention is All you Need");
+		CHECK_EQ(open.service, "semanticscholar");
+		CHECK_EQ(open.arxivId, "1706.03762");
+		CHECK_EQ(open.doi, "10.48550/arxiv.1706.03762");		// (the preprint has a DOI of DataCite)
+		CHECK_EQ(open.type, "article");				// (the first of its types)
+		CHECK_EQ(open.date, "2017-06-12");
+		CHECK_EQ(open.venue, "Neural Information Processing Systems");
+		CHECK(open.abstract.find('\n') == std::string::npos);
+		CHECK(open.authors.size() == 2 && open.citedByCount == 150000);
+		CHECK(open.isOa && open.oaStatus == "green" && open.locations.size() == 1);
+		CHECK_EQ(open.locations.front().pdfUrl, "https://arxiv.org/pdf/1706.03762");
+
+		const Paper& closed = papers[1];
+		CHECK_EQ(closed.doi, "10.1007/978-3-031-12345-6_7");
+		CHECK_EQ(closed.date, "2022");
+		CHECK(!closed.isOa && closed.oaStatus == "closed" && closed.locations.empty());
+		CHECK_EQ(closed.type, "proceedings-article");
+		CHECK(closed.abstract.empty());
+	}
+	papers.clear();
+	CHECK(!ParseSemanticScholarSearch("{\"message\": \"Too Many Requests.\", \"code\": \"429\"}", &papers));
+	CHECK(!ParseSemanticScholarSearch("<html></html>", &papers));
+
+	// DBLP
+	papers.clear();
+	CHECK(ParseDblpSearch(ReadFixture("dblp-search.json"), &papers));
+	CHECK(papers.size() == 3);
+	if (papers.size() == 3) {
+		CHECK_EQ(papers[0].title, "Ontology-Mediated Neurosymbolic Constraint Acquisition");		// (no full stop)
+		CHECK_EQ(papers[0].service, "dblp");
+		CHECK_EQ(papers[0].type, "proceedings-article");
+		CHECK_EQ(papers[0].venue, "ISWC (Workshops), NeSy");
+		CHECK(papers[0].year == 2026);
+		CHECK(papers[0].authors.size() == 2);
+		CHECK_EQ(papers[0].authors[1].name, "Wei Wang");		// (DBLP's number for people of the same name is no part of it)
+		CHECK_EQ(papers[0].doi, "10.1007/978-3-032-00000-0_1");
+		CHECK(papers[0].isOa && papers[0].locations.size() == 1);
+		CHECK_EQ(papers[0].locations.front().pdfUrl, "https://ceur-ws.org/Vol-9999/paper1.pdf");
+		CHECK(papers[1].authors.size() == 1 && papers[1].authors.front().name == "Grace Single");		// (one author is no list)
+		CHECK_EQ(papers[1].type, "article");
+		CHECK(papers[1].doi.empty() && !papers[1].isOa && papers[1].oaStatus == "closed");
+		CHECK_EQ(papers[2].type, "preprint");
+	}
+	papers.clear();
+	CHECK(ParseDblpSearch(ReadFixture("dblp-none.json"), &papers));
+	CHECK(papers.empty());
+	CHECK(!ParseDblpSearch("<!doctype html><title>Making sure you're not a bot!</title>", &papers));
+}
+
+
+static void
+TestPeople()
+{
+	CHECK_EQ(StripTags("<a href=\"//commons.wikimedia.org/wiki/User:X\" title=\"User:X\">Maryse &amp; Co</a>"), "Maryse & Co");
+	CHECK_EQ(StripTags("plain  text"), "plain text");
+
+	CHECK_EQ(OrcidUrl("0000-0002-9322-3515", "person"), "https://pub.orcid.org/v3.0/0000-0002-9322-3515/person");
+	CHECK_EQ(WikidataSearchUrl("0000-0002-9322-3515"),
+		"https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=haswbstatement%3AP496%3D0000-0002-9322-3515&format=json");
+	CHECK(WikidataEntityUrl("Q3572699").find("ids=Q3572699&props=claims%7Cdescriptions") != std::string::npos);
+	CHECK(CommonsImageUrl("A b.jpg").find("titles=File%3AA%20b.jpg&prop=imageinfo") != std::string::npos);
+
+	PersonData person;
+	CHECK(ParseOrcidPerson(ReadFixture("orcid-person.json"), &person));
+	CHECK_EQ(person.name, "Yoshua Bengio");
+	CHECK_EQ(person.givenName, "Yoshua");
+	CHECK_EQ(person.familyName, "Bengio");
+	CHECK_EQ(person.orcid, "0000-0002-9322-3515");
+	CHECK(person.biography.find("professeur titulaire") != std::string::npos);
+	CHECK_EQ(person.homepage, "http://www.iro.umontreal.ca/~bengioy");
+	CHECK(person.sameAs.size() == 1 && person.sameAs[0] == "https://orcid.org/0000-0002-9322-3515");
+	CHECK(!ParseOrcidPerson("<html></html>", &person));
+	CHECK(!ParseOrcidPerson("{\"error\": \"not found\"}", &person));
+
+	CHECK(ParseOrcidEmployments(ReadFixture("orcid-employments.json"), &person));
+	CHECK(person.jobTitle.find(", ") != std::string::npos);
+	CHECK(person.jobTitle.find("Professeur titulaire") == 0);
+	CHECK(person.jobTitle.find("Montr") != std::string::npos);
+	CHECK(!ParseOrcidEmployments("[]", &person));
+
+	std::string qid;
+	CHECK(ParseWikidataSearch(ReadFixture("wikidata-search.json"), &qid));
+	CHECK_EQ(qid, "Q3572699");
+	CHECK(!ParseWikidataSearch("{\"query\":{\"search\":[]}}", &qid));
+	CHECK(!ParseWikidataSearch("{\"query\":{\"search\":[{\"title\":\"Property:P496\"}]}}", &qid));
+
+	CHECK(ParseWikidataEntity(ReadFixture("wikidata-entity.json"), "Q3572699", &person));
+	CHECK_EQ(person.wikidataId, "Q3572699");
+	CHECK_EQ(person.photoFile, "Yoshua Bengio 2019 cropped.jpg");
+	CHECK_EQ(person.birthDate, "1964-03-05");
+	CHECK(person.biography.find("professeur titulaire") != std::string::npos);		// (what the person says stays: Wikidata only fills what is missing)
+	CHECK_EQ(person.homepage, "http://www.iro.umontreal.ca/~bengioy");
+	CHECK(std::find(person.sameAs.begin(), person.sameAs.end(), "https://www.wikidata.org/wiki/Q3572699") != person.sameAs.end());
+	CHECK(std::find(person.sameAs.begin(), person.sameAs.end(), "https://en.wikipedia.org/wiki/Yoshua_Bengio") != person.sameAs.end());
+	CHECK(!ParseWikidataEntity(ReadFixture("wikidata-entity.json"), "Q1", &person));
+
+	// without a biography at ORCID, the description of Wikidata is the one
+	PersonData bare;
+	CHECK(ParseWikidataEntity(ReadFixture("wikidata-entity.json"), "Q3572699", &bare));
+	CHECK_EQ(bare.biography, "Canadian computer scientist (born 1964)");
+	CHECK_EQ(bare.name, "Yoshua Bengio");
+
+	CHECK(ParseCommonsImage(ReadFixture("commons-image.json"), &person));
+	CHECK(person.photoUrl.find("https://thumb.wikimedia.org/") == 0);
+	CHECK_EQ(person.photoLicense, "CC BY 4.0");
+	CHECK_EQ(person.photoCredit, "Maryse Boyce");
+	CHECK(person.photoPage.find("commons.wikimedia.org/wiki/File:") != std::string::npos);
+	CHECK(!ParseCommonsImage("{\"query\":{\"pages\":{\"-1\":{\"title\":\"File:Nope.jpg\",\"missing\":\"\"}}}}", &person));
+}
+
+
 int
 main(int argc, char** argv)
 {
@@ -401,6 +602,8 @@ main(int argc, char** argv)
 	TestSettings();
 	TestTitleAndApi();
 	TestChoice();
+	TestSources();
+	TestPeople();
 
 	std::printf("%d checks, %d failed\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;

@@ -36,6 +36,16 @@ In this order, the first that OpenAlex knows wins:
 5. the **title** (the Title field of the document if it looks like a title, else the biggest text of the first page) searched in OpenAlex; a hit is taken only if its title is at least 85 % the same words
    Several hits can be this like the title: they are rated (how like the title, then the rank of OpenAlex, then that a year is known) and shown in the window of SEN for choices, the best first, with where each comes from (the registrant of its DOI: arXiv, Zenodo, bioRxiv, a publisher...). Cancel, and nothing is written. `--auto` or `choose = no` takes the best without asking, which is what a batch of files wants.
 
+### The other sources
+
+A paper that OpenAlex does not know (a workshop paper of this year, a preprint of the last days) is asked for in three more sources, none of which needs a key or a login. A paper that they find is a paper like any other: it gets the semantic type, the metadata they have, and the file is named after the title.
+
+6. **arXiv**, by the identifier that the document names (the stamp of the first page), asked for at once: that is the paper. Its DOI is the one of the journal if the authors gave one, else the one of DataCite; the PDF is the open access copy (`green`).
+7. by the **title** (the same rules as for OpenAlex: at least 85 % the same words, several hits are chosen from), one source after the other, the first with a match wins:
+   **Semantic Scholar** (abstract, authors, venue, citation count, open access PDF), **DBLP** (the computer science bibliography: authors, venue, year, DOI and the edition) and **arXiv** (the preprints).
+
+What they say is in the attribute `paperboy:state` (`service`). They do not give the cited works (only OpenAlex does). A source that does not answer is skipped, and the next is asked: Semantic Scholar shares a small pool among all clients without a key and answers *429* when it is used up, and DBLP can put a page for bots in front of its interface (a page that no program can answer: Paperboy does not try to pass it). Both are noted in the log, and switched off with the settings below.
+
 If no service knows the paper (a new demo paper, a report), the title of the **document** itself becomes `dc:title` (the status in `paperboy:state` is `title_from_document`) and the file is named after it: papers come with names like `paper354.pdf`. Nothing else is guessed. A document without a usable title is left alone and the notification says so.
 
 The text comes from MuPDF (PDF and EPUB; a book is laid out first). A file that needs a password is not read.
@@ -66,6 +76,22 @@ The attributes live in BFS: they are lost when the file is copied to another fil
 
 The type `document/scientific-paper` and the attribute info of these attributes (public names, the columns that Tracker offers, the `dc:identifier` index on every volume) come from the ontology package **`sen_ontology_papers`** of [sen-oni](https://github.com/sen-laboratories/sen-oni), which this plugin requires: `pkgman install sen_plugin_paperboy` brings it along. The attributes that hold a message (`schema:author`, `schema:encoding`, `paperboy:state`) have no column, Tracker cannot show a message. Tracker takes the columns from the Haiku type (`BEOS:TYPE`), which stays `application/pdf`: the semantic type `META:TYPE` is what SEN works with.
 
+## The authors
+
+The authors of an enriched paper become **people**: files of the type `entity/x-vnd.sen-labs.entity.person` next to the paper, named after the author, with the *Authorship* relation to the paper (made by the SEN server, like BERT does for the authors of a book). OpenAlex gives the name and, for many authors, the **ORCID iD**. An author with an iD is looked up, by the iD (nobody is guessed from a name):
+
+| Where | What | Into |
+|---|---|---|
+| [ORCID](https://orcid.org) (public API) | name, **biography** (written by the person), homepage, the current employment | `foaf:name`, `foaf:givenName`, `foaf:familyName`, `dc:description`, `foaf:homepage`, `schema:jobTitle` |
+| [Wikidata](https://www.wikidata.org) (the entry with that ORCID iD, for notable people) | the **photo**, the birth date, the homepage and a short description if ORCID has none, the Wikipedia page | `Media:Thumbnail` (the photo, as the cover is for a book), `schema:birthDate`, `schema:sameAs` |
+| [Wikimedia Commons](https://commons.wikimedia.org) | the license and the photographer of the photo, and its page | `schema:license`, `schema:creditText`, `schema:image` |
+
+`schema:sameAs` lists the iDs of the person (ORCID, Wikidata, Wikipedia): a person is found again by the ORCID iD, anywhere on the volume, and not made twice; one without an iD is found by the name in the folder of the paper. What a person has written stays unless you overwrite (Shift on Enrich). An author without an ORCID iD is a person with the name alone.
+
+The setting `authors` says which authors: `all` (the default, the first `max_authors`, 10 by default), `orcid` (only those with an iD) or `no`. The photos are somebody else's work: their license and photographer are in the attributes, so that an application that shows the photo can say who made it.
+
+(Wikimedia sends an answer that Haiku's HTTP client cannot read, a header with an empty value, so Paperboy reads Wikimedia over a socket of its own; the other services go through the client of Haiku.)
+
 ## Citations
 
 Extraction returns one item with an entry for each cited work in each field (the format of the server): `_label` (title, else DOI), `path` (the file on this computer that has the cited DOI as `dc:identifier`, else `https://doi.org/<doi>`), `doi`, `title`, `year`. The type is the citation (`relation/x-vnd.sen-labs.relation.citation` of the papers ontology: the generic reference with the year of the cited work), the fields are mapped to `SEN:TO:PATH`, `dc:identifier`, `dc:title` and `SEN:REL:year`. A paper has no contained relations: a request for them (`--self`) is answered with nothing.
@@ -86,10 +112,13 @@ A plugin has no window: `~/config/settings/sen/paperboy.settings`, lines of `key
 | `api_key` | - | your free key of OpenAlex ([openalex.org/settings/api](https://openalex.org/settings/api)). Without one all requests from your address share a small daily budget that can be used up (the notification then says so) |
 | `title_search` | yes | look a paper up by its title if there is no DOI |
 | `choose` | yes | if the title search finds **several papers** (a preprint and the published one, copies in a repository), ask in a window which one it is; `no` (or `--auto`) takes the best |
+| `semantic_scholar`, `dblp`, `arxiv` | yes | ask this source for a paper that OpenAlex does not know (`arxiv = no` also stops the look-up of an arXiv identifier of the document) |
+| `authors` | all | make people of the authors of an enriched paper: `all`, `orcid` (only those with an ORCID iD) or `no` |
+| `max_authors` | 10 | how many authors (from the first) are made |
 | `max_pages` | 3 | pages from the start that are searched for a DOI |
 | `local_only` | no | extraction: only cited papers that are on this computer |
 
-**Privacy.** What leaves the computer: the DOI, and your address if you gave one. The title search sends the title (at most 250 characters) of the document: switch it off with `title_search = no`. Nothing else of the document is sent. The requests are paced (about 6 a second, a "slow down" is waited out) and sequential: a batch of files is worked one by one.
+**Privacy.** What leaves the computer: the DOI, and your address if you gave one; for the authors the ORCID iDs. The title search sends the title (at most 250 characters) of the document, to OpenAlex and, if it does not know the paper, to the other sources: switch it off with `title_search = no`, or a source with its own setting. Nothing else of the document is sent. The requests are paced (about 6 a second, a "slow down" is waited out) and sequential: a batch of files is worked one by one.
 
 ## Build and test
 

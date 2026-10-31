@@ -59,6 +59,7 @@ inline constexpr char kStatus[]        = "status";				///< ok, doi_not_found, no
 inline constexpr char kChecked[]       = "checked";				///< B_TIME_TYPE
 inline constexpr char kDoiSource[]     = "doiSource";			///< attribute, metadata, text, arxiv or title
 inline constexpr char kOpenAlexId[]    = "openAlexId";
+inline constexpr char kService[]       = "service";				///< where the data comes from: openalex, arxiv, semanticscholar or dblp
 inline constexpr char kUnpaywall[]     = "unpaywall";			///< bool, Unpaywall was asked
 inline constexpr char kReference[]     = "reference";			///< message, one per cited work: id, doi, title, year
 inline constexpr char kRefId[]         = "id";
@@ -82,7 +83,7 @@ inline constexpr char kMetadata[]      = "metadata";			///< a field of the docum
 inline constexpr char kFirstPage[]     = "text";				///< the text of the first page
 inline constexpr char kArxiv[]         = "arxiv";				///< the arXiv stamp of the first page
 inline constexpr char kLaterPage[]     = "later";				///< the text of the pages after the first: a cited paper is possible
-inline constexpr char kTitle[]         = "title";				///< found by the title in OpenAlex
+inline constexpr char kTitle[]         = "title";				///< found by the title (in OpenAlex or one of the other sources)
 }
 
 /** Fields of an item in the reply of an extraction, beyond the protocol fields of Sensei.h. */

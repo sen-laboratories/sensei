@@ -47,7 +47,7 @@ sensei
 
 **mime-extractor**: SEN module to extract the attributes of a MIME type as its contents.
 
-**paperboy**: SEN module to identify scientific papers, to look up their metadata and open access copies (OpenAlex, Unpaywall) and to extract the papers that they cite.
+**paperboy**: Finds scientific papers, looks up their metadata and free copies (DOI, arXiv ID or title), makes people of the authors (ORCID, Wikidata) and extracts cited papers.\nSources: OpenAlex, Unpaywall, arXiv, Semantic Scholar, DBLP; no keys needed.
 
 **pdf-extractor**: SEN module to extract structure outline from PDFs.
 

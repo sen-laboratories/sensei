@@ -127,7 +127,7 @@ EncodingMessage(const Paper& paper)
 
 BMessage
 StateMessage(const char* status, const char* doiSource, const std::string& openAlexId, bool unpaywall,
-	const std::vector<Reference>& references)
+	const std::vector<Reference>& references, const std::string& service = "")
 {
 	BMessage state;
 	state.AddString(key::kStatus, status);
@@ -136,6 +136,8 @@ StateMessage(const char* status, const char* doiSource, const std::string& openA
 		state.AddString(key::kDoiSource, doiSource);
 	if (!openAlexId.empty())
 		state.AddString(key::kOpenAlexId, openAlexId.c_str());
+	if (!service.empty())
+		state.AddString(key::kService, service.c_str());
 	state.AddBool(key::kUnpaywall, unpaywall);
 	for (size_t i = 0; i < references.size() && i < kMaxStoredReferences; i++) {
 		BMessage reference;
@@ -288,7 +290,7 @@ WritePaper(BNode& node, const Paper& paper, const char* doiSource, bool unpaywal
 	}
 
 	result = PutMessage(node, attr::kState,
-		StateMessage(outcome::kOk, doiSource, paper.openAlexId, unpaywall, references));
+		StateMessage(outcome::kOk, doiSource, paper.openAlexId, unpaywall, references, paper.service));
 	node.Sync();
 	return result;
 }

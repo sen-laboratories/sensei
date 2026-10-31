@@ -46,6 +46,8 @@ struct Reference {
 struct Paper {
 	std::string doi;							///< bare, lower case: 10.1038/nature14539
 	std::string openAlexId;						///< W2919115771
+	std::string arxivId;						///< 1706.03762, if the paper is on arXiv
+	std::string service;						///< where the data comes from: openalex, arxiv, semanticscholar, dblp
 	std::string title;
 	std::string type;							///< OpenAlex work type: article, preprint, book-chapter, ...
 	std::string date;							///< publication date as YYYY-MM-DD (or YYYY)

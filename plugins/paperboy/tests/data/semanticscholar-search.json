@@ -1,0 +1,38 @@
+{
+  "total": 2,
+  "offset": 0,
+  "next": 2,
+  "data": [
+    {
+      "paperId": "204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+      "externalIds": {"MAG": "2963403868", "ArXiv": "1706.03762", "DBLP": "conf/nips/VaswaniSPUJGKP17", "CorpusId": 13756489},
+      "title": "Attention is All you Need",
+      "venue": "Neural Information Processing Systems",
+      "year": 2017,
+      "abstract": "The dominant sequence transduction models are based on complex recurrent or\nconvolutional neural networks.",
+      "citationCount": 150000,
+      "isOpenAccess": true,
+      "openAccessPdf": {"url": "https://arxiv.org/pdf/1706.03762", "status": "GREEN", "license": null, "disclaimer": "Notice"},
+      "publicationTypes": ["JournalArticle", "Conference"],
+      "publicationDate": "2017-06-12",
+      "authors": [
+        {"authorId": "40348417", "name": "Ashish Vaswani"},
+        {"authorId": "1846258", "name": "Noam M. Shazeer"}
+      ]
+    },
+    {
+      "paperId": "0000000000000000000000000000000000000001",
+      "externalIds": {"DOI": "10.1007/978-3-031-12345-6_7", "DBLP": "conf/semweb/Example22"},
+      "title": "Ontology Matching in a Workshop",
+      "venue": "International Workshop on Ontology Matching",
+      "year": 2022,
+      "abstract": null,
+      "citationCount": 3,
+      "isOpenAccess": false,
+      "openAccessPdf": null,
+      "publicationTypes": ["Conference"],
+      "publicationDate": null,
+      "authors": [{"authorId": null, "name": "Ada Example"}]
+    }
+  ]
+}

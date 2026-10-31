@@ -1,0 +1,251 @@
+{
+ "entities": {
+  "Q3572699": {
+   "type": "item",
+   "id": "Q3572699",
+   "labels": {
+    "en": {
+     "language": "en",
+     "value": "Yoshua Bengio"
+    }
+   },
+   "descriptions": {
+    "en": {
+     "language": "en",
+     "value": "Canadian computer scientist (born 1964)"
+    }
+   },
+   "claims": {
+    "P106": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P106",
+       "hash": "9c3d69daa64fa3e8be33cfd27b4aeb95cf8366fe",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 15976092,
+         "id": "Q15976092"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "id": "Q3572699$479F01AD-BC06-4D2C-8581-67B6E5622BA8",
+      "rank": "normal"
+     },
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P106",
+       "hash": "551c564cb64a03da47cba624b0b5e914422c35f9",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 121594,
+         "id": "Q121594"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "id": "Q3572699$58dec8c1-4926-8e60-49a5-1f621644f5ff",
+      "rank": "normal"
+     },
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P106",
+       "hash": "857148c2e53b4ebd290b5954382ce601e294a4df",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 82594,
+         "id": "Q82594"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "id": "Q3572699$E43E87E3-CC83-49A9-B277-67C94EAB3FCA",
+      "rank": "normal"
+     },
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P106",
+       "hash": "38521fad135a91335b693848f8e74d5f8f0c304b",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 1265807,
+         "id": "Q1265807"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "id": "Q3572699$8a22b3be-c82e-4c40-9ee4-c5651429ce0f",
+      "rank": "normal"
+     }
+    ],
+    "P569": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P569",
+       "hash": "9fd64d6074465ee1f5bbeb1510c43b1bf3daf596",
+       "datavalue": {
+        "value": {
+         "time": "+1964-03-05T00:00:00Z",
+         "timezone": 0,
+         "before": 0,
+         "after": 0,
+         "precision": 11,
+         "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+        },
+        "type": "time"
+       },
+       "datatype": "time"
+      },
+      "type": "statement",
+      "id": "Q3572699$cc36c824-4f93-4956-55ac-948543d0fd09",
+      "rank": "normal"
+     }
+    ],
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "hash": "4ab4fffacf9203db39a8c6b22b18f2ee3c8e8166",
+       "datavalue": {
+        "value": "Yoshua Bengio 2019 cropped.jpg",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
+      },
+      "type": "statement",
+      "qualifiers-order": [
+       "P2096"
+      ],
+      "id": "Q3572699$f3127f7f-479f-6cca-d3bc-6227c0e2493c",
+      "rank": "preferred"
+     }
+    ],
+    "P108": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P108",
+       "hash": "8dddf44cc20f34195e6bf620801116384d6b2d38",
+       "datavalue": {
+        "value": {
+         "entity-type": "item",
+         "numeric-id": 392189,
+         "id": "Q392189"
+        },
+        "type": "wikibase-entityid"
+       },
+       "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "qualifiers-order": [
+       "P580",
+       "P1416"
+      ],
+      "id": "Q3572699$9fd740f9-4252-a55c-8c44-793a2d390f8e",
+      "rank": "normal"
+     }
+    ],
+    "P856": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P856",
+       "hash": "885bcc13fc54a6a03ff77bcc151390b2458f8020",
+       "datavalue": {
+        "value": "http://www.iro.umontreal.ca/~bengioy/yoshua_en/index.html",
+        "type": "string"
+       },
+       "datatype": "url"
+      },
+      "type": "statement",
+      "qualifiers-order": [
+       "P407",
+       "P2241"
+      ],
+      "id": "Q3572699$172A42B5-3F9F-426C-887E-AA97A887A774",
+      "rank": "deprecated"
+     },
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P856",
+       "hash": "c6e0dc8586ad629b3143c82c3f01218a251a5a4d",
+       "datavalue": {
+        "value": "https://yoshuabengio.org/fr/",
+        "type": "string"
+       },
+       "datatype": "url"
+      },
+      "type": "statement",
+      "qualifiers-order": [
+       "P407"
+      ],
+      "id": "Q3572699$939dd34c-41d1-278a-58be-108cc40f4ea8",
+      "rank": "normal"
+     },
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P856",
+       "hash": "c1c1ab19ac236c4f49913fc5653543d26b74beaf",
+       "datavalue": {
+        "value": "https://yoshuabengio.org/",
+        "type": "string"
+       },
+       "datatype": "url"
+      },
+      "type": "statement",
+      "qualifiers-order": [
+       "P407"
+      ],
+      "id": "Q3572699$8e13049e-47f4-8cb8-2370-07d50687c4e7",
+      "rank": "normal"
+     }
+    ],
+    "P496": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P496",
+       "hash": "d7822161fefa25e93f5a1b33ec7232c64ca73bee",
+       "datavalue": {
+        "value": "0000-0002-9322-3515",
+        "type": "string"
+       },
+       "datatype": "external-id"
+      },
+      "type": "statement",
+      "id": "Q3572699$310f73c0-4ade-33db-7b2d-fe065612e34f",
+      "rank": "normal"
+     }
+    ]
+   },
+   "sitelinks": {
+    "enwiki": {
+     "site": "enwiki",
+     "title": "Yoshua Bengio",
+     "badges": []
+    }
+   }
+  }
+ },
+ "success": 1
+}

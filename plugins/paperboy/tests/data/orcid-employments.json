@@ -1,0 +1,76 @@
+{
+ "last-modified-date": {
+  "value": 1778683442608
+ },
+ "affiliation-group": [
+  {
+   "last-modified-date": {
+    "value": 1778683442608
+   },
+   "external-ids": {
+    "external-id": []
+   },
+   "summaries": [
+    {
+     "employment-summary": {
+      "created-date": {
+       "value": 1778682934510
+      },
+      "last-modified-date": {
+       "value": 1778683442608
+      },
+      "source": {
+       "source-orcid": {
+        "uri": "https://orcid.org/0000-0002-9322-3515",
+        "path": "0000-0002-9322-3515",
+        "host": "orcid.org"
+       },
+       "source-client-id": null,
+       "source-name": {
+        "value": "Yoshua Bengio"
+       },
+       "assertion-origin-orcid": null,
+       "assertion-origin-client-id": null,
+       "assertion-origin-name": null
+      },
+      "put-code": 36453982,
+      "department-name": "Département d'informatique et de recherche opérationnelle (DIRO)",
+      "role-title": "Professeur titulaire",
+      "start-date": {
+       "year": {
+        "value": "1993"
+       },
+       "month": {
+        "value": "09"
+       },
+       "day": {
+        "value": "01"
+       }
+      },
+      "end-date": null,
+      "organization": {
+       "name": "Université de Montréal",
+       "address": {
+        "city": "Montreal",
+        "region": "Quebec",
+        "country": "CA"
+       },
+       "disambiguated-organization": {
+        "disambiguated-organization-identifier": "https://ror.org/0161xgx34",
+        "disambiguation-source": "ROR"
+       }
+      },
+      "url": {
+       "value": "https://diro.umontreal.ca/repertoire-du-departement/professeurs/professeur/in/in13599/sg/Yoshua%20Bengio/"
+      },
+      "external-ids": null,
+      "display-index": "0",
+      "visibility": "public",
+      "path": "/0000-0002-9322-3515/employment/36453982"
+     }
+    }
+   ]
+  }
+ ],
+ "path": "/0000-0002-9322-3515/employments"
+}

@@ -32,6 +32,19 @@ struct Settings {
 	bool titleSearch = true;
 	/** if the title search finds several papers (a preprint and the published one, ...): ask which one; off: take the best (`--auto`) */
 	bool choose = true;
+	/**
+	 * The other sources, asked in this order when OpenAlex does not know a paper: Semantic Scholar, DBLP and arXiv (none of them needs a key). A paper whose document
+	 * names an arXiv identifier is looked up at arXiv first, whatever the settings say about the title search.
+	 */
+	bool semanticScholar = true;
+	bool dblp = true;
+	bool arxiv = true;
+	/**
+	 * The authors of an enriched paper become people (files next to the paper, with the Authorship relation): "all" of the first `maxAuthors`, "orcid" only those that
+	 * OpenAlex gives an ORCID iD (they are then looked up at ORCID and Wikidata: biography, homepage, employer and a photo), "no" none.
+	 */
+	std::string authors = "all";
+	int maxAuthors = 10;
 	/** the pages (of the beginning) that are searched for a DOI */
 	int maxPages = 3;
 	/** extraction: report only the citations whose paper is on this computer */
