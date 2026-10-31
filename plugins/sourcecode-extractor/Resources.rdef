@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
 
-	internal = 3,
+	internal = 4,
 
 	short_info = "SEN SourceCode Extractor",
 	long_info  = "SEN module to identify the language of source code files (sets their semantic type) and to extract their references to other files: includes, imports and modules (C, C++, Go, Java, JavaScript, Python, Rust, TypeScript)."

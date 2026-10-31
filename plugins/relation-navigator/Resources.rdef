@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
 
-	internal = 3,
+	internal = 4,
 
 	short_info = "SENSEI Relation Navigator",
 	long_info  = "SEN module to open a file of a relation: the target is opened with the application of its type."

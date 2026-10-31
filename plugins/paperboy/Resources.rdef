@@ -12,7 +12,7 @@ resource app_version {
 	/* 0 = development	1 = alpha			2 = beta
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
-	internal = 3,
+	internal = 4,
 
 	short_info = "SEN Paperboy",
 	long_info  = "Finds scientific papers, looks up their metadata and free copies (DOI, arXiv ID or title), makes people of the authors (ORCID, Wikidata) and extracts cited papers.\nSources: OpenAlex, Unpaywall, arXiv, Semantic Scholar, DBLP; no keys needed."
