@@ -10,6 +10,7 @@ sensei
 └── plugins
     ├── authorship-navigator  navigate
     ├── book-enricher         enrich
+    ├── knows-navigator       navigate
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
     ├── paperboy              enrich, identify
@@ -25,6 +26,7 @@ sensei
 |---|---|---|---|---|---|
 | `authorship-navigator` (SENSEI Authorship Navigator) | `sen_plugin_authorship_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.authorship` | - | `application/x-vnd.sen-plugin.sen-labs.authorship-navigator` |
 | `book-enricher` (SEN Book Enrichment Tool (BERT)) | `sen_plugin_book_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.book` | - | `application/x-vnd.sen-plugin.sen-labs.book-enricher` |
+| `knows-navigator` (SENSEI Knows Navigator) | `sen_plugin_knows_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.person.knows`, `relation/x-vnd.sen-labs.relation.person.acquaintance`, `relation/x-vnd.sen-labs.relation.person.friend`, `relation/x-vnd.sen-labs.relation.person.close-friend`, `relation/x-vnd.sen-labs.relation.person.partner`, `relation/x-vnd.sen-labs.relation.person.parent`, `relation/x-vnd.sen-labs.relation.person.sibling`, `relation/x-vnd.sen-labs.relation.person.relative`, `relation/x-vnd.sen-labs.relation.person.colleague`, `relation/x-vnd.sen-labs.relation.person.superior`, `relation/x-vnd.sen-labs.relation.person.mentor`, `relation/x-vnd.sen-labs.relation.person.collaborator`, `relation/x-vnd.sen-labs.relation.person.client`, `relation/x-vnd.sen-labs.relation.person.employment`, `relation/x-vnd.sen-labs.relation.person.membership` | - | `application/x-vnd.sen-plugin.sen-labs.knows-navigator` |
 | `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0 | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
 | `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1 | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
 | `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0 | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.citation` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
@@ -38,6 +40,8 @@ sensei
 **authorship-navigator**: SEN module to open the author of a book (the target of an Authorship relation) with the application of the person.
 
 **book-enricher**: SEN module to grab metadata for books from online services.
+
+**knows-navigator**: SEN module to open the person or organization that a relationship between people ends at (knows, friend, colleague, employment...) with its application.
 
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
 
