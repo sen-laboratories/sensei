@@ -191,7 +191,18 @@ Paperboy::_LookUp(const std::string& doi, Paper* paper, bool withAccess)
 
 
 status_t
-Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
+Paperboy::_LookUpById(const std::string& openAlexId, Paper* paper)
+{
+	std::string body;
+	status_t status = fHttp.Get(OpenAlexWorkByIdUrl(openAlexId, fAccess), &body);
+	if (status != B_OK)
+		return status;
+	return ParseOpenAlexWork(body, paper) ? B_OK : B_BAD_DATA;
+}
+
+
+status_t
+Paperboy::_FindByTitle(const DocumentFacts& facts, Reference* chosen)
 {
 	std::vector<std::string> titles;
 	for (const std::string& title : { facts.infoTitle, facts.headline }) {
@@ -199,7 +210,7 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 			titles.push_back(title);
 	}
 
-	// every hit that is like the title and has a DOI (once), with how good it is; the first title that finds any is the one
+	// every hit that is like the title (once; a paper without a DOI is known by its id), with how good it is; the first title that finds any is the one
 	struct Match {
 		Reference	hit;
 		double		score;
@@ -213,12 +224,11 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 		const std::vector<Reference> hits = ParseOpenAlexList(body);
 		for (size_t rank = 0; rank < hits.size(); rank++) {
 			const Reference& hit = hits[rank];
-			if (hit.doi.empty())
-				continue;
+			const std::string& key = hit.doi.empty() ? hit.openAlexId : hit.doi;
 			const double similarity = TitleSimilarity(title, hit.title);
-			if (similarity < kMinTitleSimilarity || !seen.insert(hit.doi).second)
+			if (similarity < kMinTitleSimilarity || !seen.insert(key).second)
 				continue;
-			spdlog::info("title '{}' matches '{}' ({})", title, hit.title, hit.doi);
+			spdlog::info("title '{}' matches '{}' ({})", title, hit.title, key);
 			matches.push_back({hit, ScoreHit(similarity, (int) rank, (int) hits.size(), hit.year)});
 		}
 		if (!matches.empty())
@@ -233,7 +243,7 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 			best = i;
 	}
 	if (matches.size() == 1 || !fSettings.choose) {
-		*doi = matches[best].hit.doi;
+		*chosen = matches[best].hit;
 		return B_OK;
 	}
 
@@ -244,8 +254,11 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 		candidate.title = match.hit.title.empty() ? "(no title)" : match.hit.title.c_str();
 		if (match.hit.year > 0)
 			candidate.subtitle << match.hit.year;
-		candidate.detail << "DOI " << match.hit.doi.c_str();
-		candidate.source = SourceOfDoi(match.hit.doi).c_str();
+		if (!match.hit.doi.empty())
+			candidate.detail << "DOI " << match.hit.doi.c_str();
+		else
+			candidate.detail << "OpenAlex " << match.hit.openAlexId.c_str();
+		candidate.source = match.hit.doi.empty() ? "OpenAlex" : SourceOfDoi(match.hit.doi).c_str();
 		candidate.score = (float) match.score;
 		candidates.push_back(candidate);
 	}
@@ -259,8 +272,8 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 	if (picked < 0 || picked >= (int32) matches.size())
 		return B_CANCELED;
 
-	*doi = matches[picked].hit.doi;
-	spdlog::info("the user chose {}", *doi);
+	*chosen = matches[picked].hit;
+	spdlog::info("the user chose {}", chosen->doi.empty() ? chosen->openAlexId : chosen->doi);
 	return B_OK;
 }
 
@@ -427,16 +440,16 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 	}
 
 	if (!found && fSettings.titleSearch && factsRead) {
-		std::string doi;
-		const status_t search = _FindByTitle(facts, &doi);
+		Reference hit;
+		const status_t search = _FindByTitle(facts, &hit);
 		if (search == B_CANCELED) {
 			// the user did not choose: nothing is written, not even the title of the document
 			fSummary = std::string("No paper was chosen for ") + file->name + ": nothing was changed.";
 			return B_CANCELED;
 		}
-		if (search == B_OK && !doi.empty()) {
+		if (search == B_OK && (!hit.doi.empty() || !hit.openAlexId.empty())) {
 			Paper attempt;
-			status_t status = _LookUp(doi, &attempt, true);
+			status_t status = !hit.doi.empty() ? _LookUp(hit.doi, &attempt, true) : _LookUpById(hit.openAlexId, &attempt);
 			if (status == B_OK) {
 				paper = attempt;
 				doiSource = source::kTitle;
@@ -493,7 +506,8 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 		reply->AddRef("refs", file);
 
 	reply->AddString(sensei::key::kSemanticType, kSemanticType);
-	reply->AddString(attr::kIdentifier, paper.doi.c_str());
+	if (!paper.doi.empty())
+		reply->AddString(attr::kIdentifier, paper.doi.c_str());
 	reply->AddString(attr::kTitle, paper.title.c_str());
 	fSummaryTitle = "Paper enriched";
 	fSummary = "'" + paper.title + "'" + (paper.oaStatus.empty() ? "" : ", open access: " + paper.oaStatus) + ", "

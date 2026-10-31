@@ -56,6 +56,13 @@ OpenAlexWorkUrl(const std::string& doi, const OpenAlexAccess& access)
 
 
 std::string
+OpenAlexWorkByIdUrl(const std::string& openAlexId, const OpenAlexAccess& access)
+{
+	return WithAccess(std::string(kOpenAlex) + "/" + UrlEncode(openAlexId), access);
+}
+
+
+std::string
 OpenAlexSearchUrl(const std::string& title, const OpenAlexAccess& access)
 {
 	std::string clean;

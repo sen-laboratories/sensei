@@ -345,6 +345,9 @@ TestTitleAndApi()
 	CHECK_EQ(OpenAlexWorkUrl("10.1038/nature14539", {}), "https://api.openalex.org/works/https://doi.org/10.1038/nature14539");
 	CHECK_EQ(OpenAlexWorkUrl("10.1002/(sici)1097:8", {"me@example.org", ""}),
 		"https://api.openalex.org/works/https://doi.org/10.1002/(sici)1097:8?mailto=me%40example.org");
+	// (a paper that has no DOI is asked for by its id)
+	CHECK_EQ(OpenAlexWorkByIdUrl("W4312206005", {}), "https://api.openalex.org/works/W4312206005");
+	CHECK_EQ(OpenAlexWorkByIdUrl("W1", {"me@example.org", ""}), "https://api.openalex.org/works/W1?mailto=me%40example.org");
 	CHECK_EQ(OpenAlexSearchUrl("Deep, learning | a: review", {}),
 		"https://api.openalex.org/works?search=Deep%20%20learning%20%20%20a%20%20review&per-page=5&select=id,doi,title,publication_year");
 	CHECK_EQ(OpenAlexBatchUrl({"W1", "W2"}, {}),
