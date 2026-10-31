@@ -8,8 +8,8 @@
 ## architecture of Haiku.
 
 # The name of the binary.
-NAME = SenPdfNavigator
-TARGET_DIR = bin
+NAME = SenTextReferenceNavigator
+TARGET_DIR = ./bin
 
 # The type of binary, must be one of:
 #	APP:	Application
@@ -19,8 +19,7 @@ TARGET_DIR = bin
 TYPE = APP
 
 # 	If you plan to use localization, specify the application's MIME signature.
-
-APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.pdf-navigator
+APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.text-reference-navigator
 
 #	The following lines tell Pe and Eddie where the SRCS, RDEFS, and RSRCS are
 #	so that Pe and Eddie can fill them in for you.
@@ -33,7 +32,7 @@ APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.pdf-navigator
 #	means this Makefile will not work correctly if two source files with the
 #	same name (source.c or source.cpp) are included from different directories.
 #	Also note that spaces in folder names do not work well with this Makefile.
-SRCS =  App.cpp ../../common/MappingUtil.cpp
+SRCS =  App.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be
 #	used.
@@ -59,7 +58,7 @@ RSRCS =
 #	- 	if your library does not follow the standard library naming scheme,
 #		you need to specify the path to the library and it's name.
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
-LIBS =  be translation $(STDCPPLIBS)
+LIBS =  be translation spdlog fmt $(STDCPPLIBS)
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
@@ -94,7 +93,7 @@ LOCALES =
 #	use. For example, setting DEFINES to "DEBUG=1" will cause the compiler
 #	option "-DDEBUG=1" to be used. Setting DEFINES to "DEBUG" would pass
 #	"-DDEBUG" on the compiler's command line.
-DEFINES =
+DEFINES = SPDLOG_COMPILED_LIB SPDLOG_FMT_EXTERNAL
 
 #	Specify the warning level. Either NONE (suppress all warnings),
 #	ALL (enable all warnings), or leave blank (enable default warnings).

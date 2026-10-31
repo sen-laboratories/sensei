@@ -13,7 +13,7 @@
 #include <sen/Sen.h>
 #include <spdlog/spdlog.h>
 
-const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.text-navigator";
+const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.text-reference-navigator";
 
 App::App() : BApplication(kApplicationSignature)
 {

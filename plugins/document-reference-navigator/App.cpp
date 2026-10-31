@@ -17,7 +17,7 @@
 #include <sen/SenAbout.h>
 #include <sen/Sen.h>
 
-const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.pdf-navigator";
+const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.document-reference-navigator";
 
 App::App() : BApplication(kApplicationSignature)
 {

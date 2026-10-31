@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 
-resource app_signature "application/x-vnd.sen-plugin.sen-labs.knows-navigator";
+resource app_signature "application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator";
 
 resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
 
@@ -16,8 +16,8 @@ resource app_version {
 
 	internal = 4,
 
-	short_info = "SENSEI Knows Navigator",
-	long_info  = "SEN module to open the person or organization that a relationship between people ends at (knows, friend, colleague, employment...) with its application."
+	short_info = "SENSEI Personal Relation Navigator",
+	long_info  = "SEN module to open the person or organization that a personal relation (knows, friend, colleague, employment...) ends at with its application."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */
@@ -29,9 +29,9 @@ resource(2, "SEN:plugin:enrich")   0;
 resource(3, "SEN:plugin:identify") 0;
 resource(4, "SEN:plugin:navigate") 1;
 
-/* the relationship between people (Knows and its special cases) and from a person to an organization */
+/* the personal relation, its special cases (friend, colleague...) and the relations from a person to an organization */
 resource file_types message {
-    "types" = "relation/x-vnd.sen-labs.relation.person.knows",
+    "types" = "relation/x-vnd.sen-labs.relation.person",
     "types" = "relation/x-vnd.sen-labs.relation.person.acquaintance",
     "types" = "relation/x-vnd.sen-labs.relation.person.friend",
     "types" = "relation/x-vnd.sen-labs.relation.person.close-friend",
