@@ -1,0 +1,57 @@
+{
+  "result": {
+    "query": "ontology mediated neurosymbolic$",
+    "status": {"@code": "200", "text": "OK"},
+    "time": {"@unit": "msecs", "text": "12.5"},
+    "completions": {"@total": "0", "@computed": "0", "@sent": "0"},
+    "hits": {
+      "@total": "3", "@computed": "3", "@sent": "3", "@first": "0",
+      "hit": [
+        {
+          "@score": "9", "@id": "1",
+          "info": {
+            "authors": {"author": [{"@pid": "01/1234", "text": "Ada Example"}, {"@pid": "02/5678", "text": "Wei Wang 0001"}]},
+            "title": "Ontology-Mediated Neurosymbolic Constraint Acquisition.",
+            "venue": ["ISWC (Workshops)", "NeSy"],
+            "pages": "12-24",
+            "year": "2026",
+            "type": "Conference and Workshop Papers",
+            "access": "open",
+            "key": "conf/semweb/ExampleW26",
+            "doi": "10.1007/978-3-032-00000-0_1",
+            "ee": "https://ceur-ws.org/Vol-9999/paper1.pdf",
+            "url": "https://dblp.org/rec/conf/semweb/ExampleW26"
+          }
+        },
+        {
+          "@score": "7", "@id": "2",
+          "info": {
+            "authors": {"author": {"@pid": "03/9999", "text": "Grace Single"}},
+            "title": "A Journal Paper of One Author.",
+            "venue": "J. Web Semant.",
+            "year": "2021",
+            "type": "Journal Articles",
+            "access": "closed",
+            "key": "journals/ws/Single21",
+            "ee": "https://doi.org/10.1016/j.websem.2021.100000",
+            "url": "https://dblp.org/rec/journals/ws/Single21"
+          }
+        },
+        {
+          "@score": "5", "@id": "3",
+          "info": {
+            "authors": {"author": [{"@pid": "04/1", "text": "Preprint Person"}]},
+            "title": "A Preprint on CoRR.",
+            "venue": "CoRR",
+            "year": "2020",
+            "type": "Informal and Other Publications",
+            "access": "open",
+            "key": "journals/corr/abs-2001-00001",
+            "ee": "https://arxiv.org/abs/2001.00001",
+            "url": "https://dblp.org/rec/journals/corr/abs-2001-00001"
+          }
+        }
+      ]
+    }
+  }
+}

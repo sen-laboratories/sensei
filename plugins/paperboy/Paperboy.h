@@ -10,6 +10,8 @@
 #include <Entry.h>
 #include <Message.h>
 
+#include <sen/SenChoice.h>
+
 #include "PaperApi.h"
 #include "PaperHttp.h"
 #include "PaperModel.h"
@@ -57,12 +59,24 @@ private:
 	std::vector<Candidate>		_Candidates(const entry_ref& file, DocumentFacts* facts, bool* factsRead);
 	/** @return B_OK, B_ENTRY_NOT_FOUND if OpenAlex does not know the DOI, another error if the service could not be asked */
 	status_t					_LookUp(const std::string& doi, paperboy::Paper* paper, bool withAccess);
+	/** The paper that OpenAlex has under this id, for one that has no DOI (a preprint of a workshop): the same as _LookUp, without Unpaywall (it knows DOIs only). */
+	status_t					_LookUpById(const std::string& openAlexId, paperboy::Paper* paper);
 	/**
-	 * The DOI of the paper whose title is the title of the document. Several papers can match (a preprint and the published paper): the best is taken,
+	 * The paper whose title is the title of the document (its DOI, if it has one: not every paper does; and its id in OpenAlex). Several papers can match (a preprint and the published paper): the best is taken,
 	 * or, with the setting `choose`, the user is asked in a window (sen::ChooseCandidate).
 	 * @return B_OK, B_ENTRY_NOT_FOUND if no paper matches, B_CANCELED if the user did not choose
 	 */
-	status_t					_FindByTitle(const DocumentFacts& facts, std::string* doi);
+	status_t					_FindByTitle(const DocumentFacts& facts, paperboy::Reference* paper);
+	/**
+	 * The paper in the other sources, when OpenAlex does not know it: at arXiv by an identifier that the document names; then by the title at Semantic Scholar,
+	 * DBLP and arXiv (the settings say which are asked; a source that does not answer is skipped).
+	 * @param how source::kArxiv if the document named the identifier, else source::kTitle
+	 * @return B_OK, B_ENTRY_NOT_FOUND if none knows it, B_CANCELED if the user did not choose
+	 */
+	status_t					_FindElsewhere(const DocumentFacts& facts, bool factsRead, const std::vector<std::string>& arxivIds, paperboy::Paper* found,
+									const char** how);
+	/** The user says which of several papers is the one (a window), -1 if none was chosen. */
+	int32						_AskWhich(const std::vector<sen::Candidate>& candidates);
 	/** The works that a paper cites, with DOI and title where OpenAlex has them. */
 	void						_FetchReferences(const paperboy::Paper& paper, std::vector<paperboy::Reference>* references);
 	/** @return true if the file was renamed after the pattern of the settings */

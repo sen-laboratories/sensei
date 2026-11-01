@@ -8,7 +8,7 @@
 ## architecture of Haiku.
 
 # The name of the binary.
-NAME = SenPdfNavigator
+NAME = SenDocumentReferenceNavigator
 TARGET_DIR = bin
 
 # The type of binary, must be one of:
@@ -20,7 +20,7 @@ TYPE = APP
 
 # 	If you plan to use localization, specify the application's MIME signature.
 
-APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.pdf-navigator
+APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.document-reference-navigator
 
 #	The following lines tell Pe and Eddie where the SRCS, RDEFS, and RSRCS are
 #	so that Pe and Eddie can fill them in for you.

@@ -1,0 +1,167 @@
+{
+ "last-modified-date": {
+  "value": 1778683413168
+ },
+ "name": {
+  "created-date": {
+   "value": 1460762395754
+  },
+  "last-modified-date": {
+   "value": 1460762395754
+  },
+  "given-names": {
+   "value": "Yoshua"
+  },
+  "family-name": {
+   "value": "Bengio"
+  },
+  "credit-name": null,
+  "source": null,
+  "visibility": "public",
+  "path": "0000-0002-9322-3515"
+ },
+ "biography": {
+  "created-date": {
+   "value": 1778682754312
+  },
+  "last-modified-date": {
+   "value": 1778682754312
+  },
+  "content": "Yoshua Bengio est professeur titulaire en informatique à l’Université de Montréal, coprésident et directeur scientifique de LoiZéro, fondateur et conseiller scientifique de Mila et titulaire d’une chaire en IA Canada-CIFAR. Reconnu mondialement comme l’un des plus grands experts en intelligence artificielle et en apprentissage profond, il est colauréat du Prix A.M. Turing 2018, considéré comme le « prix Nobel de l’informatique ». En outre, il est le chercheur en informatique le plus cité au monde et le scientifique vivant le plus cité dans tous les domaines (en nombre total de citations). ",
+  "visibility": "public",
+  "path": "/0000-0002-9322-3515/biography"
+ },
+ "researcher-urls": {
+  "last-modified-date": {
+   "value": 1407175252367
+  },
+  "researcher-url": [
+   {
+    "created-date": {
+     "value": 1407175252367
+    },
+    "last-modified-date": {
+     "value": 1407175252367
+    },
+    "source": {
+     "source-orcid": {
+      "uri": "https://orcid.org/0000-0002-9322-3515",
+      "path": "0000-0002-9322-3515",
+      "host": "orcid.org"
+     },
+     "source-client-id": null,
+     "source-name": {
+      "value": "Yoshua Bengio"
+     },
+     "assertion-origin-orcid": null,
+     "assertion-origin-client-id": null,
+     "assertion-origin-name": null
+    },
+    "url-name": "Home page",
+    "url": {
+     "value": "http://www.iro.umontreal.ca/~bengioy"
+    },
+    "visibility": "public",
+    "path": "/0000-0002-9322-3515/researcher-urls/335109",
+    "put-code": 335109,
+    "display-index": 0
+   }
+  ],
+  "path": "/0000-0002-9322-3515/researcher-urls"
+ },
+ "emails": {
+  "last-modified-date": null,
+  "email": [],
+  "path": "/0000-0002-9322-3515/email"
+ },
+ "keywords": {
+  "last-modified-date": {
+   "value": 1778683413168
+  },
+  "keyword": [
+   {
+    "created-date": {
+     "value": 1407175233983
+    },
+    "last-modified-date": {
+     "value": 1778683413168
+    },
+    "source": {
+     "source-orcid": {
+      "uri": "https://orcid.org/0000-0002-9322-3515",
+      "path": "0000-0002-9322-3515",
+      "host": "orcid.org"
+     },
+     "source-client-id": null,
+     "source-name": {
+      "value": "Yoshua Bengio"
+     },
+     "assertion-origin-orcid": null,
+     "assertion-origin-client-id": null,
+     "assertion-origin-name": null
+    },
+    "content": "Machine learning, deep learning",
+    "visibility": "public",
+    "path": "/0000-0002-9322-3515/keywords/177021",
+    "put-code": 177021,
+    "display-index": 11
+   },
+   {
+    "created-date": {
+     "value": 1778683378948
+    },
+    "last-modified-date": {
+     "value": 1778683413168
+    },
+    "source": {
+     "source-orcid": {
+      "uri": "https://orcid.org/0000-0002-9322-3515",
+      "path": "0000-0002-9322-3515",
+      "host": "orcid.org"
+     },
+     "source-client-id": null,
+     "source-name": {
+      "value": "Yoshua Bengio"
+     },
+     "assertion-origin-orcid": null,
+     "assertion-origin-client-id": null,
+     "assertion-origin-name": null
+    },
+    "content": "Causalité",
+    "visibility": "public",
+    "path": "/0000-0002-9322-3515/keywords/5429057",
+    "put-code": 5429057,
+    "display-index": 10
+   },
+   {
+    "created-date": {
+     "value": 1778683378946
+    },
+    "last-modified-date": {
+     "value": 1778683413168
+    },
+    "source": {
+     "source-orcid": {
+      "uri": "https://orcid.org/0000-0002-9322-3515",
+      "path": "0000-0002-9322-3515",
+      "host": "orcid.org"
+     },
+     "source-client-id": null,
+     "source-name": {
+      "value": "Yoshua Bengio"
+     },
+     "assertion-origin-orcid": null,
+     "assertion-origin-client-id": null,
+     "assertion-origin-name": null
+    },
+    "content": "Modèles génératifs",
+    "visibility": "public",
+    "path": "/0000-0002-9322-3515/keywords/5429056",
+    "put-code": 5429056,
+    "display-index": 9
+   }
+  ],
+  "path": "/0000-0002-9322-3515/keywords"
+ },
+ "path": "/0000-0002-9322-3515/person"
+}

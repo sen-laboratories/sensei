@@ -26,11 +26,13 @@
 #include <spdlog/spdlog.h>
 
 #include "PaperApi.h"
+#include "PaperAuthors.h"
 #include "PaperChoice.h"
 #include "PaperDoi.h"
 #include "PaperJson.h"
 #include "PaperKeys.h"
 #include "PaperName.h"
+#include "PaperSources.h"
 #include "PaperStore.h"
 #include "PaperTitle.h"
 
@@ -191,7 +193,18 @@ Paperboy::_LookUp(const std::string& doi, Paper* paper, bool withAccess)
 
 
 status_t
-Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
+Paperboy::_LookUpById(const std::string& openAlexId, Paper* paper)
+{
+	std::string body;
+	status_t status = fHttp.Get(OpenAlexWorkByIdUrl(openAlexId, fAccess), &body);
+	if (status != B_OK)
+		return status;
+	return ParseOpenAlexWork(body, paper) ? B_OK : B_BAD_DATA;
+}
+
+
+status_t
+Paperboy::_FindByTitle(const DocumentFacts& facts, Reference* chosen)
 {
 	std::vector<std::string> titles;
 	for (const std::string& title : { facts.infoTitle, facts.headline }) {
@@ -199,7 +212,7 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 			titles.push_back(title);
 	}
 
-	// every hit that is like the title and has a DOI (once), with how good it is; the first title that finds any is the one
+	// every hit that is like the title (once; a paper without a DOI is known by its id), with how good it is; the first title that finds any is the one
 	struct Match {
 		Reference	hit;
 		double		score;
@@ -213,12 +226,11 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 		const std::vector<Reference> hits = ParseOpenAlexList(body);
 		for (size_t rank = 0; rank < hits.size(); rank++) {
 			const Reference& hit = hits[rank];
-			if (hit.doi.empty())
-				continue;
+			const std::string& key = hit.doi.empty() ? hit.openAlexId : hit.doi;
 			const double similarity = TitleSimilarity(title, hit.title);
-			if (similarity < kMinTitleSimilarity || !seen.insert(hit.doi).second)
+			if (similarity < kMinTitleSimilarity || !seen.insert(key).second)
 				continue;
-			spdlog::info("title '{}' matches '{}' ({})", title, hit.title, hit.doi);
+			spdlog::info("title '{}' matches '{}' ({})", title, hit.title, key);
 			matches.push_back({hit, ScoreHit(similarity, (int) rank, (int) hits.size(), hit.year)});
 		}
 		if (!matches.empty())
@@ -233,7 +245,7 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 			best = i;
 	}
 	if (matches.size() == 1 || !fSettings.choose) {
-		*doi = matches[best].hit.doi;
+		*chosen = matches[best].hit;
 		return B_OK;
 	}
 
@@ -244,24 +256,163 @@ Paperboy::_FindByTitle(const DocumentFacts& facts, std::string* doi)
 		candidate.title = match.hit.title.empty() ? "(no title)" : match.hit.title.c_str();
 		if (match.hit.year > 0)
 			candidate.subtitle << match.hit.year;
-		candidate.detail << "DOI " << match.hit.doi.c_str();
-		candidate.source = SourceOfDoi(match.hit.doi).c_str();
+		if (!match.hit.doi.empty())
+			candidate.detail << "DOI " << match.hit.doi.c_str();
+		else
+			candidate.detail << "OpenAlex " << match.hit.openAlexId.c_str();
+		candidate.source = match.hit.doi.empty() ? "OpenAlex" : SourceOfDoi(match.hit.doi).c_str();
 		candidate.score = (float) match.score;
 		candidates.push_back(candidate);
 	}
 
+	const int32 picked = _AskWhich(candidates);
+	if (picked < 0 || picked >= (int32) matches.size())
+		return B_CANCELED;
+
+	*chosen = matches[picked].hit;
+	spdlog::info("the user chose {}", chosen->doi.empty() ? chosen->openAlexId : chosen->doi);
+	return B_OK;
+}
+
+
+int32
+Paperboy::_AskWhich(const std::vector<sen::Candidate>& candidates)
+{
 	BBitmap* logo = NULL;
 	app_info info;
 	if (be_app != NULL && be_app->GetAppInfo(&info) == B_OK)
 		logo = sen::LoadPluginLogo(info.signature);
 
-	const int32 picked = sen::ChooseCandidate("Choose a paper", "Several papers have this title. Which one is it?", candidates, logo);
-	if (picked < 0 || picked >= (int32) matches.size())
-		return B_CANCELED;
+	return sen::ChooseCandidate("Choose a paper", "Several papers have this title. Which one is it?", candidates, logo);
+}
 
-	*doi = matches[picked].hit.doi;
-	spdlog::info("the user chose {}", *doi);
-	return B_OK;
+
+status_t
+Paperboy::_FindElsewhere(const DocumentFacts& facts, bool factsRead, const std::vector<std::string>& arxivIds, Paper* found, const char** how)
+{
+	// each of them says how often it can be asked (arXiv: one request in three seconds), and they are asked once: a source that does not answer is skipped
+	HttpOptions arxivOptions;
+	arxivOptions.minInterval = 3000000;
+	arxivOptions.accept = "application/atom+xml";
+	arxivOptions.maxAttempts = 1;
+	HttpOptions jsonOptions;
+	jsonOptions.minInterval = 1000000;
+	jsonOptions.maxAttempts = 1;
+
+	// the identifier that the document names: that is the paper
+	if (fSettings.arxiv) {
+		for (const std::string& id : arxivIds) {
+			std::string body;
+			std::vector<Paper> papers;
+			const status_t status = fHttp.Get(ArxivIdUrl(id), &body, arxivOptions);
+			if (status == B_OK && ParseArxivFeed(body, &papers) && !papers.empty()) {
+				*found = papers.front();
+				*how = source::kArxiv;
+				spdlog::info("arXiv knows {}: '{}'", id, found->title);
+				return B_OK;
+			}
+			if (status != B_OK && status != B_ENTRY_NOT_FOUND)
+				spdlog::info("arXiv did not answer for {}: {}", id, strerror(status));
+		}
+	}
+
+	if (!fSettings.titleSearch || !factsRead)
+		return B_ENTRY_NOT_FOUND;
+
+	std::vector<std::string> titles;
+	for (const std::string& title : { facts.infoTitle, facts.headline }) {
+		if (LooksLikeTitle(title) && title.size() <= kMaxSearchTitleLength)
+			titles.push_back(title);
+	}
+	if (titles.empty())
+		return B_ENTRY_NOT_FOUND;
+
+	struct Service {
+		const char*		name;
+		const char*		label;
+		bool			enabled;
+		std::string		(*address)(const std::string&);
+		bool			(*parse)(const std::string&, std::vector<Paper>*);
+		HttpOptions		options;
+	};
+	const Service services[] = {
+		{service::kSemanticScholar, "Semantic Scholar", fSettings.semanticScholar, SemanticScholarSearchUrl, ParseSemanticScholarSearch, jsonOptions},
+		{service::kDblp, "DBLP", fSettings.dblp, DblpSearchUrl, ParseDblpSearch, jsonOptions},
+		{service::kArxiv, "arXiv", fSettings.arxiv, ArxivSearchUrl, ParseArxivFeed, arxivOptions},
+	};
+
+	struct Match {
+		Paper	paper;
+		double	score;
+	};
+	for (const Service& source : services) {
+		if (!source.enabled)
+			continue;
+
+		std::vector<Match> matches;
+		std::set<std::string> seen;
+		for (const std::string& title : titles) {
+			std::string body;
+			const status_t status = fHttp.Get(source.address(title), &body, source.options);
+			if (status == B_ENTRY_NOT_FOUND)
+				continue;
+			if (status != B_OK) {
+				spdlog::info("{} did not answer: {}", source.label, strerror(status));
+				break;
+			}
+			std::vector<Paper> hits;
+			if (!source.parse(body, &hits)) {
+				// (a page that wants proof of being no bot, an answer that says "too many requests")
+				spdlog::info("{} answered with something that is no list of papers", source.label);
+				break;
+			}
+			for (size_t rank = 0; rank < hits.size(); rank++) {
+				const Paper& hit = hits[rank];
+				const double similarity = TitleSimilarity(title, hit.title);
+				const std::string key = !hit.doi.empty() ? hit.doi : (!hit.arxivId.empty() ? hit.arxivId : NormalizeTitle(hit.title));
+				if (similarity < kMinTitleSimilarity || !seen.insert(key).second)
+					continue;
+				spdlog::info("title '{}' matches '{}' at {}", title, hit.title, source.label);
+				matches.push_back({hit, ScoreHit(similarity, (int) rank, (int) hits.size(), hit.year)});
+			}
+			if (!matches.empty())
+				break;
+		}
+		if (matches.empty())
+			continue;
+
+		size_t best = 0;
+		for (size_t i = 1; i < matches.size(); i++) {
+			if (matches[i].score > matches[best].score)
+				best = i;
+		}
+		if (matches.size() > 1 && fSettings.choose) {
+			std::vector<sen::Candidate> candidates;
+			for (const Match& match : matches) {
+				sen::Candidate candidate;
+				candidate.title = match.paper.title.c_str();
+				if (match.paper.year > 0)
+					candidate.subtitle << match.paper.year;
+				if (!match.paper.venue.empty())
+					candidate.subtitle << (candidate.subtitle.IsEmpty() ? "" : " - ") << match.paper.venue.c_str();
+				if (!match.paper.doi.empty())
+					candidate.detail << "DOI " << match.paper.doi.c_str();
+				else if (!match.paper.arxivId.empty())
+					candidate.detail << "arXiv " << match.paper.arxivId.c_str();
+				candidate.source = source.label;
+				candidate.score = (float) match.score;
+				candidates.push_back(candidate);
+			}
+			const int32 picked = _AskWhich(candidates);
+			if (picked < 0 || picked >= (int32) matches.size())
+				return B_CANCELED;
+			best = (size_t) picked;
+		}
+		*found = matches[best].paper;
+		*how = source::kTitle;
+		return B_OK;
+	}
+	return B_ENTRY_NOT_FOUND;
 }
 
 
@@ -427,16 +578,16 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 	}
 
 	if (!found && fSettings.titleSearch && factsRead) {
-		std::string doi;
-		const status_t search = _FindByTitle(facts, &doi);
+		Reference hit;
+		const status_t search = _FindByTitle(facts, &hit);
 		if (search == B_CANCELED) {
 			// the user did not choose: nothing is written, not even the title of the document
 			fSummary = std::string("No paper was chosen for ") + file->name + ": nothing was changed.";
 			return B_CANCELED;
 		}
-		if (search == B_OK && !doi.empty()) {
+		if (search == B_OK && (!hit.doi.empty() || !hit.openAlexId.empty())) {
 			Paper attempt;
-			status_t status = _LookUp(doi, &attempt, true);
+			status_t status = !hit.doi.empty() ? _LookUp(hit.doi, &attempt, true) : _LookUpById(hit.openAlexId, &attempt);
 			if (status == B_OK) {
 				paper = attempt;
 				doiSource = source::kTitle;
@@ -448,13 +599,36 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 		}
 	}
 
+	// The other sources (arXiv by the identifier that the document names, then the title at Semantic Scholar, DBLP and arXiv). What they find is a paper like any
+	// other: it gets the semantic type. A cited paper's arXiv identifier from a later page is not the paper of the file.
+	if (!found && (fSettings.semanticScholar || fSettings.dblp || fSettings.arxiv)) {
+		std::vector<std::string> arxivIds;
+		static const std::string kArxivDoiPrefix = "10.48550/arxiv.";
+		for (const Candidate& candidate : candidates) {
+			if (std::string(candidate.source) != source::kLaterPage && candidate.doi.compare(0, kArxivDoiPrefix.size(), kArxivDoiPrefix) == 0)
+				arxivIds.push_back(candidate.doi.substr(kArxivDoiPrefix.size()));
+		}
+		Paper other;
+		const char* how = source::kTitle;
+		const status_t search = _FindElsewhere(facts, factsRead, arxivIds, &other, &how);
+		if (search == B_CANCELED) {
+			fSummary = std::string("No paper was chosen for ") + file->name + ": nothing was changed.";
+			return B_CANCELED;
+		}
+		if (search == B_OK) {
+			paper = other;
+			doiSource = how;
+			found = true;
+		}
+	}
+
 	BNode node(file);
 	if (!found) {
 		// no service knows the paper; the document may still say what it is called
 		std::string title = factsRead ? _DocumentTitle(facts) : "";
 		if (title.empty()) {
 			store::WriteNotFound(node, candidates.empty() ? outcome::kDoiNotFound : outcome::kNotInOpenAlex);
-			fSummary = std::string(candidates.empty() ? "No DOI and no title that OpenAlex knows in " : "OpenAlex does not know the DOIs of ")
+			fSummary = std::string(candidates.empty() ? "No DOI and no title that a scientific source knows in " : "No source knows the DOIs of ")
 				+ file->name + ".";
 			return B_ENTRY_NOT_FOUND;
 		}
@@ -471,7 +645,7 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 			reply->AddRef("refs", file);
 		reply->AddString(attr::kTitle, title.c_str());
 		fSummaryTitle = "Title from the document";
-		fSummary = "'" + title + "' is not in OpenAlex: the title is the one of the document" + (renamed ? ", the file is named after it." : ".");
+		fSummary = "'" + title + "' is not in the sources (OpenAlex and the others): the title is the one of the document" + (renamed ? ", the file is named after it." : ".");
 		spdlog::info("{}", fSummary);
 		return B_OK;
 	}
@@ -492,12 +666,28 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 	if (renamed)
 		reply->AddRef("refs", file);
 
+	// the authors are people next to the paper (after the rename: their relation is to the file as it is called now)
+	int32 authors = 0;
+	if (fSettings.authors != "no" && !paper.authors.empty()) {
+		AuthorMaker maker(&fHttp, fSettings, overwrite);
+		authors = maker.MakeAuthors(*file, paper);
+	}
+
 	reply->AddString(sensei::key::kSemanticType, kSemanticType);
-	reply->AddString(attr::kIdentifier, paper.doi.c_str());
+	if (!paper.doi.empty())
+		reply->AddString(attr::kIdentifier, paper.doi.c_str());
 	reply->AddString(attr::kTitle, paper.title.c_str());
 	fSummaryTitle = "Paper enriched";
-	fSummary = "'" + paper.title + "'" + (paper.oaStatus.empty() ? "" : ", open access: " + paper.oaStatus) + ", "
-		+ std::to_string(references.size()) + " cited works" + (renamed ? "; the file is named after the title." : ".");
+	const char* const kServiceLabels[][2] = {{service::kArxiv, "arXiv"}, {service::kSemanticScholar, "Semantic Scholar"}, {service::kDblp, "DBLP"}};
+	std::string found_at;
+	for (const auto& label : kServiceLabels) {
+		if (paper.service == label[0])
+			found_at = std::string(", found at ") + label[1];
+	}
+	fSummary = "'" + paper.title + "'" + (paper.oaStatus.empty() ? "" : ", open access: " + paper.oaStatus)
+		+ (paper.fromOpenAlex ? ", " + std::to_string(references.size()) + " cited works" : found_at)
+		+ (authors > 0 ? ", " + std::to_string(authors) + (authors == 1 ? " author" : " authors") : "")
+		+ (renamed ? "; the file is named after the title." : ".");
 	spdlog::info("{}: {} ({})", file->name, fSummary, doiSource);
 	return B_OK;
 }

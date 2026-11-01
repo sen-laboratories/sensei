@@ -30,6 +30,9 @@ struct OpenAlexAccess {
 /** @brief `https://api.openalex.org/works/https://doi.org/<doi>` */
 std::string OpenAlexWorkUrl(const std::string& doi, const OpenAlexAccess& access);
 
+/** @brief `https://api.openalex.org/works/<id>` for a work that has no DOI (the id is `W123`) */
+std::string OpenAlexWorkByIdUrl(const std::string& openAlexId, const OpenAlexAccess& access);
+
 /** @brief Title search: the five best hits with their id, DOI, title and year (the title is cleaned of the characters that OpenAlex reads as syntax). */
 std::string OpenAlexSearchUrl(const std::string& title, const OpenAlexAccess& access);
 

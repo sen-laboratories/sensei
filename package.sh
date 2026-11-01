@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 #
-# Builds the HPKG of each plugin (or of the named ones: ./package.sh pdf-navigator text-navigator) from plugins/<name>/bin/<binary>
+# Builds the HPKG of each plugin (or of the named ones: ./package.sh document-reference-navigator text-reference-navigator) from plugins/<name>/bin/<binary>
 # (./build.sh is run first for the plugins whose binary is missing or older than their sources or common/, FORCE=1 builds all of them;
 # headers outside this repository (sen-core) are not tracked: build.sh by hand after changing them). The packages are written to the repository root; REVISION overrides the revision (default 1).
 #
 # From the plugin folder it takes: Resources.rdef (signature, version, descriptions, features, file types), the Makefile (name of the binary),
-# the optional file "requires" (one HaikuPorts requirement per line, e.g. lib:libspdlog) and the optional script "package.stage" that is
+# the optional file "requires" (one HaikuPorts requirement per line, e.g. lib:libspdlog), the optional file "replaces" (the packages that this one replaces, one per line:
+# a plugin that was renamed) and the optional script "package.stage" that is
 # run with the stage folder as its argument to add files (a bundled library).
 # The binary goes to add-ons/sen/plugins/ and keeps its attributes (the signature BEOS:APP_SIG is how the server finds it, see Sensei.h).
 set -e
@@ -73,6 +74,9 @@ for name in $plugins; do
 
 	requires=
 	[ -f "$dir/requires" ] && requires=$(awk 'NF { printf "\\n\\t%s", $0 }' "$dir/requires")
+	# a plugin that was renamed (named for the relation that it navigates) replaces the package of its old name
+	replaces=
+	[ -f "$dir/replaces" ] && replaces=$(awk 'NF { printf "\\n\\t%s", $0 }' "$dir/replaces")
 
 	stage=$ROOT/package-build/$name
 	rm -rf "$stage"
@@ -100,7 +104,8 @@ for name in $plugins; do
 	# (the requirements are lines of their own: \n\t before each, GNU sed makes newlines of them)
 	sed -e "s|@PACKAGE@|$package|g" -e "s|@VERSION@|$version|g" -e "s|@ARCH@|$ARCH|g" -e "s|@SUMMARY@|$summary|g" \
 		-e "s|@DESCRIPTION@|$description|g" -e "s|@FEATURES@|$features|g" -e "s|@TYPES@|$types|g" \
-		-e "s|@REQUIRES@|$requires|" -e "s|@LICENSES@|$licenses|" package/PackageInfo.in > "$stage/.PackageInfo"
+		-e "s|@REQUIRES@|$requires|" -e "s|@REPLACES@|$replaces|" -e "s|@LICENSES@|$licenses|" package/PackageInfo.in > "$stage/.PackageInfo"
+	[ -n "$replaces" ] || sed -i '/^replaces/,/^}/d' "$stage/.PackageInfo"
 
 	out=$package-$version-$ARCH.hpkg
 	rm -f $package-*.hpkg

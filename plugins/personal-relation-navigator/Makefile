@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# SPDX-FileCopyrightText: 2024-2026 SEN Labs e.U.
+# SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 
 ## Haiku Generic Makefile v2.6 ##
 
@@ -8,8 +8,8 @@
 ## architecture of Haiku.
 
 # The name of the binary.
-NAME = SenTextNavigator
-TARGET_DIR = ./bin
+NAME = SenPersonalRelationNavigator
+TARGET_DIR = bin
 
 # The type of binary, must be one of:
 #	APP:	Application
@@ -19,7 +19,8 @@ TARGET_DIR = ./bin
 TYPE = APP
 
 # 	If you plan to use localization, specify the application's MIME signature.
-APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.text-navigator
+
+APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator
 
 #	The following lines tell Pe and Eddie where the SRCS, RDEFS, and RSRCS are
 #	so that Pe and Eddie can fill them in for you.
@@ -58,7 +59,7 @@ RSRCS =
 #	- 	if your library does not follow the standard library naming scheme,
 #		you need to specify the path to the library and it's name.
 #		(e.g. for mylib.a, specify "mylib.a" or "path/mylib.a")
-LIBS =  be translation spdlog fmt $(STDCPPLIBS)
+LIBS =  be translation $(STDCPPLIBS)
 
 #	Specify additional paths to directories following the standard libXXX.so
 #	or libXXX.a naming scheme. You can specify full paths or paths relative
@@ -93,7 +94,7 @@ LOCALES =
 #	use. For example, setting DEFINES to "DEBUG=1" will cause the compiler
 #	option "-DDEBUG=1" to be used. Setting DEFINES to "DEBUG" would pass
 #	"-DDEBUG" on the compiler's command line.
-DEFINES = SPDLOG_COMPILED_LIB SPDLOG_FMT_EXTERNAL
+DEFINES =
 
 #	Specify the warning level. Either NONE (suppress all warnings),
 #	ALL (enable all warnings), or leave blank (enable default warnings).

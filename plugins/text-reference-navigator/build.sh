@@ -7,7 +7,7 @@
 # adds the attributes from the resource: the server finds a plugin by its signature and reads its type and features from the attributes.
 mkdir -p bin && make && \
 rc Resources.rdef && \
-resattr -o bin/SenPdfNavigator Resources.rsrc && ../../tools/set-version-attr.sh Resources.rdef bin/SenPdfNavigator
+resattr -o bin/SenTextReferenceNavigator Resources.rsrc && ../../tools/set-version-attr.sh Resources.rdef bin/SenTextReferenceNavigator && \
 
-# in any case, clean up, but don't fail if file does not exist
-rm -f Resources.rsrc
+# in any case, clean up
+rm Resources.rsrc

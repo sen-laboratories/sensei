@@ -18,7 +18,6 @@
 #include <sen/Sen.h>
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.relation-navigator";
-static const char* kTrackerSignature = "application/x-vnd.Be-TRAK";
 
 
 App::App()
@@ -68,35 +67,11 @@ App::TargetOf(const entry_ref& ref, bool* found)
 
 
 status_t
-App::Reveal(const entry_ref& target)
+App::Open(const entry_ref& target)
 {
-	BEntry entry(&target, true);
-	status_t result = entry.InitCheck();
-	if (result != B_OK)
-		return result;
-
-	BMessage open(B_REFS_RECEIVED);
-	if (entry.IsDirectory()) {
-		// a folder is opened, like a double-click on it
-		entry_ref folder;
-		entry.GetRef(&folder);
-		open.AddRef("refs", &folder);
-	} else {
-		// the folder of the file, with the file selected (Tracker does this for the files that are in the data: nodeRefToSelect)
-		BEntry parent;
-		entry_ref parentRef;
-		node_ref node;
-		if ((result = entry.GetParent(&parent)) != B_OK || (result = parent.GetRef(&parentRef)) != B_OK
-				|| (result = entry.GetNodeRef(&node)) != B_OK)
-			return result;
-		open.AddRef("refs", &parentRef);
-		open.AddData("nodeRefToSelect", B_RAW_TYPE, &node, sizeof(node_ref));
-	}
-
-	BMessenger tracker(kTrackerSignature);
-	if (!tracker.IsValid())
-		return B_NOT_INITIALIZED;
-	return tracker.SendMessage(&open);
+	// the application of the type of the target, as a double click on it would (a folder opens in Tracker)
+	status_t result = be_roster->Launch(&target);
+	return result == B_ALREADY_RUNNING ? B_OK : result;
 }
 
 
@@ -119,9 +94,14 @@ App::RefsReceived(BMessage* message)
 			continue;
 		}
 		anyTarget = true;
-		result = Reveal(target);
+		result = Open(target);
 		if (result != B_OK) {
-			fprintf(stderr, "could not show %s in Tracker: %s\n", target.name, strerror(result));
+			fprintf(stderr, "could not open %s: %s\n", target.name, strerror(result));
+			BString error("Could not open the target: ");
+			error << strerror(result);
+			BAlert* alert = new BAlert("SEN Relation Navigator", error.String(), "OK", NULL, NULL, B_WIDTH_AS_USUAL, B_STOP_ALERT);
+			alert->SetFlags(alert->Flags() | B_CLOSE_ON_ESCAPE);
+			alert->Go();
 		}
 	}
 

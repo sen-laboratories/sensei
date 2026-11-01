@@ -145,6 +145,7 @@ ParseOpenAlexWork(const std::string& body, Paper* paper)
 		return false;
 
 	paper->fromOpenAlex = true;
+	paper->service = "openalex";
 	paper->openAlexId = ShortOpenAlexId(Str(work, "id"));
 	std::string doi = NormalizeDoi(Str(work, "doi"));
 	if (!doi.empty())

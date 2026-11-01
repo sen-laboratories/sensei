@@ -91,6 +91,22 @@ ParseSettings(const std::string& text, Settings* settings)
 			settings->overwrite = ParseBool(value, settings->overwrite);
 		} else if (key == "title_search") {
 			settings->titleSearch = ParseBool(value, settings->titleSearch);
+		} else if (key == "semantic_scholar") {
+			settings->semanticScholar = ParseBool(value, settings->semanticScholar);
+		} else if (key == "dblp") {
+			settings->dblp = ParseBool(value, settings->dblp);
+		} else if (key == "arxiv") {
+			settings->arxiv = ParseBool(value, settings->arxiv);
+		} else if (key == "authors") {
+			const std::string mode = Lower(value);
+			if (mode == "all" || mode == "orcid" || mode == "no")
+				settings->authors = mode;
+			else if (ParseBool(value, true) == false)
+				settings->authors = "no";
+		} else if (key == "max_authors") {
+			int count = std::atoi(value.c_str());
+			if (count >= 1 && count <= 100)
+				settings->maxAuthors = count;
 		} else if (key == "choose") {
 			settings->choose = ParseBool(value, settings->choose);
 		} else if (key == "local_only") {

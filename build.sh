@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 #
-# Builds all plugins (or the named ones: ./build.sh pdf-navigator text-navigator) with the build.sh of each plugin folder.
+# Builds all plugins (or the named ones: ./build.sh document-reference-navigator text-reference-navigator) with the build.sh of each plugin folder.
 # A plugin that fails does not stop the others; the summary at the end lists them and the exit code is 1 if any failed.
 # JOBS sets the number of parallel jobs of make (default 4). ./package.sh then makes the packages from the results.
 cd "$(dirname "$0")"
