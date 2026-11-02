@@ -4,6 +4,7 @@
  */
 
 #include "BaseEnricher.h"
+#include "SharedHttpSession.h"
 
 #include <DataIO.h>
 #include <MimeType.h>
@@ -41,7 +42,7 @@ static const bigtime_t kRequestTimeout = 10000;	// ms
 BaseEnricher::BaseEnricher(const entry_ref* srcRef, MappingUtil* mapper)
     :
     fMapper(mapper),
-    fHttpSession(new BHttpSession()),
+    fHttpSession(sen::SharedHttpSession()),
     fSourceRef(*srcRef),
     fAttrInfoRead(false)
 {
@@ -58,7 +59,7 @@ sen::ListConfig BaseEnricher::ListConfigOf(const char* attribute)
 
 BaseEnricher::~BaseEnricher()
 {
-    delete fHttpSession;
+    // (the session of the process is not ours to delete, see SharedHttpSession.h)
 }
 
 /**
