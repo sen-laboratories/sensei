@@ -4,6 +4,7 @@
  */
 
 #include "PaperHttp.h"
+#include "../../common/SharedHttpSession.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -50,7 +51,7 @@ HttpClient::HttpClient(const std::string& userAgent)
 
 HttpClient::~HttpClient()
 {
-	delete fSession;
+	// (the session of the process is not ours to delete, see SharedHttpSession.h)
 }
 
 
@@ -69,7 +70,7 @@ HttpClient::Get(const std::string& url, std::string* body, const HttpOptions& op
 
 	// made on the first request: a run that needs no network (identify) never starts the thread of the session
 	if (fSession == NULL)
-		fSession = new BHttpSession();
+		fSession = sen::SharedHttpSession();
 
 	for (int attempt = 1; attempt <= options.maxAttempts; attempt++) {
 		bigtime_t wait = fLastRequest + options.minInterval - system_time();
