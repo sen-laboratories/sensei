@@ -34,7 +34,6 @@ struct Field {
 
 const Field kFields[] = {
 	{"choose", true, "Ask which book if several are found", "OpenLibrary may find several books for a title. Off: the best one is taken."},
-	{"overwrite", true, "Replace what the file already has", "Off: only the attributes that are missing are filled."},
 	{"authors", true, "Make people of the authors", "Each author becomes a file next to the book (with biography and photo), related to it by Authorship."},
 	{"max_authors", false, "Most authors to make", "For books with a long list of authors."},
 };
@@ -67,7 +66,6 @@ ToMessage(const Settings& s, BMessage* message)
 {
 	message->MakeEmpty();
 	message->AddBool("choose", s.choose);
-	message->AddBool("overwrite", s.overwrite);
 	message->AddBool("authors", s.authors);
 	message->AddInt32("max_authors", s.maxAuthors);
 }

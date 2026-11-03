@@ -21,11 +21,10 @@ the book or the other authors; without the SEN server the people are made, and t
 
 ## Settings
 
-BERT has no window of its own: the **Settings window of SEN** (Deskbar menu, *Settings…*, under *Plugins*) shows its settings and gives the plugin back what you change. They are kept in `~/config/settings/sen/bert.settings` (lines of `key = value`, `#` starts a comment; comments and other lines stay when the window changes a value), and the options of the command line win over them for one run.
+BERT has no window of its own: the **Settings window of SEN** (Deskbar menu, *Settings…*, under *Plugins*) shows its settings and gives the plugin back what you change. They are kept in `~/config/settings/sen/bert.settings` (lines of `key = value`, `#` starts a comment; comments and other lines stay when the window changes a value), and the options of the command line win over them for one run. What is replaced is not a setting: the action decides (*Enrich*, or *Enrich (Overwrite)* with the Shift key).
 
 | Key | Default | |
 |---|---|---|
 | `choose` | yes | if OpenLibrary finds several books, ask which one is yours; `no` takes the best one (as `--auto` does) |
-| `overwrite` | yes | replace the attributes that the file already has (and those of the people); `no` fills only what is missing (`--wipe` replaces them for one run) |
 | `authors` | yes | make a person of each author of the book |
 | `max_authors` | 100 | the most authors that are made (1 to 100) |

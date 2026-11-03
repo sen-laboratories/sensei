@@ -34,8 +34,6 @@ ParseSettings(const std::string& text, Settings* settings)
 		const std::string& value = pair.second;
 		if (key == "choose")
 			settings->choose = st::ParseBool(value, settings->choose);
-		else if (key == "overwrite")
-			settings->overwrite = st::ParseBool(value, settings->overwrite);
 		else if (key == "authors")
 			settings->authors = st::ParseBool(value, settings->authors);
 		else if (key == "max_authors" && IsNumber(value, 1, 100))
@@ -56,7 +54,7 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 	const std::string v = st::Trim(value);
 	if (v.find_first_of("#\n\r") != std::string::npos)
 		return fail("a # or a line break cannot be stored in the settings file");
-	if (key == "choose" || key == "overwrite" || key == "authors")
+	if (key == "choose" || key == "authors")
 		return st::IsBool(v) ? true : fail("yes or no");
 	if (key == "max_authors")
 		return IsNumber(v, 1, 100) ? true : fail("a number from 1 to 100");

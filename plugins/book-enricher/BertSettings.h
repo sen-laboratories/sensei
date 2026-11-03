@@ -10,13 +10,12 @@ namespace bert {
 
 /**
  * The settings of BERT: lines of `key = value` in `~/config/settings/sen/bert.settings` (`#` starts a comment), changed in the settings window of SEN. The options of the command
- * line (`--auto`, `--wipe`) win over them for one run. Plain C++ (tests/BertSettingsTest.cpp runs everywhere).
+ * line (`--auto`) win over them for one run. Whether the attributes that a file already has are replaced is not a setting: the action decides (Enrich, or Enrich (Overwrite)
+ * with the Shift key, which sends `wipe`). Plain C++ (tests/BertSettingsTest.cpp runs everywhere).
  */
 struct Settings {
 	/** if OpenLibrary finds several books: ask which one is yours; off: the best one is taken, as `--auto` does */
 	bool choose = true;
-	/** replace the attributes that the file already has (and those of the people); off: only the missing ones are filled */
-	bool overwrite = true;
 	/** make a person of each author of the book (a file next to it, with the Authorship relation) */
 	bool authors = true;
 	/** the most authors that are made, for books with a long list */

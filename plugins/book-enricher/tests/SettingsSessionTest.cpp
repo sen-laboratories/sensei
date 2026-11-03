@@ -134,7 +134,7 @@ int main(int argc, char** argv)
 	CHECK(receiver->reply.FindMessage(form::kFieldSchema, &schema) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldDefaults, &defaults) == B_OK);
 	CHECK(!settings.GetBool("choose", true));								// the file
-	CHECK(settings.GetBool("overwrite", false) && settings.GetBool("authors", false));		// the defaults
+	CHECK(settings.GetBool("authors", false) && !settings.HasBool("overwrite"));		// the defaults
 	CHECK(settings.GetInt32("max_authors", 0) == 100);
 	CHECK(defaults.GetBool("choose", false));
 	BMessage max;

@@ -29,10 +29,10 @@ int
 main()
 {
 	bert::Settings settings;
-	CHECK(settings.choose && settings.overwrite && settings.authors && settings.maxAuthors == 100);
+	CHECK(settings.choose && settings.authors && settings.maxAuthors == 100);
 
-	bert::ParseSettings("# bert\nchoose = no   # take the best\noverwrite = off\nauthors = yes\nmax_authors = 12\n", &settings);
-	CHECK(!settings.choose && !settings.overwrite && settings.authors && settings.maxAuthors == 12);
+	bert::ParseSettings("# bert\nchoose = no   # take the best\nauthors = yes\nmax_authors = 12\n", &settings);
+	CHECK(!settings.choose && settings.authors && settings.maxAuthors == 12);
 
 	// bad values and unknown keys leave what is there
 	bert::ParseSettings("max_authors = 0\nchoose = maybe\nnonsense = 1\nmax_authors = many\n", &settings);
@@ -46,7 +46,8 @@ main()
 	CHECK(bert::ValidateSetting("choose", "yes") && bert::ValidateSetting("choose", "OFF") && !bert::ValidateSetting("choose", "maybe", &reason) && reason == "yes or no");
 	CHECK(bert::ValidateSetting("max_authors", "1") && bert::ValidateSetting("max_authors", "100"));
 	CHECK(!bert::ValidateSetting("max_authors", "0") && !bert::ValidateSetting("max_authors", "101") && !bert::ValidateSetting("max_authors", "") && !bert::ValidateSetting("max_authors", "5x"));
-	CHECK(!bert::ValidateSetting("overwrite", "yes # no") && !bert::ValidateSetting("colour", "red", &reason) && reason == "no such setting");
+	CHECK(!bert::ValidateSetting("overwrite", "yes", &reason) && reason == "no such setting");		// (the action decides, no setting)
+	CHECK(!bert::ValidateSetting("authors", "yes # no") && !bert::ValidateSetting("colour", "red", &reason) && reason == "no such setting");
 
 	// what is written is what is read, and the rest of the file stays
 	const std::string text = "# bert\nchoose = yes   # ask\nunknown = kept\n";

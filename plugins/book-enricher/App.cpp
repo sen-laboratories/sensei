@@ -220,8 +220,8 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     }
 
     fDebugMode = message->GetBool("debug", false);
-    // the options of the command line (and the Shift key of Tracker) win over the settings
-    fOverwrite = message->GetBool("wipe", fSettings.overwrite);
+    // the action decides what is replaced ("wipe": Enrich (Overwrite), the Shift key of the menu); the command line wins over the settings for one run
+    fOverwrite = message->GetBool("wipe", true);
     fAuto = message->GetBool("auto", !fSettings.choose);
 
     delete fBaseEnricher;
