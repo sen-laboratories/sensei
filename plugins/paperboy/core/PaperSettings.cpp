@@ -5,6 +5,8 @@
 
 #include "PaperSettings.h"
 
+#include "../../../common/SettingsText.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -101,44 +103,7 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 std::string
 UpdateSettingsText(const std::string& text, const std::vector<std::pair<std::string, std::string>>& changes)
 {
-	std::vector<std::string> lines;
-	{
-		std::istringstream in(text);
-		std::string line;
-		while (std::getline(in, line))
-			lines.push_back(line);
-	}
-
-	for (const auto& change : changes) {
-		bool found = false;
-		for (std::string& line : lines) {
-			const size_t hash = line.find('#');
-			const size_t equals = line.find('=');
-			if (equals == std::string::npos || (hash != std::string::npos && hash < equals))
-				continue;
-			if (Lower(Trim(line.substr(0, equals))) != change.first)
-				continue;
-			// the key as it was written, the new value, the comment after the old one
-			std::string comment;
-			if (hash != std::string::npos) {
-				size_t gap = hash;
-				while (gap > equals + 1 && (line[gap - 1] == ' ' || line[gap - 1] == '\t'))
-					gap--;
-				comment = " " + line.substr(hash);
-				(void) gap;
-			}
-			line = Trim(line.substr(0, equals)) + " = " + change.second + comment;
-			found = true;
-			break;
-		}
-		if (!found)
-			lines.push_back(change.first + " = " + change.second);
-	}
-
-	std::string result;
-	for (const std::string& line : lines)
-		result += line + "\n";
-	return result;
+	return sensei::settingstext::Update(text, changes);
 }
 
 

@@ -17,3 +17,15 @@ changes nothing.
 
 A second enrichment of the book finds the people again by their file name and their key, updates them, and does not make a second relation. A person that cannot be looked up is skipped and does not undo
 the book or the other authors; without the SEN server the people are made, and the relations come with the next enrichment.
+
+
+## Settings
+
+BERT has no window of its own: the **Settings window of SEN** (Deskbar menu, *Settings…*, under *Plugins*) shows its settings and gives the plugin back what you change. They are kept in `~/config/settings/sen/bert.settings` (lines of `key = value`, `#` starts a comment; comments and other lines stay when the window changes a value), and the options of the command line win over them for one run.
+
+| Key | Default | |
+|---|---|---|
+| `choose` | yes | if OpenLibrary finds several books, ask which one is yours; `no` takes the best one (as `--auto` does) |
+| `overwrite` | yes | replace the attributes that the file already has (and those of the people); `no` fills only what is missing (`--wipe` replaces them for one run) |
+| `authors` | yes | make a person of each author of the book |
+| `max_authors` | 100 | the most authors that are made (1 to 100) |

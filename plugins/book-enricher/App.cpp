@@ -41,6 +41,7 @@ App::App()
     fBaseEnricher(NULL),
     fMapper(new MappingUtil())
 {
+    bert::LoadSettings(&fSettings);
 }
 
 App::~App()
@@ -161,6 +162,25 @@ void App::ShowError(const char* message)
     sensei::Notify("SEN Book Enricher", "Book not enriched", message, false);
 }
 
+void App::MessageReceived(BMessage* message)
+{
+    // the settings window of SEN: the instance that is started for it ends with the session
+    if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
+        if (fSession.IsEnded())
+            Quit();
+        else
+            SetPulseRate(5000000);
+        return;
+    }
+    BApplication::MessageReceived(message);
+}
+
+void App::Pulse()
+{
+    if (fSession.Expired())
+        Quit();
+}
+
 void App::RefsReceived(BMessage *message)
 {
     BMessage reply(sensei::cmd::kResult);
@@ -200,8 +220,9 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     }
 
     fDebugMode = message->GetBool("debug", false);
-    fOverwrite = message->GetBool("wipe", true);
-    fAuto = message->GetBool("auto", false);
+    // the options of the command line (and the Shift key of Tracker) win over the settings
+    fOverwrite = message->GetBool("wipe", fSettings.overwrite);
+    fAuto = message->GetBool("auto", !fSettings.choose);
 
     delete fBaseEnricher;
     fBaseEnricher = new BaseEnricher(&ref, fMapper);
@@ -300,9 +321,17 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     printf("All Book data retrieved successfully, done.\n");
 
     // the authors: each one a person next to the book, with its photo as the thumbnail, and related to the book (see Authors.h)
-    if (fAuthorKeys.IsEmpty()) {
+    if (!fSettings.authors) {
+        printf("making people of the authors is off in the settings, skipping.\n");
+    } else if (fAuthorKeys.IsEmpty()) {
         printf("no author in the result, skipping.\n");
     } else {
+        // (the settings limit the list: the keys and the names stay in the same order)
+        while (fAuthorKeys.CountStrings() > fSettings.maxAuthors) {
+            fAuthorKeys.Remove(fAuthorKeys.CountStrings() - 1);
+            if (fAuthorNames.CountStrings() > fAuthorKeys.CountStrings())
+                fAuthorNames.Remove(fAuthorNames.CountStrings() - 1);
+        }
         AuthorMaker authors(fBaseEnricher, fOverwrite, fDebugMode);
         int32 made = authors.MakeAuthors(resultRef, fAuthorKeys, fAuthorNames);
         printf("%d of %d authors made.\n", (int) made, (int) fAuthorKeys.CountStrings());

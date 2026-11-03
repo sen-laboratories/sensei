@@ -66,7 +66,7 @@ sensei
 
 A plugin has no window for its settings: the settings window of SEN (`sen_settings`, in the Settings item of the Deskbar menu) lists the plugins and shows the form of Shoji for the selected one. The window asks the plugin for its settings as a message and sends back what the user changes; **the plugin keeps and validates them itself**, in the place and format of its choice, and SEN never reads or writes them (loose coupling: the plugin decides how and when a change takes effect; a job that runs keeps the settings it started with).
 
-What a plugin does (`common/SettingsSession.h`, Paperboy is the example: `PaperSettingsForm.cpp`, `App.cpp`):
+What a plugin does (`common/SettingsSession.h`; Paperboy and BERT are the examples: `PaperSettingsForm.cpp`, `BertSettingsForm.cpp`, `App.cpp`; `common/SettingsText.h` reads and updates settings files of `key = value` lines without losing comments):
 
 1. implement `sensei::SettingsProvider`: `Describe()` gives the settings as a `BMessage` (one field per setting, in its type: bool, integers, doubles, strings, times), a **schema** (per field name a message with `label`, `help`, `kind`, `choices`, `min`, `max`, `step`, ...: see `SenSettingsForm.h`; the form derives labels and controls from the types without one) and the **defaults**; `Apply()` gets the changed fields (each under its path key, which for a flat message is the name), validates, stores and names the ones it refuses;
 2. keep a `SettingsSession` in the application and give it the messages (`kSettings`, `kSettingsSet`, `kSettingsClose`) in `MessageReceived()`;
