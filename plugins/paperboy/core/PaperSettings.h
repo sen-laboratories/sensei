@@ -5,6 +5,8 @@
 #pragma once
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "PaperName.h"
 
@@ -53,6 +55,19 @@ struct Settings {
 
 /** @brief Reads `key = value` lines into the settings; unknown keys and bad values are ignored (the defaults stay). */
 void ParseSettings(const std::string& text, Settings* settings);
+
+/**
+ * @brief Whether a value can be the value of a setting, by the rules that ParseSettings() applies silently (an address that looks like one, a key without blanks or `&?=`,
+ * numbers in their range, `authors` one of all, orcid and no), so that the settings window can say what is wrong. An empty address or key is fine (it clears the setting).
+ * A value that has a `#` or a line break cannot be stored in the file. @p reason (if given) gets what is wrong.
+ */
+bool ValidateSetting(const std::string& key, const std::string& value, std::string* reason = nullptr);
+
+/**
+ * @brief The text of a settings file with the changed values put in: the line of a key is changed (a comment after the value stays), a key that has no line is added at the end;
+ * everything else (comments, other lines, the order) is kept. @p changes are key and value pairs.
+ */
+std::string UpdateSettingsText(const std::string& text, const std::vector<std::pair<std::string, std::string>>& changes);
 
 /** @brief true for "yes", "true", "on" and "1" (any case), false for "no", "false", "off", "0"; else @p fallback. */
 bool ParseBool(const std::string& value, bool fallback);

@@ -230,6 +230,15 @@ App::_Notify(const entry_ref& file, status_t result, const std::string& headline
 void
 App::MessageReceived(BMessage* message)
 {
+	// the settings window of SEN asks for the settings and sends the changes; the instance that is started for it ends with the session
+	if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
+		if (fSession.IsEnded())
+			Quit();
+		else
+			SetPulseRate(5000000);
+		return;
+	}
+
 	switch (message->what) {
 		case sensei::cmd::kIdentify:
 		case sensei::cmd::kEnrich:
@@ -240,6 +249,14 @@ App::MessageReceived(BMessage* message)
 		default:
 			BApplication::MessageReceived(message);
 	}
+}
+
+
+void
+App::Pulse()
+{
+	if (fSession.Expired())
+		Quit();
 }
 
 

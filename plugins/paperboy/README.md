@@ -99,7 +99,7 @@ The papers that cite this one are not stored (only their number); relations are 
 
 ## Settings
 
-A plugin has no window: `~/config/settings/sen/paperboy.settings`, lines of `key = value` (`#` starts a comment); the command line and the environment (`SEN_PAPERBOY_EMAIL`) win over it.
+A plugin has no window of its own: the settings are shown by the **Settings window of SEN** (Deskbar menu, *Settings…*, under *Plugins*), which asks the plugin for them and gives it back what you change; the plugin keeps them in `~/config/settings/sen/paperboy.settings`, lines of `key = value` (`#` starts a comment), which you can also edit by hand (comments and unknown lines stay when the window changes a value). The command line and the environment (`SEN_PAPERBOY_EMAIL`) win over the file.
 
 | Key | Default | |
 |---|---|---|

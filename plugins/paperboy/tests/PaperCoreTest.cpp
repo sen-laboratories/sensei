@@ -588,6 +588,44 @@ TestPeople()
 }
 
 
+static void
+TestSettingsForm()
+{
+	std::string reason;
+	CHECK(ValidateSetting("email", "reader@example.org"));
+	CHECK(ValidateSetting("email", ""));						// (clears it)
+	CHECK(!ValidateSetting("email", "no address", &reason) && !reason.empty());
+	CHECK(ValidateSetting("api_key", "abc123"));
+	CHECK(!ValidateSetting("api_key", "has space"));
+	CHECK(!ValidateSetting("api_key", "a=b"));
+	CHECK(!ValidateSetting("email", "a@b.c # comment"));		// (a # would end the line)
+	CHECK(ValidateSetting("max_authors", "10") && ValidateSetting("max_authors", "100") && ValidateSetting("max_authors", "1"));
+	CHECK(!ValidateSetting("max_authors", "0") && !ValidateSetting("max_authors", "101") && !ValidateSetting("max_authors", "many") && !ValidateSetting("max_authors", ""));
+	CHECK(ValidateSetting("max_pages", "20") && !ValidateSetting("max_pages", "21"));
+	CHECK(ValidateSetting("authors", "orcid") && ValidateSetting("authors", "ALL") && !ValidateSetting("authors", "maybe"));
+	CHECK(ValidateSetting("rename", "yes") && ValidateSetting("rename", "off") && !ValidateSetting("rename", "maybe"));
+	CHECK(!ValidateSetting("rename_pattern", ""));
+	CHECK(ValidateSetting("rename_pattern", "{year}-{title}"));
+	CHECK(!ValidateSetting("colour", "red", &reason) && reason == "no such setting");
+
+	// what is written is what ParseSettings reads, and the rest of the file stays
+	const std::string text = "# paperboy\nemail = old@example.org   # for the polite pool\nrename = yes\nunknown = kept\n";
+	const std::string changed = UpdateSettingsText(text, {{"email", "new@example.org"}, {"rename", "no"}, {"max_pages", "5"}});
+	CHECK(changed.find("# paperboy\n") == 0);
+	CHECK(changed.find("email = new@example.org # for the polite pool\n") != std::string::npos);
+	CHECK(changed.find("rename = no\n") != std::string::npos);
+	CHECK(changed.find("unknown = kept\n") != std::string::npos);
+	CHECK(changed.find("max_pages = 5\n") != std::string::npos);			// (a key without a line is added)
+	Settings settings;
+	ParseSettings(changed, &settings);
+	CHECK(settings.email == "new@example.org" && !settings.rename && settings.maxPages == 5);
+	// a text without a final line break, and an empty file
+	CHECK(UpdateSettingsText("rename = yes", {{"rename", "no"}}) == "rename = no\n");
+	CHECK(UpdateSettingsText("", {{"dblp", "no"}}) == "dblp = no\n");
+	// a comment line that names a key is not the key
+	CHECK(UpdateSettingsText("# email = x\n", {{"email", "a@b.c"}}) == "# email = x\nemail = a@b.c\n");
+}
+
 int
 main(int argc, char** argv)
 {
@@ -600,6 +638,7 @@ main(int argc, char** argv)
 	TestJson();
 	TestNames();
 	TestSettings();
+	TestSettingsForm();
 	TestTitleAndApi();
 	TestChoice();
 	TestSources();
