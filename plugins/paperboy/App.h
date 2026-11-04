@@ -36,9 +36,12 @@ private:
 	status_t					_Handle(BMessage* message);
 	void						_Notify(const entry_ref& file, status_t result, const std::string& headline, const std::string& text);
 	Paperboy*					_Service();
+	/** the settings as they are now: an instance that the server asks may have been started before the user changed them (not for a run from the command line) */
+	void						_ReloadSettings();
 	void						_PrintUsage(const char* error = NULL) const;
 
 	paperboy::Settings			fSettings;
+	bool						fCommandLine;
 	paperboy::SettingsProvider	fSettingsProvider;
 	sensei::SettingsSession		fSession;
 	Paperboy*					fPaperboy;

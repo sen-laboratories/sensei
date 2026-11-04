@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
  */
 
-// The settings protocol of the movie enricher (common/SettingsSession.h, BertSettingsForm.cpp), as the settings window of SEN uses it: the plugin is started with the request, answers
+// The settings protocol of the movie enricher (common/SettingsSession.h, MovieSettingsForm.cpp), as the settings window of SEN uses it: the plugin is started with the request, answers
 // to the messenger in it, takes changes into its settings file and ends with the session. Haiku only; needs the built Senthe movie enricher (bin/) and changes the settings file of
 // the movie enricher for a moment (it is put back):
 //   g++ -std=c++20 -Wall -Wno-multichar -I/boot/home/config/non-packaged/develop/headers tests/SettingsSessionTest.cpp -o /tmp/settings-session-test -lbe && /tmp/settings-session-test bin/<the program>

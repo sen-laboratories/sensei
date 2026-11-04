@@ -4,32 +4,18 @@
  */
 #pragma once
 
-#include <string>
-
 namespace bert {
 
 /**
- * The settings of BERT: lines of `key = value` in `~/config/settings/sen/bert.settings` (`#` starts a comment), changed in the settings window of SEN. The options of the command
- * line (`--auto`) win over them for one run. Whether the attributes that a file already has are replaced is not a setting: the action decides (Enrich, or Enrich (Overwrite)
- * with the Shift key, which sends `wipe`). Plain C++ (tests/BertSettingsTest.cpp runs everywhere).
+ * What BERT takes from the settings of SEN that all plugins share (sen::plugins::LoadSharedSettings(): ask which one if several books are found, the most authors that
+ * are made, where the people go). BERT has no settings of its own, so it is not listed in the settings window (`SEN:plugin:hasSettings` is false). The option of the command
+ * line (`--auto`) wins over the setting for one run.
  */
 struct Settings {
-	/** if OpenLibrary finds several books: ask which one is yours; off: the best one is taken, as `--auto` does. Not a setting of the file: the settings of SEN that all plugins
-	 *  share say it (sen::plugins::LoadSharedSettings()), the application puts it here. */
+	/** if OpenLibrary finds several books: ask which one is yours; off: the best one is taken, as `--auto` does */
 	bool choose = true;
-	/** make a person of each author of the book (a file next to it, with the Authorship relation) */
-	bool authors = true;
-	/** the most authors that are made, for books with a long list; as `choose`, from the settings that all plugins share (Max. number of entities to extract) */
+	/** the most authors that are made, for books with a long list */
 	int maxAuthors = 10;
 };
-
-/** Reads `key = value` lines into the settings; unknown keys and bad values are ignored (what is there stays). */
-void ParseSettings(const std::string& text, Settings* settings);
-
-/**
- * Whether a value can be the value of a setting, by the rules that ParseSettings() applies silently, so that the settings window can say what is wrong (`reason` gets it).
- * A value with a `#` or a line break cannot be stored in the file.
- */
-bool ValidateSetting(const std::string& key, const std::string& value, std::string* reason = nullptr);
 
 }	// namespace bert

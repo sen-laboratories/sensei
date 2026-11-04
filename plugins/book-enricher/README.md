@@ -21,11 +21,5 @@ the book or the other authors; without the SEN server the people are made, and t
 
 ## Settings
 
-BERT has no window of its own: the **Settings window of SEN** (Deskbar menu, *Settings…*, under *Plugins*) shows its settings and gives the plugin back what you change. They are kept in `~/config/settings/sen/bert.settings` (lines of `key = value`, `#` starts a comment; comments and other lines stay when the window changes a value), and the options of the command line win over them for one run. What is replaced is not a setting: the action decides (*Enrich*, or *Enrich (Overwrite)* with the Shift key).
-
-| Key | Default | |
-|---|---|---|
-| `authors` | yes | make a person of each author of the book |
-
-`choose` (ask which one if several are found) and the most entities that are made (the first authors of a long list) are not set here: they are the same for all plugins and are set once in the Settings window of SEN, under **Plugins** (*Ask which one if several are found*, *Max. number of entities to extract*). An older `choose` or `max_authors` line in the file is ignored; `--auto` takes the best for one run.
+BERT has no settings of its own, so it is not listed in the Settings window of SEN. What it uses is set once for all plugins, under **Plugins**: *Extract entities into* (Files makes a person of each author, Attributes only writes the names), *Ask which one if several are found* and *Max. number of entities to extract* (the first authors of a long list). The option of the command line (`--auto`) takes the best book for one run. What is replaced is not a setting: the action decides (*Enrich*, or *Enrich (Overwrite)* with the Shift key).
 

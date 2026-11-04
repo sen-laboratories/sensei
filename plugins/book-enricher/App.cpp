@@ -42,7 +42,6 @@ App::App()
     fBaseEnricher(NULL),
     fMapper(new MappingUtil())
 {
-    bert::LoadSettings(&fSettings);
     // (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
     const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
     fSettings.choose = shared.askIfSeveral;
@@ -165,25 +164,6 @@ void App::ArgvReceived(int32 argc, char ** argv) {
 void App::ShowError(const char* message)
 {
     sensei::Notify("SEN Book Enricher", "Book not enriched", message, false);
-}
-
-void App::MessageReceived(BMessage* message)
-{
-    // the settings window of SEN: the instance that is started for it ends with the session
-    if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
-        if (fSession.IsEnded())
-            Quit();
-        else
-            SetPulseRate(5000000);
-        return;
-    }
-    BApplication::MessageReceived(message);
-}
-
-void App::Pulse()
-{
-    if (fSession.Expired())
-        Quit();
 }
 
 void App::RefsReceived(BMessage *message)
@@ -326,9 +306,7 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     printf("All Book data retrieved successfully, done.\n");
 
     // the authors: each one a person next to the book, with its photo as the thumbnail, and related to the book (see Authors.h)
-    if (!fSettings.authors) {
-        printf("making people of the authors is off in the settings, skipping.\n");
-    } else if (!sen::plugins::ExtractEntitiesIntoFiles()) {
+    if (!sen::plugins::ExtractEntitiesIntoFiles()) {
         printf("entities are kept in the attributes (the settings of SEN), no people made for the authors.\n");
     } else if (fAuthorKeys.IsEmpty()) {
         printf("no author in the result, skipping.\n");

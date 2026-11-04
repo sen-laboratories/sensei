@@ -64,6 +64,7 @@ App::App()
 	:
 	BApplication(kApplicationSignature),
 	fPaperboy(NULL),
+	fCommandLine(false),
 	fDebug(false),
 	fNotify(true),
 	fExitCode(0)
@@ -71,6 +72,18 @@ App::App()
 	if (const char* level = getenv(kLogVariable))
 		spdlog::set_level(spdlog::level::from_str(level));
 
+	_ReloadSettings();
+}
+
+
+void
+App::_ReloadSettings()
+{
+	if (fCommandLine)
+		return;
+	delete fPaperboy;
+	fPaperboy = NULL;
+	fSettings = paperboy::Settings();
 	ReadSettings(&fSettings);
 	// (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
 	const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
@@ -127,6 +140,7 @@ void
 App::ArgvReceived(int32 argc, char** argv)
 {
 	fNotify = false;		// a person at the command line reads the output
+	fCommandLine = true;
 	uint32 what = sensei::cmd::kExtract;
 	bool self = false, local = false, rename = false, noRename = false, overwrite = false, facts = false;
 	std::vector<std::string> files;
@@ -220,6 +234,7 @@ void
 App::RefsReceived(BMessage* message)
 {
 	// B_REFS_RECEIVED is how the server asks for the extraction
+	_ReloadSettings();
 	_Handle(message);
 	Quit();
 }
@@ -248,6 +263,7 @@ App::MessageReceived(BMessage* message)
 		case sensei::cmd::kIdentify:
 		case sensei::cmd::kEnrich:
 		case sensei::cmd::kExtract:
+			_ReloadSettings();
 			_Handle(message);
 			Quit();
 			break;

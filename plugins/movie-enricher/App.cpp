@@ -76,18 +76,33 @@ App::App()
 	fMapper(new MappingUtil()),
 	fHttp(NULL),
 	fDebug(false),
+	fKeyGiven(false),
+	fLanguageGiven(false),
 	fOverwrite(true),
 	fAuto(false),
 	fExitCode(0)
 {
+	_ReloadSettings();
+}
+
+
+void
+App::_ReloadSettings()
+{
+	const std::string key = fSettings.apiKey, language = fSettings.language;
+	fSettings = movie::Settings();
 	movie::LoadSettings(&fSettings);
 	// (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
 	const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
 	fSettings.choose = shared.askIfSeveral;
 	fSettings.maxCast = shared.maxEntities;
-	const char* key = getenv(kKeyVariable);
-	if (key != NULL && key[0] != '\0')
+	const char* variable = getenv(kKeyVariable);
+	if (variable != NULL && variable[0] != '\0')
+		fSettings.apiKey = variable;
+	if (fKeyGiven)
 		fSettings.apiKey = key;
+	if (fLanguageGiven)
+		fSettings.language = language;
 }
 
 
@@ -161,8 +176,10 @@ App::ArgvReceived(int32 argc, char** argv)
 			fDebug = true;
 		} else if ((strcmp(arg, "-k") == 0 || strcmp(arg, "--key") == 0) && i + 1 < argc) {
 			fSettings.apiKey = argv[++i];
+			fKeyGiven = true;
 		} else if ((strcmp(arg, "-l") == 0 || strcmp(arg, "--language") == 0) && i + 1 < argc) {
 			fSettings.language = argv[++i];
+			fLanguageGiven = true;
 		} else if (arg[0] == '-') {
 			PrintUsage((std::string("unknown option ") + arg).c_str());
 			fExitCode = 1;
@@ -203,6 +220,7 @@ App::ArgvReceived(int32 argc, char** argv)
 void
 App::RefsReceived(BMessage* message)
 {
+	_ReloadSettings();		// (this instance may have been started before the user set the key)
 	BMessage reply(sensei::cmd::kResult);
 	status_t result = Enrich(message, &reply);
 	if (result != B_OK && result != B_CANCELED)

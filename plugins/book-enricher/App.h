@@ -11,7 +11,7 @@
 #include <sen/SenOntoBooks.h>
 
 #include "../../common/BaseEnricher.h"
-#include "BertSettingsForm.h"
+#include "BertSettings.h"
 
 #define BOOK_MIME_TYPE          sen::onto::books::mime::kBook
 
@@ -30,10 +30,6 @@ public:
                         App();
 	virtual			    ~App();
 	virtual void        RefsReceived(BMessage* message);
-    /** the settings window of SEN asks for the settings and sends the changes (see BertSettingsForm.h) */
-    virtual void        MessageReceived(BMessage* message);
-    /** ends the application when a settings session is over */
-    virtual void        Pulse();
     virtual void        ArgvReceived(int32 argc, char ** argv);
 
     /** the exit code of the program: 0, or 1 if something went wrong (a cancelled choice is no error) */
@@ -63,9 +59,7 @@ private:
     BStringList         fAuthorNames;
     entry_ref           fEnrichedRef;   // the file that was enriched, as it is called now (it may have been renamed after its title)
     int32               fExitCode;
-    bert::Settings      fSettings;          // the file; the options of the command line win for one run
-    bert::SettingsProvider fSettingsProvider;
-    sensei::SettingsSession fSession;
+    bert::Settings      fSettings;          // the settings of SEN that all plugins share; the options of the command line win for one run
 
     BaseEnricher*       fBaseEnricher;
     MappingUtil*        fMapper;

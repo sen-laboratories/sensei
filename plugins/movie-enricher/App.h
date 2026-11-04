@@ -47,6 +47,9 @@ private:
 	status_t		ChooseMovie(const std::vector<movie::SearchHit>& hits, const std::string& title, int year, int64_t* id);
 	void			ShowError(const char* message);
 	void			PrintUsage(const char* error = NULL);
+	/** the settings as they are now (the file, the settings of SEN that all plugins share, the variable of the key): the instance may have been started before the user changed them;
+	 *  what the command line gave (the key, the language) is kept */
+	void			_ReloadSettings();
 
 	movie::Settings			fSettings;
 	movie::SettingsProvider	fSettingsProvider;
@@ -55,6 +58,8 @@ private:
 	BaseEnricher*			fHttp;
 	std::string				fWanted;
 	bool					fDebug;
+	bool					fKeyGiven;			///< the command line has the key
+	bool					fLanguageGiven;
 	bool					fOverwrite;
 	bool					fAuto;
 	int32					fExitCode;
