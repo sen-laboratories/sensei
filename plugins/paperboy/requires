@@ -3,3 +3,4 @@ lib:libspdlog
 lib:libfmt
 sen_ontology_core
 sen_ontology_papers
+sen_ontology_people
