@@ -130,7 +130,7 @@ App::PrintUsage(const char* error)
 		<< "  -k, --key <key>    the TMDB API key (v3), or " << kKeyVariable << ", or the setting api_key\n"
 		<< "  -l, --language <l> the language of the answers (en-US, de-DE, ...)\n"
 		<< "      --debug        print what is done\n\n"
-		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/movies.settings.\n";
+		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/akari.settings.\n";
 }
 
 
@@ -237,7 +237,7 @@ App::Pulse()
 void
 App::ShowError(const char* message)
 {
-	sensei::Notify("SEN Movie Enricher", "Movie not enriched", message, false);
+	sensei::Notify("SEN Akari", "Movie not enriched", message, false);
 	printf("%s\n", message);
 }
 
@@ -402,7 +402,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 	fAuto = message->GetBool("auto", !fSettings.choose);
 
 	if (fSettings.apiKey.empty()) {
-		ShowError("Set the API key of The Movie Database in the settings of SEN (Settings, Plugins, SEN Movie Enrichment Tool). The key is free: themoviedb.org/settings/api.");
+		ShowError("Set the API key of The Movie Database in the settings of SEN (Settings, Plugins, SEN Akari). The key is free: themoviedb.org/settings/api.");
 		return B_NOT_ALLOWED;
 	}
 
@@ -476,7 +476,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 		summary << " - " << people.people << " people";
 	}
 	if (!fAuto)
-		sensei::Notify("SEN Movie Enricher", "Movie enriched", summary.String(), true, &ref);
+		sensei::Notify("SEN Akari", "Movie enriched", summary.String(), true, &ref);
 	reply->AddString(sen::key::kDetail, summary.String());
 	return B_OK;
 }

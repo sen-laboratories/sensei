@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 	find_directory(B_USER_SETTINGS_DIRECTORY, &path, true);
 	path.Append("sen");
 	create_directory(path.Path(), 0755);
-	path.Append("movies.settings");
+	path.Append("akari.settings");
 	const std::string original = ReadFile(path);
 	WriteFile(path, "# my settings\napi_key = abc123   # mine\nchoose = no\nunknown = kept\n");
 

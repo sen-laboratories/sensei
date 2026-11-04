@@ -1,4 +1,6 @@
-# MERT, the SEN Movie Enrichment Tool
+# Akari, the SEN movie enricher
+
+*Akari* is Japanese for light: the projector in the logo throws light onto a file, and the graph of its people and relations appears. The folder and the signature keep the name of what the plugin does (`movie-enricher`) like the other plugins; Akari is its name for people. The application icon is `images/akari-icon.svg` (made by `images/akari-icon.py`).
 
 Looks a movie up at [The Movie Database](https://www.themoviedb.org) (TMDB) and writes what it finds to the file, and makes **people** of the director, the crew and the cast, each with a
 **Contribution** to the movie.
@@ -6,7 +8,7 @@ Looks a movie up at [The Movie Database](https://www.themoviedb.org) (TMDB) and 
 > This product uses the TMDB API but is not endorsed or certified by TMDB. The data and the images are TMDB's.
 
 **You need a key.** TMDB gives one for free: register at themoviedb.org, then *Settings*, *API*, and copy the *API Key* (the v3 one, 32 characters) into the Settings window of SEN
-(*Settings…* in the Deskbar menu, *Plugins*, *Enrich*, *SEN Movie Enrichment Tool*). Without one the plugin says so and does nothing.
+(*Settings…* in the Deskbar menu, *Plugins*, *Enrich*, *SEN Akari*). Without one the plugin says so and does nothing.
 
 **The movie.** The title and year come from the attributes of the file (`dc:title`, `schema:datePublished`), else from its name: `The.Matrix.1999.1080p.BluRay.x264-YIFY.mkv` and
 `Blade Runner 2049 (2017).mp4` are found as *The Matrix* (1999) and *Blade Runner 2049* (2017). If TMDB finds **more than one movie**, the user chooses in a window
@@ -25,7 +27,7 @@ credits (`schema:position`). A person who did two things has two Contributions. 
 
 ## Settings
 
-The Settings window of SEN shows them; they are kept in `~/config/settings/sen/movies.settings` (lines of `key = value`, `#` starts a comment; comments and other lines stay when the window changes a value).
+The Settings window of SEN shows them; they are kept in `~/config/settings/sen/akari.settings` (lines of `key = value`, `#` starts a comment; comments and other lines stay when the window changes a value).
 
 | Key | Default | |
 |---|---|---|

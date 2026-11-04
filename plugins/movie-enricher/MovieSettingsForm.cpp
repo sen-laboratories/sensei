@@ -22,7 +22,7 @@ namespace movie {
 
 namespace {
 
-const char* const kSettingsFile = "sen/movies.settings";
+const char* const kSettingsFile = "sen/akari.settings";
 
 enum FieldType {
 	kBool,

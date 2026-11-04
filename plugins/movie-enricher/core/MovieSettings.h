@@ -9,7 +9,7 @@
 namespace movie {
 
 /**
- * The settings of the movie enricher: lines of `key = value` in `~/config/settings/sen/movies.settings` (`#` starts a comment), changed in the settings window of SEN. The
+ * The settings of Akari, the movie enricher: lines of `key = value` in `~/config/settings/sen/akari.settings` (`#` starts a comment), changed in the settings window of SEN. The
  * options of the command line win over them for one run. Plain C++.
  */
 struct Settings {

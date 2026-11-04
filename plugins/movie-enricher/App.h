@@ -17,7 +17,7 @@
 class MappingUtil;
 
 /**
- * The movie enricher (MERT): looks a movie up at The Movie Database (the title and year from the attributes or the name of the file, or the TMDB link that an earlier run wrote),
+ * Akari, the movie enricher: looks a movie up at The Movie Database (the title and year from the attributes or the name of the file, or the TMDB link that an earlier run wrote),
  * writes its attributes and the poster to the file, and makes people of the director, the crew and the cast with a Contribution to the movie.
  *
  * This product uses the TMDB API but is not endorsed or certified by TMDB.
