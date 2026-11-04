@@ -73,3 +73,8 @@ What a plugin does (`common/SettingsSession.h`; Paperboy and BERT are the exampl
 3. end the application when the session is over: `IsEnded()` after `kSettingsClose`, and `Expired()` (the window is gone, or it was quiet for a minute) in `Pulse()`.
 
 The window starts the plugin with the request (`be_roster->Launch(file, &request)`), so the plugin answers to the messenger in the request (`kSettingsReply`), and a multiple launch application is talked to at the instance that has the session. A plugin that does not know the request is asked to quit after a few seconds. `sen_settings --plugin <file>` shows the settings of a build of a plugin instead of the installed copy.
+
+
+## Where new entities go
+
+A plugin that makes entities for a file (people for the authors of a book, the director of a movie) puts them into the **Library of the current context** (`~/Library/People`...), which the SEN server tells: `sensei::FindOrCreateEntityFile()` (`common/EntityFile.h`) finds the file of an entity by its name and what makes it the same entity (a key, an ORCID iD: a function of yours), in the Library and next to the file where earlier versions put it, and makes it in the Library if there is none; without a server it makes it next to the file as before. Do not make entity files in the folder of the file yourself.

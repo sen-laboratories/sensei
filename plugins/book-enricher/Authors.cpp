@@ -25,6 +25,7 @@
 
 #include "App.h"
 #include "../../common/BaseEnricher.h"
+#include "../../common/EntityFile.h"
 #include "../../common/ThumbnailUtil.h"
 
 static const char* kAuthorKeyAttr = "OPENLIB:author_key";
@@ -210,52 +211,12 @@ AuthorMaker::FetchPhoto(int64 photoId, std::string* image)
 status_t
 AuthorMaker::FindOrCreatePerson(const entry_ref& book, const BString& name, const char* key, entry_ref* person, bool* created)
 {
-	BEntry bookEntry(&book);
-	BDirectory folder;
-	status_t result = bookEntry.InitCheck();
-	if (result == B_OK)
-		result = bookEntry.GetParent(&folder);
-	if (result != B_OK)
-		return result;
-
-	BString fileName(name);
-	fileName.ReplaceAll('/', '-');	// (a file name cannot hold a path)
-	fileName.Trim();
-	if (fileName.IsEmpty())
-		fileName = key;
-
-	for (int attempt = 0; attempt < 2; attempt++) {
-		BEntry entry(&folder, fileName.String());
-		if (entry.Exists()) {
-			BNode node(&entry);
-			char type[B_MIME_TYPE_LENGTH];
-			type[0] = '\0';
-			BNodeInfo(&node).GetType(type);
-			BString storedKey;
-			node.ReadAttrString(kAuthorKeyAttr, &storedKey);
-			bool samePerson = strcmp(type, sen::onto::people::mime::kPerson) == 0 && (storedKey.IsEmpty() || storedKey == key);
-			if (!samePerson) {
-				// somebody else, or another kind of file: the person is named with the key
-				fileName << " (" << key << ")";
-				continue;
-			}
-			*created = false;
-			return entry.GetRef(person);
-		}
-
-		BFile file;
-		result = folder.CreateFile(fileName.String(), &file, true);
-		if (result != B_OK)
-			return result;
-		file.Sync();	// (the attributes are written to the file as it is now)
-		BNodeInfo info(&file);
-		result = info.SetType(sen::onto::people::mime::kPerson);
-		if (result != B_OK)
-			return result;
-		*created = true;
-		return BEntry(&folder, fileName.String()).GetRef(person);
-	}
-	return B_NAME_IN_USE;
+	// (the Library of the current context, where a new person is made; a person that is there, or next to the book where an earlier version put it, is found by its name and key)
+	return sensei::FindOrCreateEntityFile(book, sen::onto::people::mime::kPerson, name.String(), key, [key](BNode& node) {
+		BString storedKey;
+		node.ReadAttrString(kAuthorKeyAttr, &storedKey);
+		return storedKey.IsEmpty() || storedKey == key;
+	}, person, created);
 }
 
 
