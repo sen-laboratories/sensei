@@ -25,9 +25,28 @@
 #include <functional>
 #include <vector>
 
+#include <Messenger.h>
+
 #include <sen/SenLibrary.h>
+#include <sen/SenMessages.h>
 
 namespace sensei {
+
+/**
+ * Puts a file that was made into what the user has made sticky (the current context, a project or a label that was locked with Shift+click in the menu of SEN): the server gives it
+ * a relation of the association type to each of them, as it does for a file that the file manager made. Nothing happens if there is no server or nothing is sticky.
+ */
+inline void
+ApplyStickyClassifications(const entry_ref& file)
+{
+	BMessenger server(sen::kServerSignature);
+	if (!server.IsValid())
+		return;
+	BMessage request(sen::cmd::kClassificationApplySticky);
+	request.AddRef(sen::key::kSourceRef, &file);
+	BMessage reply;
+	server.SendMessage(&request, &reply, 3000000, 3000000);
+}
 
 /**
  * The file of an entity of a type with a name.
@@ -102,7 +121,10 @@ FindOrCreateEntityFile(const entry_ref& beside, const char* mimeType, const char
 		if (result != B_OK)
 			return result;
 		*created = true;
-		return BEntry(&folders[target], candidate.String()).GetRef(found);
+		status_t made = BEntry(&folders[target], candidate.String()).GetRef(found);
+		if (made == B_OK)
+			ApplyStickyClassifications(*found);		// (a new entity is in the current context, if that is sticky)
+		return made;
 	}
 	return B_NAME_IN_USE;
 }
