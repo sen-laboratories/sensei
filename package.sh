@@ -58,7 +58,9 @@ for name in $plugins; do
 		2) suffix=beta${internal:-1} ;;
 	esac
 	[ -n "$suffix" ] && version="$version~$suffix"
-	release=$suffix		# (the plugins of a release have the same stage: the package of all of them is named after it)
+	release=$suffix
+	# (the package of all of them is named after the newest beta of a plugin: plugins that did not change keep an older one)
+	case "$suffix" in beta[0-9]*) [ "${suffix#beta}" -gt "${maxbeta:-0}" ] && maxbeta=${suffix#beta} ;; esac
 	version="$version-$REVISION"
 
 	licenses='"MIT"'
@@ -115,6 +117,7 @@ done
 
 # the package that brings all of them (only when all plugins were packaged)
 if [ -n "$all" ]; then
+	[ -n "$maxbeta" ] && release=beta$maxbeta
 	requires=$allrequires
 	stage=$ROOT/package-build/meta
 	rm -rf "$stage"
