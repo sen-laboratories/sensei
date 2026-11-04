@@ -16,12 +16,11 @@
 #include <sen/SenSettingsPath.h>
 
 #include "../../common/ThumbnailUtil.h"
+#include "ListSeparator.h"
 
 namespace movie {
 
 namespace {
-
-const char kListSeparator = ';';
 
 bool
 HasAttr(BNode& node, const char* attribute)
@@ -43,7 +42,7 @@ PutList(BNode& node, const char* attribute, const std::vector<std::string>& valu
 {
 	if (values.empty())
 		return;
-	PutString(node, attribute, sen::list::Join(values, kListSeparator), overwrite);
+	PutString(node, attribute, sen::list::Join(values, ListSeparatorOf(sen::onto::movies::mime::kMovie, attribute)), overwrite);
 }
 
 }	// namespace
@@ -76,10 +75,11 @@ WriteMovie(const entry_ref& file, const Details& d, bool overwrite)
 	PutString(node, attr::kPosterLicense, "The Movie Database (TMDB)", overwrite);
 
 	// the links: the ones that the file has stay, the ones of TMDB are added (the link of TMDB is how the movie is found again)
+	const char separator = ListSeparatorOf(sen::onto::movies::mime::kMovie, attr::kSameAs);
 	std::vector<std::string> links;
 	BString existing;
 	if (node.ReadAttrString(attr::kSameAs, &existing) == B_OK)
-		links = sen::list::Split(existing.String(), kListSeparator);
+		links = SplitValues(existing.String(), separator);
 	for (const std::string& link : SameAs(d)) {
 		bool known = false;
 		for (const std::string& each : links)
@@ -87,7 +87,7 @@ WriteMovie(const entry_ref& file, const Details& d, bool overwrite)
 		if (!known)
 			links.push_back(link);
 	}
-	const std::string joined = sen::list::Join(links, kListSeparator);
+	const std::string joined = sen::list::Join(links, separator);
 	node.WriteAttr(attr::kSameAs, B_STRING_TYPE, 0, joined.c_str(), joined.size() + 1);
 
 	// the semantic type: what a file is for SEN (Shoji shows its form for it); its type for Haiku stays

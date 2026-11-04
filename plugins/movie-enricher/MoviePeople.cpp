@@ -23,12 +23,11 @@
 
 #include "../../common/EntityFile.h"
 #include "../../common/ThumbnailUtil.h"
+#include "ListSeparator.h"
 
 namespace movie {
 
 namespace {
-
-const char kListSeparator = ';';
 
 bool
 HasAttr(BNode& node, const char* attribute)
@@ -66,7 +65,8 @@ WritePerson(const entry_ref& ref, const PersonDetails& person, const std::string
 	BString existing;
 	if (node.ReadAttrString(sen::onto::people::attr::kSameAs, &existing) == B_OK)
 		links = existing.String();
-	std::vector<std::string> values = sen::list::Split(links, kListSeparator);
+	const char separator = ListSeparatorOf(sen::onto::people::mime::kPerson, sen::onto::people::attr::kSameAs);
+	std::vector<std::string> values = SplitValues(links, separator);
 	for (const std::string& link : SameAs(person)) {
 		bool known = false;
 		for (const std::string& value : values)
@@ -74,7 +74,7 @@ WritePerson(const entry_ref& ref, const PersonDetails& person, const std::string
 		if (!known)
 			values.push_back(link);
 	}
-	const std::string joined = sen::list::Join(values, kListSeparator);
+	const std::string joined = sen::list::Join(values, separator);
 	node.WriteAttr(sen::onto::people::attr::kSameAs, B_STRING_TYPE, 0, joined.c_str(), joined.size() + 1);
 
 	PutString(node, sen::onto::people::attr::kImage, "https://www.themoviedb.org/person/" + std::to_string(person.id), overwrite);
