@@ -41,6 +41,8 @@ public:
     status_t FetchByHttpQuery(const BUrl& apiBaseUrl, BMessage* msgQuery, BMessage* msgResult);
     // Note: std::string will not alter binary content unlike BString does.
     status_t FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody);
+    /** the HTTP status of the last request that got an answer (0: none), e.g. 401 for a key that the service does not accept */
+    int      LastHttpStatus() const { return fLastHttpStatus; }
 
 protected:
     MappingUtil*        fMapper;
@@ -50,6 +52,7 @@ private:
     sen::ListConfig     ListConfigOf(const char* attribute);
 
     BHttpSession*       fHttpSession;
+    int                 fLastHttpStatus;
     entry_ref           fSourceRef;     // our own copy: the caller's one may be gone
     BMessage            fAttrInfo;
     bool                fAttrInfoRead;

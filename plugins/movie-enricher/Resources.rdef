@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 SEN Labs e.U.
+
+resource app_signature "application/x-vnd.sen-plugin.sen-labs.movie-enricher";
+
+resource app_flags B_MULTIPLE_LAUNCH | B_BACKGROUND_APP;
+
+resource app_version {
+	major  = 0,
+	middle = 1,
+	minor  = 0,
+
+	/* 0 = development	1 = alpha			2 = beta
+	   3 = gamma		4 = golden master	5 = final */
+	variety = 2,
+
+	internal = 5,
+
+	short_info = "SEN Movie Enrichment Tool (MERT)",
+	long_info  = "SEN module to grab metadata for movies from The Movie Database: the title, the release, the length, the poster, and the director, the crew and the cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB."
+};
+
+/* declare as a SEN plugin so it will be detected and used accordingly. */
+resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
+
+// set supported feature flags
+resource(1, "SEN:plugin:extract")  0;
+resource(2, "SEN:plugin:enrich")   1;
+resource(3, "SEN:plugin:identify") 0;
+resource(4, "SEN:plugin:navigate") 0;
+
+/* defines supported file types: a movie, and any video (the semantic type of a video that was enriched is a movie) */
+resource file_types message {
+    "types" = "entity/x-vnd.sen-labs.entity.movie",
+    "types" = "video"
+};

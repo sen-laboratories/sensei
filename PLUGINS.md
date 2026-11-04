@@ -13,6 +13,7 @@ sensei
     ├── document-reference-navigatornavigate
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
+    ├── movie-enricher        enrich
     ├── paperboy              enrich, identify
     ├── pdf-extractor         extract
     ├── personal-relation-navigatornavigate
@@ -29,6 +30,7 @@ sensei
 | `document-reference-navigator` (SENSEI Document Reference Navigator) | `sen_plugin_document_reference_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.document-reference-navigator` |
 | `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0 | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
 | `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1 | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
+| `movie-enricher` (SEN Movie Enrichment Tool (MERT)) | `sen_plugin_movie_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.movie`, `video` | - | `application/x-vnd.sen-plugin.sen-labs.movie-enricher` |
 | `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0 | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.citation` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
 | `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0 | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
 | `personal-relation-navigator` (SENSEI Personal Relation Navigator) | `sen_plugin_personal_relation_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.person`, `relation/x-vnd.sen-labs.relation.person.acquaintance`, `relation/x-vnd.sen-labs.relation.person.friend`, `relation/x-vnd.sen-labs.relation.person.close-friend`, `relation/x-vnd.sen-labs.relation.person.partner`, `relation/x-vnd.sen-labs.relation.person.parent`, `relation/x-vnd.sen-labs.relation.person.sibling`, `relation/x-vnd.sen-labs.relation.person.relative`, `relation/x-vnd.sen-labs.relation.person.colleague`, `relation/x-vnd.sen-labs.relation.person.superior`, `relation/x-vnd.sen-labs.relation.person.mentor`, `relation/x-vnd.sen-labs.relation.person.collaborator`, `relation/x-vnd.sen-labs.relation.person.client`, `relation/x-vnd.sen-labs.relation.person.employment`, `relation/x-vnd.sen-labs.relation.person.membership` | - | `application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator` |
@@ -47,6 +49,8 @@ sensei
 
 **mime-extractor**: SEN module to extract the attributes of a MIME type as its contents.
 
+**movie-enricher**: SEN module to grab metadata for movies from The Movie Database: the title, the release, the length, the poster, and the director, the crew and the cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB.
+
 **paperboy**: Finds scientific papers, looks up their metadata and free copies (DOI, arXiv ID or title), makes people of the authors (ORCID, Wikidata) and extracts cited papers.\nSources: OpenAlex, Unpaywall, arXiv, Semantic Scholar, DBLP; no keys needed.
 
 **pdf-extractor**: SEN module to extract structure outline from PDFs.
@@ -60,21 +64,3 @@ sensei
 **sourcecode-extractor**: SEN module to identify the language of source code files (sets their semantic type) and to extract their references to other files: includes, imports and modules (C, C++, Go, Java, JavaScript, Python, Rust, TypeScript).
 
 **text-reference-navigator**: SEN module to open the targets of TextReference relations (a line, a column, a selection of a text) in the editor, with the places mapped to its arguments.
-
-
-## Settings
-
-A plugin has no window for its settings: the settings window of SEN (`sen_settings`, in the Settings item of the Deskbar menu) lists the plugins and shows the form of Shoji for the selected one. The window asks the plugin for its settings as a message and sends back what the user changes; **the plugin keeps and validates them itself**, in the place and format of its choice, and SEN never reads or writes them (loose coupling: the plugin decides how and when a change takes effect; a job that runs keeps the settings it started with).
-
-What a plugin does (`common/SettingsSession.h`; Paperboy and BERT are the examples: `PaperSettingsForm.cpp`, `BertSettingsForm.cpp`, `App.cpp`; `common/SettingsText.h` reads and updates settings files of `key = value` lines without losing comments):
-
-1. implement `sensei::SettingsProvider`: `Describe()` gives the settings as a `BMessage` (one field per setting, in its type: bool, integers, doubles, strings, times), a **schema** (per field name a message with `label`, `help`, `kind`, `choices`, `min`, `max`, `step`, ...: see `SenSettingsForm.h`; the form derives labels and controls from the types without one) and the **defaults**; `Apply()` gets the changed fields (each under its path key, which for a flat message is the name), validates, stores and names the ones it refuses;
-2. keep a `SettingsSession` in the application and give it the messages (`kSettings`, `kSettingsSet`, `kSettingsClose`) in `MessageReceived()`;
-3. end the application when the session is over: `IsEnded()` after `kSettingsClose`, and `Expired()` (the window is gone, or it was quiet for a minute) in `Pulse()`.
-
-The window starts the plugin with the request (`be_roster->Launch(file, &request)`), so the plugin answers to the messenger in the request (`kSettingsReply`), and a multiple launch application is talked to at the instance that has the session. A plugin that does not know the request is asked to quit after a few seconds. `sen_settings --plugin <file>` shows the settings of a build of a plugin instead of the installed copy.
-
-
-## Where new entities go
-
-A plugin that makes entities for a file (people for the authors of a book, the director of a movie) puts them into the **Library of the current context** (`~/Library/People`...), which the SEN server tells: `sensei::FindOrCreateEntityFile()` (`common/EntityFile.h`) finds the file of an entity by its name and what makes it the same entity (a key, an ORCID iD: a function of yours), in the Library and next to the file where earlier versions put it, and makes it in the Library if there is none; without a server it makes it next to the file as before. Do not make entity files in the folder of the file yourself.

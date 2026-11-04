@@ -43,6 +43,7 @@ BaseEnricher::BaseEnricher(const entry_ref* srcRef, MappingUtil* mapper)
     :
     fMapper(mapper),
     fHttpSession(sen::SharedHttpSession()),
+    fLastHttpStatus(0),
     fSourceRef(*srcRef),
     fAttrInfoRead(false)
 {
@@ -475,8 +476,26 @@ status_t BaseEnricher::FetchRemoteJson(const BUrl& httpUrl, BMessage& jsonMsgRes
     return BJson::Parse(resultBody.c_str(), jsonMsgResult);
 }
 
+// the address for the log: the key of a service (`api_key=...`, in the address as some services have it) is not printed
+static BString
+LoggedUrl(const BUrl& url)
+{
+    BString text(url.UrlString());
+    int32 at = text.FindFirst("api_key=");
+    if (at >= 0) {
+        int32 start = at + 8;
+        int32 end = text.FindFirst("&", start);
+        if (end < 0)
+            end = text.Length();
+        text.Remove(start, end - start);
+        text.Insert("***", start);
+    }
+    return text;
+}
+
 status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody)
 {
+    fLastHttpStatus = 0;
     auto request = BHttpRequest(httpUrl);
     request.SetTimeout(kRequestTimeout);
 
@@ -487,12 +506,13 @@ status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resu
 	auto body = make_exclusive_borrow<BMallocIO>();
     BHttpStatus status;
 
-    printf("sending HTTP request %s...\n", httpUrl.UrlString().String());
+    printf("sending HTTP request %s...\n", LoggedUrl(httpUrl).String());
 
     try {
         auto result = fHttpSession->Execute(std::move(request), BBorrow<BDataIO>(body));
         // the Status() call will block until full response has been received
         status = result.Status();
+        fLastHttpStatus = status.code;
         result.Body();  // synchronize with BBorrow buffer (see HttpSession::Execute docs)
     } catch (const BPrivate::Network::BNetworkRequestError& err) {
         return err.ErrorCode();
@@ -507,7 +527,7 @@ status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resu
          }
     } else {
         printf("HTTP error %d reading from URL %s: %s\n",
-            status.code, httpUrl.UrlString().String(), status.text.String());
+            status.code, LoggedUrl(httpUrl).String(), status.text.String());
         return B_ERROR;
     }
     return B_OK;
