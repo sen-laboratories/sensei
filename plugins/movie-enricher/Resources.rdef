@@ -17,7 +17,7 @@ resource app_version {
 	internal = 5,
 
 	short_info = "SEN Akari (Movie Enricher)",
-	long_info  = "SEN module to grab metadata for movies from The Movie Database: the title, the release, the length, the poster, and the director, the crew and the cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB."
+	long_info  = "Grabs movie metadata from The Movie Database: title, release, length, poster, and director, crew and cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */

@@ -49,7 +49,7 @@ sensei
 
 **mime-extractor**: SEN module to extract the attributes of a MIME type as its contents.
 
-**movie-enricher**: SEN module to grab metadata for movies from The Movie Database: the title, the release, the length, the poster, and the director, the crew and the cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB.
+**movie-enricher**: Grabs movie metadata from The Movie Database: title, release, length, poster, and director, crew and cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB.
 
 **paperboy**: Finds scientific papers, looks up their metadata and free copies (DOI, arXiv ID or title), makes people of the authors (ORCID, Wikidata) and extracts cited papers.\nSources: OpenAlex, Unpaywall, arXiv, Semantic Scholar, DBLP; no keys needed.
 

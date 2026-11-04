@@ -1,4 +1,12 @@
-# Akari, the SEN movie enricher
+<!--
+SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: 2026 SEN Labs e.U.
+-->
+<p align="center">
+  <img src="images/akari-logo.jpg" alt="Akari: a film projector that throws light onto a file, and a graph of its people appears" width="320" />
+</p>
+
+<h1 align="center">Akari, the SEN movie enricher</h1>
 
 *Akari* is Japanese for light: the projector in the logo throws light onto a file, and the graph of its people and relations appears. The folder and the signature keep the name of what the plugin does (`movie-enricher`) like the other plugins; Akari is its name for people. The application icon is `images/akari-icon.svg` (made by `images/akari-icon.py`).
 
