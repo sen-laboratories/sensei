@@ -23,6 +23,7 @@
 #include "../../common/ThumbnailUtil.h"
 #include <sen/SenAbout.h>
 #include <sen/SenChoice.h>
+#include <sen/SenPluginSettings.h>
 #include <sen/Sen.h>
 #include <sen/Sensei.h>
 
@@ -323,6 +324,8 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     // the authors: each one a person next to the book, with its photo as the thumbnail, and related to the book (see Authors.h)
     if (!fSettings.authors) {
         printf("making people of the authors is off in the settings, skipping.\n");
+    } else if (!sen::plugins::ExtractEntitiesIntoFiles()) {
+        printf("entities are kept in the attributes (the settings of SEN), no people made for the authors.\n");
     } else if (fAuthorKeys.IsEmpty()) {
         printf("no author in the result, skipping.\n");
     } else {

@@ -105,4 +105,7 @@ float ScoreHit(const SearchHit& hit, int position, int count, const std::string&
 /** The key crew of a movie as credits: Director, Writer, Producer, Composer, Cinematographer, Editor; one for each person and role. */
 std::vector<Credit> KeyCrew(const std::vector<Credit>& crew);
 
+/** The names of the credits that have a role, in the order of their position (once each): the directors, the actors. */
+std::vector<std::string> NamesWithRole(const std::vector<Credit>& credits, const std::string& role);
+
 }	// namespace movie

@@ -19,6 +19,12 @@ namespace movie {
  */
 status_t WriteMovie(const entry_ref& file, const Details& details, bool overwrite);
 
+/**
+ * The names of the director and the actors as attributes of the file (the settings say that entities are not made as files, see sen::plugins::ExtractEntitiesIntoFiles()): from the
+ * credits, in the order of their position. Kept if the file has them, unless @p overwrite.
+ */
+status_t WriteNames(const entry_ref& file, const std::vector<Credit>& credits, bool overwrite);
+
 /** The poster as the thumbnail of the file; kept if the file has a thumbnail already, unless @p overwrite. */
 status_t WritePoster(const entry_ref& file, const std::string& image, bool overwrite);
 

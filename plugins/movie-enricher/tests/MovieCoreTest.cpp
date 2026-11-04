@@ -186,9 +186,27 @@ TestSettings()
 	CHECK(changed == "# movies\napi_key = new1 # mine\nlanguage = fr-FR\n");
 }
 
+static void
+TestNames()
+{
+	movie::Credit a, b, c, d;
+	a.name = "Second Actor"; a.role = "Actor"; a.position = 2;
+	b.name = "First Actor"; b.role = "Actor"; b.position = 1;
+	c.name = "Dir Ector"; c.role = "Director"; c.position = 1;
+	d.name = "First Actor"; d.role = "Director"; d.position = 2;			// (the same name in another role; and twice as an actor below)
+	std::vector<movie::Credit> credits = {a, b, c, d, b};
+	const std::vector<std::string> actors = movie::NamesWithRole(credits, "Actor");
+	CHECK(actors.size() == 2 && actors[0] == "First Actor" && actors[1] == "Second Actor");	// (by position, once each)
+	const std::vector<std::string> directors = movie::NamesWithRole(credits, "Director");
+	CHECK(directors.size() == 2 && directors[0] == "Dir Ector" && directors[1] == "First Actor");
+	CHECK(movie::NamesWithRole(credits, "Writer").empty());
+	CHECK(movie::NamesWithRole({}, "Actor").empty());
+}
+
 int
 main()
 {
+	TestNames();
 	TestName();
 	TestTmdb();
 	TestSettings();

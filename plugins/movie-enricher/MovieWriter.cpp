@@ -100,6 +100,20 @@ WriteMovie(const entry_ref& file, const Details& d, bool overwrite)
 
 
 status_t
+WriteNames(const entry_ref& file, const std::vector<Credit>& credits, bool overwrite)
+{
+	BNode node(&file);
+	status_t result = node.InitCheck();
+	if (result != B_OK)
+		return result;
+	namespace attr = sen::onto::movies::attr;
+	PutList(node, attr::kDirector, NamesWithRole(credits, "Director"), overwrite);
+	PutList(node, attr::kActor, NamesWithRole(credits, "Actor"), overwrite);
+	return B_OK;
+}
+
+
+status_t
 WritePoster(const entry_ref& file, const std::string& image, bool overwrite)
 {
 	BNode node(&file);

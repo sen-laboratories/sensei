@@ -22,6 +22,7 @@
 #include <sen/SenAbout.h>
 #include <sen/SenChoice.h>
 #include <sen/SenOntoMovies.h>
+#include <sen/SenPluginSettings.h>
 #include <sen/SenSettingsPath.h>
 #include <sen/Sensei.h>
 
@@ -464,7 +465,11 @@ App::Enrich(BMessage* message, BMessage* reply)
 	}
 	BString summary;
 	summary << details.title.c_str();
-	if (!credits.empty()) {
+	if (!credits.empty() && !sen::plugins::ExtractEntitiesIntoFiles()) {
+		// (the settings of SEN say: no entities of their own, only the names in the attributes of the movie)
+		movie::WriteNames(ref, credits, fOverwrite);
+		printf("entities are kept in the attributes: the names of the director and the cast written, no people made.\n");
+	} else if (!credits.empty()) {
 		TmdbPeople source(fHttp, fSettings.apiKey, fSettings.language);
 		movie::PeopleResult people = movie::MakePeople(ref, credits, &source, fOverwrite, fDebug);
 		printf("%d people (%d new), %d contributions, %d skipped.\n", people.people, people.made, people.contributions, people.skipped);

@@ -152,6 +152,24 @@ int main(int argc, char** argv)
 	const std::string image(reinterpret_cast<const char*>(kPng), sizeof(kPng));
 	CHECK(movie::WritePoster(file, image, false) == B_OK && HasAttr(file, THUMBNAIL_ATTR_NAME));
 
+	// the names only (the settings say: no entities of their own)
+	{
+		std::vector<movie::Credit> named;
+		movie::Credit one;
+		one.name = "Name Director Zz"; one.role = "Director"; one.position = 1;
+		movie::Credit two;
+		two.name = "Name Actor Zz"; two.role = "Actor"; two.position = 1;
+		named = {one, two};
+		CHECK(movie::WriteNames(file, named, false) == B_OK);
+		CHECK(Text(file, sen::onto::movies::attr::kDirector) == "Name Director Zz" && Text(file, sen::onto::movies::attr::kActor) == "Name Actor Zz");
+		named[0].name = "Other Zz";
+		CHECK(movie::WriteNames(file, named, false) == B_OK && Text(file, sen::onto::movies::attr::kDirector) == "Name Director Zz");	// (kept)
+		CHECK(movie::WriteNames(file, named, true) == B_OK && Text(file, sen::onto::movies::attr::kDirector) == "Other Zz");
+		BNode node(&file);
+		node.RemoveAttr(sen::onto::movies::attr::kDirector);
+		node.RemoveAttr(sen::onto::movies::attr::kActor);
+	}
+
 	// the people
 	std::vector<movie::Credit> credits;
 	movie::Credit director;

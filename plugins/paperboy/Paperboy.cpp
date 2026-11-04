@@ -22,6 +22,7 @@
 #include <sen/Sen.h>
 #include <sen/SenAbout.h>
 #include <sen/SenChoice.h>
+#include <sen/SenPluginSettings.h>
 #include <sen/Sensei.h>
 #include <spdlog/spdlog.h>
 
@@ -668,7 +669,7 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 
 	// the authors are people next to the paper (after the rename: their relation is to the file as it is called now)
 	int32 authors = 0;
-	if (fSettings.authors != "no" && !paper.authors.empty()) {
+	if (fSettings.authors != "no" && !paper.authors.empty() && sen::plugins::ExtractEntitiesIntoFiles()) {
 		AuthorMaker maker(&fHttp, fSettings, overwrite);
 		authors = maker.MakeAuthors(*file, paper);
 	}

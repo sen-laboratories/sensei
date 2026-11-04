@@ -426,4 +426,22 @@ ScoreHit(const SearchHit& hit, int position, int count, const std::string& wante
 	return std::clamp(0.40f * title + 0.25f * year + 0.15f * rank + 0.20f * known, 0.0f, 1.0f);
 }
 
+
+std::vector<std::string>
+NamesWithRole(const std::vector<Credit>& credits, const std::string& role)
+{
+	std::vector<const Credit*> found;
+	for (const Credit& credit : credits) {
+		if (credit.role == role && !credit.name.empty())
+			found.push_back(&credit);
+	}
+	std::stable_sort(found.begin(), found.end(), [](const Credit* a, const Credit* b) { return a->position < b->position; });
+	std::vector<std::string> names;
+	for (const Credit* credit : found) {
+		if (std::find(names.begin(), names.end(), credit->name) == names.end())
+			names.push_back(credit->name);
+	}
+	return names;
+}
+
 }	// namespace movie
