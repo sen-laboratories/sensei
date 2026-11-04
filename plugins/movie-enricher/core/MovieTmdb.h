@@ -67,7 +67,12 @@ struct PersonDetails {
 	std::string	profilePath;
 };
 
-// ---- the addresses (the key is the API key of the user, v3: it is part of the address, so never print one)
+// ---- the addresses (the key is the API key of the user, v3: it is part of the address, so never print one. The "API Read Access Token" (v4, a long text of three parts with dots)
+// is the other key that TMDB gives: it is not part of the address but is sent in the header `Authorization: Bearer <token>`)
+
+/** Whether the key is the read access token (v4: it has dots) and not an API key (v3: 32 hexadecimal digits). */
+bool IsReadToken(const std::string& key);
+
 std::string SearchUrl(const std::string& key, const std::string& language, const std::string& title, int year);
 std::string DetailsUrl(const std::string& key, const std::string& language, int64_t id);
 std::string PersonUrl(const std::string& key, const std::string& language, int64_t id);

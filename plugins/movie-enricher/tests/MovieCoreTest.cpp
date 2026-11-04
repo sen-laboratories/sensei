@@ -170,17 +170,28 @@ TestSettings()
 {
 	movie::Settings s;
 	CHECK(s.apiKey.empty() && s.language == "en-US" && s.choose && s.crew && s.cast && s.maxCast == 10);
-	movie::ParseSettings("# movies\napi_key = 0123abcd   # my key\nlanguage = de-DE\nchoose = no\ncast = off\nmax_cast = 25\n", &s);
-	CHECK(s.apiKey == "0123abcd" && s.language == "de-DE" && !s.choose && !s.cast && s.crew && s.maxCast == 25);
-	movie::ParseSettings("api_key = has space\nlanguage = German\nmax_cast = 51\nmax_cast = x\nnonsense = 1\ncrew = maybe\n", &s);
-	CHECK(s.apiKey == "0123abcd" && s.language == "de-DE" && s.maxCast == 25 && s.crew);
+	movie::ParseSettings("# movies\napi_key = 0123abcd   # my key\nlanguage = de-DE\ncast = off\n", &s);
+	CHECK(s.apiKey == "0123abcd" && s.language == "de-DE" && !s.cast && s.crew);
+	// (choose and the most actors are the settings of SEN that all plugins share, not of the file: the application sets them)
+	movie::ParseSettings("choose = no\nmax_cast = 25\n", &s);
+	CHECK(s.choose && s.maxCast == 10);
+	movie::ParseSettings("api_key = has space\nlanguage = German\nnonsense = 1\ncrew = maybe\n", &s);
+	CHECK(s.apiKey == "0123abcd" && s.language == "de-DE" && s.crew);
+	// the read access token (v4) has dots, and goes in a header
+	const std::string token = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxMjM0In0.c2lnbmF0dXJl";
+	CHECK(movie::ValidateSetting("api_key", token) && movie::IsReadToken(token) && !movie::IsReadToken("0123abcd0123abcd0123abcd0123abcd"));
+	movie::ParseSettings("api_key = " + token + "\n", &s);
+	CHECK(s.apiKey == token);
+	CHECK(movie::SearchUrl(token, "en-US", "Alien", 0).find("api_key") == std::string::npos && movie::SearchUrl("0123abcd", "en-US", "Alien", 0).find("api_key=0123abcd&query=Alien") != std::string::npos);
+	CHECK(movie::DetailsUrl(token, "", 5).find("api_key") == std::string::npos && movie::DetailsUrl(token, "", 5).find("/movie/5?append_to_response") != std::string::npos);
 
 	std::string reason;
 	CHECK(movie::ValidateSetting("api_key", "") && movie::ValidateSetting("api_key", "abc-123_X") && !movie::ValidateSetting("api_key", "a b") && !movie::ValidateSetting("api_key", "a&b"));
 	CHECK(movie::ValidateSetting("language", "en") && movie::ValidateSetting("language", "pt-BR") && !movie::ValidateSetting("language", "english") && !movie::ValidateSetting("language", "en-us") && !movie::ValidateSetting("language", ""));
-	CHECK(movie::ValidateSetting("max_cast", "0") && movie::ValidateSetting("max_cast", "50") && !movie::ValidateSetting("max_cast", "51") && !movie::ValidateSetting("max_cast", "-1"));
+	CHECK(!movie::ValidateSetting("max_cast", "5", &reason) && reason == "no such setting");
+	CHECK(!movie::ValidateSetting("api_key", "a b", &reason) && reason.find("API") != std::string::npos);
 	CHECK(movie::ValidateSetting("cast", "yes") && !movie::ValidateSetting("cast", "maybe", &reason) && reason == "yes or no");
-	CHECK(!movie::ValidateSetting("colour", "red", &reason) && reason == "no such setting" && !movie::ValidateSetting("choose", "yes # no"));
+	CHECK(!movie::ValidateSetting("colour", "red", &reason) && reason == "no such setting" && !movie::ValidateSetting("cast", "yes # no"));
 	// the file keeps its comments when a value changes
 	const std::string changed = sensei::settingstext::Update("# movies\napi_key = old  # mine\n", {{"api_key", "new1"}, {"language", "fr-FR"}});
 	CHECK(changed == "# movies\napi_key = new1 # mine\nlanguage = fr-FR\n");

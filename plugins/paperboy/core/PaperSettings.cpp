@@ -89,11 +89,9 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		const std::string mode = Lower(v);
 		return mode == "all" || mode == "orcid" || mode == "no" ? true : fail("one of all, orcid and no");
 	}
-	if (key == "max_authors")
-		return number(1, 100) ? true : fail("a number from 1 to 100");
 	if (key == "max_pages")
 		return number(1, 20) ? true : fail("a number from 1 to 20");
-	if (key == "unpaywall" || key == "rename" || key == "rename_underscores" || key == "overwrite" || key == "title_search" || key == "choose"
+	if (key == "unpaywall" || key == "rename" || key == "rename_underscores" || key == "overwrite" || key == "title_search"
 			|| key == "semantic_scholar" || key == "dblp" || key == "arxiv" || key == "local_only")
 		return isBool() ? true : fail("yes or no");
 	return fail("no such setting");
@@ -153,12 +151,6 @@ ParseSettings(const std::string& text, Settings* settings)
 				settings->authors = mode;
 			else if (ParseBool(value, true) == false)
 				settings->authors = "no";
-		} else if (key == "max_authors") {
-			int count = std::atoi(value.c_str());
-			if (count >= 1 && count <= 100)
-				settings->maxAuthors = count;
-		} else if (key == "choose") {
-			settings->choose = ParseBool(value, settings->choose);
 		} else if (key == "local_only") {
 			settings->localOnly = ParseBool(value, settings->localOnly);
 		} else if (key == "max_pages") {

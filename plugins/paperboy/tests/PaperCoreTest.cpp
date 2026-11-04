@@ -322,21 +322,19 @@ TestSettings()
 	// the authors: all of them (the first ten) by default
 	CHECK_EQ(settings.authors, "all");
 	CHECK(settings.maxAuthors == 10);
-	ParseSettings("authors = orcid\nmax_authors = 3\n", &settings);
+	ParseSettings("authors = orcid\n", &settings);
 	CHECK_EQ(settings.authors, "orcid");
-	CHECK(settings.maxAuthors == 3);
 	ParseSettings("authors = no\n", &settings);
 	CHECK_EQ(settings.authors, "no");
-	ParseSettings("authors = maybe\nmax_authors = 500\n", &settings);
+	ParseSettings("authors = maybe\n", &settings);
 	CHECK_EQ(settings.authors, "no");		// (not a value: it stays)
-	CHECK(settings.maxAuthors == 3);
 	ParseSettings("authors = all\n", &settings);
 	CHECK_EQ(settings.authors, "all");
 
-	// choosing between several papers: off by default for a script, the settings and the command line can switch it
+	// the most authors and asking which paper if several are found are settings of SEN that all plugins share, not of the file: the application sets them (see sen::plugins::LoadSharedSettings)
 	CHECK(settings.choose);
-	ParseSettings("choose = no\n", &settings);
-	CHECK(!settings.choose);
+	ParseSettings("choose = no\nmax_authors = 3\n", &settings);
+	CHECK(settings.choose && settings.maxAuthors == 10);
 
 	CHECK(LooksLikeEmail("a@b.org"));
 	CHECK(!LooksLikeEmail("a@b"));
@@ -599,8 +597,7 @@ TestSettingsForm()
 	CHECK(!ValidateSetting("api_key", "has space"));
 	CHECK(!ValidateSetting("api_key", "a=b"));
 	CHECK(!ValidateSetting("email", "a@b.c # comment"));		// (a # would end the line)
-	CHECK(ValidateSetting("max_authors", "10") && ValidateSetting("max_authors", "100") && ValidateSetting("max_authors", "1"));
-	CHECK(!ValidateSetting("max_authors", "0") && !ValidateSetting("max_authors", "101") && !ValidateSetting("max_authors", "many") && !ValidateSetting("max_authors", ""));
+	CHECK(!ValidateSetting("max_authors", "10") && !ValidateSetting("choose", "yes"));		// (shared by all plugins now)
 	CHECK(ValidateSetting("max_pages", "20") && !ValidateSetting("max_pages", "21"));
 	CHECK(ValidateSetting("authors", "orcid") && ValidateSetting("authors", "ALL") && !ValidateSetting("authors", "maybe"));
 	CHECK(ValidateSetting("rename", "yes") && ValidateSetting("rename", "off") && !ValidateSetting("rename", "maybe"));

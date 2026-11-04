@@ -17,13 +17,14 @@ struct Settings {
 	std::string apiKey;
 	/** The language of the titles, descriptions and biographies that TMDB gives: `en-US`, `de-DE`, ... */
 	std::string language = "en-US";
-	/** if several movies are found: ask which one is meant; off: the best one is taken (`--auto`) */
+	/** if several movies are found: ask which one is meant; off: the best one is taken (`--auto`). Not a setting of the file: the settings of SEN that all plugins share say it
+	 *  (sen::plugins::LoadSharedSettings()), the application puts it here. */
 	bool choose = true;
 	/** make people of the director and the key crew (writers, producers, composer, cinematography, editing), with a Contribution to the movie */
 	bool crew = true;
 	/** make people of the cast, with a Contribution (the role Actor, the character and the place in the credits) */
 	bool cast = true;
-	/** the most actors that are made */
+	/** the most actors that are made (the crew is only the key jobs); as `choose`, from the settings that all plugins share (Max. number of entities to extract) */
 	int maxCast = 10;
 };
 

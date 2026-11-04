@@ -81,6 +81,10 @@ App::App()
 	fExitCode(0)
 {
 	movie::LoadSettings(&fSettings);
+	// (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
+	const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
+	fSettings.choose = shared.askIfSeveral;
+	fSettings.maxCast = shared.maxEntities;
 	const char* key = getenv(kKeyVariable);
 	if (key != NULL && key[0] != '\0')
 		fSettings.apiKey = key;
@@ -127,7 +131,7 @@ App::PrintUsage(const char* error)
 		<< "This product uses the TMDB API but is not endorsed or certified by TMDB.\n\n"
 		<< "  -a, --auto         if several movies are found, take the best without asking\n"
 		<< "  -w, --wipe         replace attributes that the file has (the default for a request of the menu)\n"
-		<< "  -k, --key <key>    the TMDB API key (v3), or " << kKeyVariable << ", or the setting api_key\n"
+		<< "  -k, --key <key>    the TMDB API key (v3) or read access token (v4), or " << kKeyVariable << ", or the setting api_key\n"
 		<< "  -l, --language <l> the language of the answers (en-US, de-DE, ...)\n"
 		<< "      --debug        print what is done\n\n"
 		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/akari.settings.\n";
@@ -408,6 +412,8 @@ App::Enrich(BMessage* message, BMessage* reply)
 
 	delete fHttp;
 	fHttp = new BaseEnricher(&ref, fMapper);
+	if (movie::IsReadToken(fSettings.apiKey))
+		fHttp->SetBearerToken(fSettings.apiKey.c_str());
 
 	int64_t id = 0;
 	status_t result = FindMovie(ref, &id);

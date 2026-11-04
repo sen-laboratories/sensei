@@ -38,12 +38,12 @@ IsLanguage(const std::string& v)
 	return true;
 }
 
-/** a key is a word: letters, digits, `-` and `_` (v3 keys are 32 hexadecimal digits) */
+/** a key is a word: letters, digits, `-` and `_` (v3 keys are 32 hexadecimal digits), and `.` between the three parts of the read access token (v4) */
 bool
 IsKey(const std::string& v)
 {
 	for (unsigned char c : v) {
-		if (!std::isalnum(c) && c != '-' && c != '_')
+		if (!std::isalnum(c) && c != '-' && c != '_' && c != '.')
 			return false;
 	}
 	return true;
@@ -64,15 +64,10 @@ ParseSettings(const std::string& text, Settings* settings)
 		} else if (key == "language") {
 			if (IsLanguage(value))
 				settings->language = value;
-		} else if (key == "choose") {
-			settings->choose = st::ParseBool(value, settings->choose);
 		} else if (key == "crew") {
 			settings->crew = st::ParseBool(value, settings->crew);
 		} else if (key == "cast") {
 			settings->cast = st::ParseBool(value, settings->cast);
-		} else if (key == "max_cast") {
-			if (IsNumber(value, 0, 50))
-				settings->maxCast = std::atoi(value.c_str());
 		}
 	}
 }
@@ -91,13 +86,11 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 	if (v.find_first_of("#\n\r") != std::string::npos)
 		return fail("a # or a line break cannot be stored in the settings file");
 	if (key == "api_key")
-		return IsKey(v) ? true : fail("a key has letters, digits, - and _ only");
+		return IsKey(v) ? true : fail("an API key (v3) or the API Read Access Token (v4) of TMDB: letters and digits only, no blanks");
 	if (key == "language")
 		return IsLanguage(v) ? true : fail("a language like en-US or de-DE");
-	if (key == "choose" || key == "crew" || key == "cast")
+	if (key == "crew" || key == "cast")
 		return st::IsBool(v) ? true : fail("yes or no");
-	if (key == "max_cast")
-		return IsNumber(v, 0, 50) ? true : fail("a number from 0 to 50");
 	return fail("no such setting");
 }
 

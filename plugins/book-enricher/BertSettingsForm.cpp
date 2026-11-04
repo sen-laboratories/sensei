@@ -33,9 +33,7 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"choose", true, "Ask which book if several are found", "OpenLibrary may find several books for a title. Off: the best one is taken."},
 	{"authors", true, "Make people of the authors", "Each author becomes a file next to the book (with biography and photo), related to it by Authorship."},
-	{"max_authors", false, "Most authors to make", "For books with a long list of authors."},
 };
 
 
@@ -65,9 +63,7 @@ void
 ToMessage(const Settings& s, BMessage* message)
 {
 	message->MakeEmpty();
-	message->AddBool("choose", s.choose);
 	message->AddBool("authors", s.authors);
-	message->AddInt32("max_authors", s.maxAuthors);
 }
 
 }	// namespace
@@ -119,9 +115,9 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			if (key == each.key)
 				field = &each;
 		}
-		std::string text;
-		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text)) {
-			refused->push_back(key);
+		std::string text, why;
+		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text, &why)) {
+			refused->push_back(why.empty() ? key : key + " (" + why + ")");
 			if (first == B_OK)
 				first = field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE;
 			continue;

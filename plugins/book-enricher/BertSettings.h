@@ -14,12 +14,13 @@ namespace bert {
  * with the Shift key, which sends `wipe`). Plain C++ (tests/BertSettingsTest.cpp runs everywhere).
  */
 struct Settings {
-	/** if OpenLibrary finds several books: ask which one is yours; off: the best one is taken, as `--auto` does */
+	/** if OpenLibrary finds several books: ask which one is yours; off: the best one is taken, as `--auto` does. Not a setting of the file: the settings of SEN that all plugins
+	 *  share say it (sen::plugins::LoadSharedSettings()), the application puts it here. */
 	bool choose = true;
 	/** make a person of each author of the book (a file next to it, with the Authorship relation) */
 	bool authors = true;
-	/** the most authors that are made, for books with a long list */
-	int maxAuthors = 100;
+	/** the most authors that are made, for books with a long list; as `choose`, from the settings that all plugins share (Max. number of entities to extract) */
+	int maxAuthors = 10;
 };
 
 /** Reads `key = value` lines into the settings; unknown keys and bad values are ignored (what is there stays). */

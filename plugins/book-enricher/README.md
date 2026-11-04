@@ -25,6 +25,7 @@ BERT has no window of its own: the **Settings window of SEN** (Deskbar menu, *Se
 
 | Key | Default | |
 |---|---|---|
-| `choose` | yes | if OpenLibrary finds several books, ask which one is yours; `no` takes the best one (as `--auto` does) |
 | `authors` | yes | make a person of each author of the book |
-| `max_authors` | 100 | the most authors that are made (1 to 100) |
+
+`choose` (ask which one if several are found) and the most entities that are made (the first authors of a long list) are not set here: they are the same for all plugins and are set once in the Settings window of SEN, under **Plugins** (*Ask which one if several are found*, *Max. number of entities to extract*). An older `choose` or `max_authors` line in the file is ignored; `--auto` takes the best for one run.
+

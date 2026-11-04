@@ -103,10 +103,25 @@ PercentEncode(const std::string& text)
 }
 
 
+bool
+IsReadToken(const std::string& key)
+{
+	return key.find('.') != std::string::npos;
+}
+
+
+/** the key as a part of the query (`api_key=...&`); the read token (v4) is not: it is sent in a header */
+static std::string
+KeyQuery(const std::string& key)
+{
+	return key.empty() || IsReadToken(key) ? std::string() : "api_key=" + PercentEncode(key) + "&";
+}
+
+
 std::string
 SearchUrl(const std::string& key, const std::string& language, const std::string& title, int year)
 {
-	std::string url = std::string(kApi) + "/search/movie?api_key=" + PercentEncode(key) + "&query=" + PercentEncode(title) + "&include_adult=false";
+	std::string url = std::string(kApi) + "/search/movie?" + KeyQuery(key) + "query=" + PercentEncode(title) + "&include_adult=false";
 	if (!language.empty())
 		url += "&language=" + PercentEncode(language);
 	if (year > 0)
@@ -118,7 +133,7 @@ SearchUrl(const std::string& key, const std::string& language, const std::string
 std::string
 DetailsUrl(const std::string& key, const std::string& language, int64_t id)
 {
-	std::string url = std::string(kApi) + "/movie/" + std::to_string(id) + "?api_key=" + PercentEncode(key) + "&append_to_response=credits,external_ids";
+	std::string url = std::string(kApi) + "/movie/" + std::to_string(id) + "?" + KeyQuery(key) + "append_to_response=credits,external_ids";
 	if (!language.empty())
 		url += "&language=" + PercentEncode(language);
 	return url;
@@ -128,7 +143,7 @@ DetailsUrl(const std::string& key, const std::string& language, int64_t id)
 std::string
 PersonUrl(const std::string& key, const std::string& language, int64_t id)
 {
-	std::string url = std::string(kApi) + "/person/" + std::to_string(id) + "?api_key=" + PercentEncode(key) + "&append_to_response=external_ids";
+	std::string url = std::string(kApi) + "/person/" + std::to_string(id) + "?" + KeyQuery(key) + "append_to_response=external_ids";
 	if (!language.empty())
 		url += "&language=" + PercentEncode(language);
 	return url;

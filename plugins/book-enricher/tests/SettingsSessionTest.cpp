@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 	create_directory(path.Path(), 0755);
 	path.Append("bert.settings");
 	const std::string original = ReadFile(path);
-	WriteFile(path, "# my settings\nchoose = no   # take the best\nunknown = kept\n");
+	WriteFile(path, "# my settings\nauthors = no   # no people\nunknown = kept\n");
 
 	Receiver* receiver = new Receiver();
 	receiver->Run();
@@ -133,28 +133,25 @@ int main(int argc, char** argv)
 	CHECK(receiver->reply.FindMessage(form::kFieldSettings, &settings) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldSchema, &schema) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldDefaults, &defaults) == B_OK);
-	CHECK(!settings.GetBool("choose", true));								// the file
-	CHECK(settings.GetBool("authors", false) && !settings.HasBool("overwrite"));		// the defaults
-	CHECK(settings.GetInt32("max_authors", 0) == 100);
-	CHECK(defaults.GetBool("choose", false));
-	BMessage max;
-	CHECK(schema.FindMessage("max_authors", &max) == B_OK && max.GetDouble(form::kAttrMax, 0) == 100 && max.GetDouble(form::kAttrMin, 0) == 1);
+	CHECK(!settings.GetBool("authors", true) && !settings.HasBool("overwrite"));		// the file
+	CHECK(defaults.GetBool("authors", false));											// the default
+	CHECK(!settings.HasBool("choose") && !settings.HasInt32("max_authors"));			// (shared by all plugins: the settings of SEN)
+	CHECK(!schema.HasMessage("choose") && !schema.HasMessage("max_authors"));
 
 	BMessage change;
-	change.AddBool("choose", true);
-	change.AddInt32("max_authors", 12);
+	change.AddBool("authors", true);
 	BMessage set(sensei::cmd::kSettingsSet), answer;
 	set.AddMessage(form::kFieldSettings, &change);
 	CHECK(receiver->session.SendMessage(&set, &answer, 5000000, 5000000) == B_OK);
 	CHECK(answer.GetInt32(form::kFieldResult, -1) == B_OK);
 	BMessage now;
-	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK && now.GetBool("choose", false) && now.GetInt32("max_authors", 0) == 12);
+	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK && now.GetBool("authors", false));
 	std::string file = ReadFile(path);
-	CHECK(file.find("# my settings\nchoose = yes # take the best\n") == 0);
-	CHECK(file.find("unknown = kept\n") != std::string::npos && file.find("max_authors = 12\n") != std::string::npos);
+	CHECK(file.find("# my settings\nauthors = yes # no people\n") == 0);
+	CHECK(file.find("unknown = kept\n") != std::string::npos);
 
 	BMessage bad;
-	bad.AddInt32("max_authors", 500);
+	bad.AddInt32("max_authors", 5);			// (not a setting of BERT any more)
 	bad.AddString("nonsense", "x");
 	bad.AddBool("authors", false);
 	BMessage setBad(sensei::cmd::kSettingsSet);
@@ -164,8 +161,8 @@ int main(int argc, char** argv)
 	CHECK(answer.GetInt32(form::kFieldResult, B_OK) != B_OK);
 	const std::string detail = answer.GetString(sen::key::kDetail, "");
 	CHECK(detail.find("max_authors") != std::string::npos && detail.find("nonsense") != std::string::npos);
-	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK && now.GetInt32("max_authors", 0) == 12 && !now.GetBool("authors", true));
-	CHECK(ReadFile(path).find("authors = no\n") != std::string::npos);
+	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK && !now.GetBool("authors", true));
+	CHECK(ReadFile(path).find("authors = no") != std::string::npos);
 
 	BMessenger session = receiver->session;
 	session.SendMessage(sensei::cmd::kSettingsClose);

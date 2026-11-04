@@ -29,36 +29,38 @@ int
 main()
 {
 	bert::Settings settings;
-	CHECK(settings.choose && settings.authors && settings.maxAuthors == 100);
+	CHECK(settings.choose && settings.authors && settings.maxAuthors == 10);		// (choose and maxAuthors are not in the file: the settings of SEN that all plugins share)
 
-	bert::ParseSettings("# bert\nchoose = no   # take the best\nauthors = yes\nmax_authors = 12\n", &settings);
-	CHECK(!settings.choose && settings.authors && settings.maxAuthors == 12);
+	bert::ParseSettings("# bert\nauthors = no   # no people\n", &settings);
+	CHECK(!settings.authors);
+
+	// the settings that all plugins share are not read from the file (a file of an older version may still have them)
+	bert::ParseSettings("choose = no\nmax_authors = 12\nauthors = yes\n", &settings);
+	CHECK(settings.choose && settings.maxAuthors == 10 && settings.authors);
 
 	// bad values and unknown keys leave what is there
-	bert::ParseSettings("max_authors = 0\nchoose = maybe\nnonsense = 1\nmax_authors = many\n", &settings);
-	CHECK(settings.maxAuthors == 12 && !settings.choose);
-	bert::ParseSettings("max_authors = 101\n", &settings);
-	CHECK(settings.maxAuthors == 12);
-	bert::ParseSettings("MAX_AUTHORS = 100\nAuthors = no\n", &settings);			// (keys in any case)
-	CHECK(settings.maxAuthors == 100 && !settings.authors);
+	bert::ParseSettings("authors = maybe\nnonsense = 1\n", &settings);
+	CHECK(settings.authors);
+	bert::ParseSettings("Authors = no\n", &settings);			// (keys in any case)
+	CHECK(!settings.authors);
 
 	std::string reason;
-	CHECK(bert::ValidateSetting("choose", "yes") && bert::ValidateSetting("choose", "OFF") && !bert::ValidateSetting("choose", "maybe", &reason) && reason == "yes or no");
-	CHECK(bert::ValidateSetting("max_authors", "1") && bert::ValidateSetting("max_authors", "100"));
-	CHECK(!bert::ValidateSetting("max_authors", "0") && !bert::ValidateSetting("max_authors", "101") && !bert::ValidateSetting("max_authors", "") && !bert::ValidateSetting("max_authors", "5x"));
+	CHECK(bert::ValidateSetting("authors", "yes") && bert::ValidateSetting("authors", "OFF") && !bert::ValidateSetting("authors", "maybe", &reason) && reason == "yes or no");
+	CHECK(!bert::ValidateSetting("choose", "yes", &reason) && reason == "no such setting");			// (shared by all plugins now)
+	CHECK(!bert::ValidateSetting("max_authors", "5", &reason) && reason == "no such setting");
 	CHECK(!bert::ValidateSetting("overwrite", "yes", &reason) && reason == "no such setting");		// (the action decides, no setting)
 	CHECK(!bert::ValidateSetting("authors", "yes # no") && !bert::ValidateSetting("colour", "red", &reason) && reason == "no such setting");
 
 	// what is written is what is read, and the rest of the file stays
-	const std::string text = "# bert\nchoose = yes   # ask\nunknown = kept\n";
-	const std::string changed = st::Update(text, {{"choose", "no"}, {"max_authors", "5"}});
-	CHECK(changed == "# bert\nchoose = no # ask\nunknown = kept\nmax_authors = 5\n");
+	const std::string text = "# bert\nauthors = yes   # people\nunknown = kept\n";
+	const std::string changed = st::Update(text, {{"authors", "no"}});
+	CHECK(changed == "# bert\nauthors = no # people\nunknown = kept\n");
 	bert::Settings back;
 	bert::ParseSettings(changed, &back);
-	CHECK(!back.choose && back.maxAuthors == 5);
+	CHECK(!back.authors);
 	CHECK(st::Update("", {{"authors", "no"}}) == "authors = no\n");
-	CHECK(st::Update("# choose = x\n", {{"choose", "no"}}) == "# choose = x\nchoose = no\n");		// (a comment is not the key)
-	CHECK(st::Update("choose = yes", {{"choose", "no"}}) == "choose = no\n");
+	CHECK(st::Update("# authors = x\n", {{"authors", "no"}}) == "# authors = x\nauthors = no\n");		// (a comment is not the key)
+	CHECK(st::Update("authors = yes", {{"authors", "no"}}) == "authors = no\n");
 
 	std::printf("%d checks, %d failed\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;

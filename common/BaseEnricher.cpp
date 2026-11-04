@@ -502,6 +502,10 @@ status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resu
     auto fields = request.Fields();
     fields.AddField("User-Agent"sv, "Haiku/SEN (Senity Book Enricher)"sv);
     fields.AddField("Accept"sv, "*/*"sv);
+    if (!fBearerToken.empty()) {
+        const std::string authorization = "Bearer " + fBearerToken;
+        fields.AddField("Authorization"sv, std::string_view(authorization));
+    }
 
 	auto body = make_exclusive_borrow<BMallocIO>();
     BHttpStatus status;

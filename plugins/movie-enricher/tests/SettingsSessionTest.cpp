@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 	create_directory(path.Path(), 0755);
 	path.Append("akari.settings");
 	const std::string original = ReadFile(path);
-	WriteFile(path, "# my settings\napi_key = abc123   # mine\nchoose = no\nunknown = kept\n");
+	WriteFile(path, "# my settings\napi_key = abc123   # mine\ncrew = no\nunknown = kept\n");
 
 	Receiver* receiver = new Receiver();
 	receiver->Run();
@@ -132,22 +132,23 @@ int main(int argc, char** argv)
 	CHECK(receiver->reply.FindMessage(form::kFieldSettings, &settings) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldSchema, &schema) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldDefaults, &defaults) == B_OK);
-	CHECK(strcmp(settings.GetString("api_key", ""), "abc123") == 0 && !settings.GetBool("choose", true));
-	CHECK(strcmp(settings.GetString("language", ""), "en-US") == 0 && settings.GetBool("cast", false) && settings.GetInt32("max_cast", 0) == 10);
+	CHECK(strcmp(settings.GetString("api_key", ""), "abc123") == 0 && !settings.GetBool("crew", true));
+	CHECK(!settings.HasBool("choose") && !settings.HasInt32("max_cast"));		// (shared by all plugins: the settings of SEN)
+	CHECK(strcmp(settings.GetString("language", ""), "en-US") == 0 && settings.GetBool("cast", false));
 	BMessage key, language;
 	CHECK(schema.FindMessage("api_key", &key) == B_OK && strcmp(key.GetString(form::kAttrKind, ""), form::kKindSecret) == 0);
 	CHECK(schema.FindMessage("language", &language) == B_OK && language.CountNames(B_STRING_TYPE) > 3);
 
 	BMessage change;
 	change.AddString("language", "de-DE");
-	change.AddInt32("max_cast", 5);
+	change.AddBool("cast", false);
 	BMessage set(sensei::cmd::kSettingsSet), answer;
 	set.AddMessage(form::kFieldSettings, &change);
 	CHECK(receiver->session.SendMessage(&set, &answer, 5000000, 5000000) == B_OK);
 	CHECK(answer.GetInt32(form::kFieldResult, -1) == B_OK);
 	std::string file = ReadFile(path);
 	CHECK(file.find("api_key = abc123   # mine\n") != std::string::npos && file.find("unknown = kept\n") != std::string::npos);
-	CHECK(file.find("language = de-DE\n") != std::string::npos && file.find("max_cast = 5\n") != std::string::npos);
+	CHECK(file.find("language = de-DE\n") != std::string::npos && file.find("cast = no\n") != std::string::npos);
 
 	BMessage bad;
 	bad.AddString("api_key", "has space");

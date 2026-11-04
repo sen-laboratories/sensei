@@ -21,6 +21,7 @@
 #include <Path.h>
 
 #include <sen/Sen.h>
+#include <sen/SenPluginSettings.h>
 #include <sen/Sensei.h>
 #include <spdlog/spdlog.h>
 
@@ -71,6 +72,10 @@ App::App()
 		spdlog::set_level(spdlog::level::from_str(level));
 
 	ReadSettings(&fSettings);
+	// (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
+	const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
+	fSettings.choose = shared.askIfSeveral;
+	fSettings.maxAuthors = shared.maxEntities;
 }
 
 

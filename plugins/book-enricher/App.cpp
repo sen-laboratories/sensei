@@ -43,6 +43,10 @@ App::App()
     fMapper(new MappingUtil())
 {
     bert::LoadSettings(&fSettings);
+    // (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
+    const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
+    fSettings.choose = shared.askIfSeveral;
+    fSettings.maxAuthors = shared.maxEntities;
 }
 
 App::~App()

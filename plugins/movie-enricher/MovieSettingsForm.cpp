@@ -39,12 +39,10 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"api_key", kText, "TMDB API key", "The key (v3) of The Movie Database: free, at themoviedb.org/settings/api (Settings, API). Without one nothing can be looked up. It is kept in the settings file as it is."},
+	{"api_key", kText, "TMDB API key", "The API Key (v3) or the API Read Access Token (v4) of The Movie Database: free, at themoviedb.org/settings/api (Settings, API). Without one nothing can be looked up. It is kept in the settings file as it is."},
 	{"language", kText, "Language", "The language of titles, descriptions and biographies that TMDB gives."},
-	{"choose", kBool, "Ask which movie if several are found", "Off: the best one is taken."},
 	{"crew", kBool, "Make people of the director and the crew", "Writers, producers, composer, cinematography and editing: each is a person with a Contribution to the movie."},
 	{"cast", kBool, "Make people of the cast", "Each actor is a person with a Contribution (the role Actor, the character, the place in the credits)."},
-	{"max_cast", kNumber, "Most actors to make", "The first actors of the credits."},
 };
 
 const struct {
@@ -84,10 +82,8 @@ ToMessage(const Settings& s, BMessage* message)
 	message->MakeEmpty();
 	message->AddString("api_key", s.apiKey.c_str());
 	message->AddString("language", s.language.c_str());
-	message->AddBool("choose", s.choose);
 	message->AddBool("crew", s.crew);
 	message->AddBool("cast", s.cast);
-	message->AddInt32("max_cast", s.maxCast);
 }
 
 }	// namespace
@@ -125,9 +121,6 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 				attributes.AddString(form::kAttrChoices, language.code);
 				attributes.AddString(form::kAttrChoiceLabels, language.label);
 			}
-		} else if (key == "max_cast") {
-			attributes.AddDouble(form::kAttrMin, 0);
-			attributes.AddDouble(form::kAttrMax, 50);
 		}
 		schema->AddMessage(field.key, &attributes);
 	}
@@ -148,9 +141,9 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			if (key == each.key)
 				field = &each;
 		}
-		std::string text;
-		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text)) {
-			refused->push_back(key);
+		std::string text, why;
+		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text, &why)) {
+			refused->push_back(why.empty() ? key : key + " (" + why + ")");
 			if (first == B_OK)
 				first = field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE;
 			continue;

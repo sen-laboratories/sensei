@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 	create_directory(path.Path(), 0755);
 	path.Append("paperboy.settings");
 	const std::string original = ReadFile(path);
-	WriteFile(path, "# my settings\nemail = old@example.org   # for the polite pool\nmax_authors = 4\nunknown = kept\n");
+	WriteFile(path, "# my settings\nemail = old@example.org   # for the polite pool\nmax_pages = 4\nunknown = kept\n");
 
 	Receiver* receiver = new Receiver();
 	receiver->Run();
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 	CHECK(receiver->reply.FindMessage(form::kFieldDefaults, &defaults) == B_OK);
 	CHECK(strcmp(settings.GetString("email", ""), "old@example.org") == 0);		// the file, as it is
 	int32 number = 0;
-	CHECK(settings.FindInt32("max_authors", &number) == B_OK && number == 4);
+	CHECK(settings.FindInt32("max_pages", &number) == B_OK && number == 4);
 	CHECK(settings.GetBool("rename", false));									// (the default: not in the file)
 	CHECK(strcmp(settings.GetString("authors", ""), "all") == 0);
 	CHECK(strcmp(defaults.GetString("rename_pattern", ""), "{title}") == 0);
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
 	// a change: stored in the file, the comment and the other lines stay, the answer has the settings as they are
 	BMessage change;
 	change.AddString("email", "new@example.org");
-	change.AddInt32("max_authors", 7);
+	change.AddInt32("max_pages", 7);
 	change.AddBool("rename", false);
 	BMessage set(sensei::cmd::kSettingsSet), answer;
 	set.AddMessage(form::kFieldSettings, &change);
@@ -157,17 +157,17 @@ int main(int argc, char** argv)
 	CHECK(answer.GetInt32(form::kFieldResult, -1) == B_OK);
 	BMessage now;
 	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK);
-	CHECK(strcmp(now.GetString("email", ""), "new@example.org") == 0 && now.GetInt32("max_authors", 0) == 7 && !now.GetBool("rename", true));
+	CHECK(strcmp(now.GetString("email", ""), "new@example.org") == 0 && now.GetInt32("max_pages", 0) == 7 && !now.GetBool("rename", true));
 	std::string file = ReadFile(path);
 	CHECK(file.find("# my settings\n") == 0);
 	CHECK(file.find("email = new@example.org # for the polite pool\n") != std::string::npos);
-	CHECK(file.find("max_authors = 7\n") != std::string::npos);
+	CHECK(file.find("max_pages = 7\n") != std::string::npos);
 	CHECK(file.find("rename = no\n") != std::string::npos);
 	CHECK(file.find("unknown = kept\n") != std::string::npos);
 
 	// values that are not valid are refused and told; the valid ones of the same change are kept
 	BMessage bad;
-	bad.AddInt32("max_authors", 500);
+	bad.AddInt32("max_pages", 500);
 	bad.AddString("nonsense", "x");
 	bad.AddString("authors", "orcid");
 	bad.AddString("email", "not an address");
@@ -177,9 +177,9 @@ int main(int argc, char** argv)
 	CHECK(receiver->session.SendMessage(&setBad, &answer, 5000000, 5000000) == B_OK);
 	CHECK(answer.GetInt32(form::kFieldResult, B_OK) != B_OK);
 	const std::string detail = answer.GetString(sen::key::kDetail, "");
-	CHECK(detail.find("max_authors") != std::string::npos && detail.find("nonsense") != std::string::npos && detail.find("email") != std::string::npos);
+	CHECK(detail.find("max_pages") != std::string::npos && detail.find("nonsense") != std::string::npos && detail.find("email") != std::string::npos);
 	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK);
-	CHECK(now.GetInt32("max_authors", 0) == 7 && strcmp(now.GetString("authors", ""), "orcid") == 0 && strcmp(now.GetString("email", ""), "new@example.org") == 0);
+	CHECK(now.GetInt32("max_pages", 0) == 7 && strcmp(now.GetString("authors", ""), "orcid") == 0 && strcmp(now.GetString("email", ""), "new@example.org") == 0);
 	file = ReadFile(path);
 	CHECK(file.find("authors = orcid\n") != std::string::npos && file.find("nonsense") == std::string::npos);
 

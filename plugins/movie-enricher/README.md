@@ -39,12 +39,12 @@ The Settings window of SEN shows them; they are kept in `~/config/settings/sen/a
 
 | Key | Default | |
 |---|---|---|
-| `api_key` | - | your TMDB API key (v3). The key is part of the addresses that are asked: it is never printed to the log. `SEN_TMDB_KEY` or `--key` override it for one run |
+| `api_key` | - | your TMDB API key (v3) or API Read Access Token (v4, three parts with dots; sent in a header, not in the address), both from themoviedb.org/settings/api. The key is part of the addresses that are asked: it is never printed to the log. `SEN_TMDB_KEY` or `--key` override it for one run |
 | `language` | `en-US` | the language of titles, descriptions and biographies (`de-DE`, `fr-FR`, ...) |
-| `choose` | yes | ask which movie if several are found; `no` takes the best (as `--auto` does) |
 | `crew` | yes | make people of the director and the crew (writers, producers, composer, cinematography, editing) |
 | `cast` | yes | make people of the cast |
-| `max_cast` | 10 | the most actors that are made (0 to 50) |
+
+Asking which movie if several are found, how many actors are made (the first ones of the credits) and where the people go (files or attributes) are not Akari's: they are set once for all plugins in the Settings window of SEN, under **Plugins**.
 
 ## On the command line
 

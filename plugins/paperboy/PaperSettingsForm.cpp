@@ -43,7 +43,6 @@ const Field kFields[] = {
 	{"api_key", kText, "OpenAlex key", "Free, from openalex.org/settings/api. Without one all requests of an address share a small daily budget. The key is kept in the settings file as it is."},
 	{"unpaywall", kBool, "Ask Unpaywall for the open access status", "Needs an address; else the data of OpenAlex is used."},
 	{"title_search", kBool, "Look a paper up by its title if there is no DOI", ""},
-	{"choose", kBool, "Ask which paper if several have the title", "Off: the best one is taken."},
 	{"semantic_scholar", kBool, "Ask Semantic Scholar if OpenAlex does not know the paper", ""},
 	{"dblp", kBool, "Ask DBLP if OpenAlex does not know the paper", ""},
 	{"arxiv", kBool, "Ask arXiv if OpenAlex does not know the paper", "A paper whose document names an arXiv identifier is looked up there first."},
@@ -52,7 +51,6 @@ const Field kFields[] = {
 	{"rename_pattern", kText, "Name pattern", "Tokens: {year} {first_author} {title} {doi}. {title} gives Deep learning.pdf, {year}_{first_author}_{title} gives 2015_LeCun_Deep learning.pdf."},
 	{"rename_underscores", kBool, "Underscores instead of blanks in the new name", ""},
 	{"authors", kText, "Authors become people", "The authors of an enriched paper are made files next to it, with the Authorship relation."},
-	{"max_authors", kNumber, "Most authors to make", ""},
 	{"max_pages", kNumber, "Pages to search for a DOI", "Of the beginning of the document."},
 	{"local_only", kBool, "Extraction: only cited papers that are on this computer", ""},
 };
@@ -100,7 +98,6 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddString("api_key", s.apiKey.c_str());
 	message->AddBool("unpaywall", s.unpaywall);
 	message->AddBool("title_search", s.titleSearch);
-	message->AddBool("choose", s.choose);
 	message->AddBool("semantic_scholar", s.semanticScholar);
 	message->AddBool("dblp", s.dblp);
 	message->AddBool("arxiv", s.arxiv);
@@ -109,7 +106,6 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddString("rename_pattern", s.renamePattern.c_str());
 	message->AddBool("rename_underscores", s.renameUnderscores);
 	message->AddString("authors", s.authors.c_str());
-	message->AddInt32("max_authors", s.maxAuthors);
 	message->AddInt32("max_pages", s.maxPages);
 	message->AddBool("local_only", s.localOnly);
 }
@@ -145,9 +141,6 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 			attributes.AddString(form::kAttrChoiceLabels, "All of the first authors");
 			attributes.AddString(form::kAttrChoiceLabels, "Only those with an ORCID iD");
 			attributes.AddString(form::kAttrChoiceLabels, "None");
-		} else if (key == "max_authors") {
-			attributes.AddDouble(form::kAttrMin, 1);
-			attributes.AddDouble(form::kAttrMax, 100);
 		} else if (key == "max_pages") {
 			attributes.AddDouble(form::kAttrMin, 1);
 			attributes.AddDouble(form::kAttrMax, 20);
@@ -168,10 +161,10 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 	for (int32 i = 0; changes.GetInfo(B_ANY_TYPE, i, &name, &type, nullptr) == B_OK; i++) {
 		const std::string key = name;
 		const Field* field = FindField(key);
-		std::string text;
+		std::string text, why;
 		// (the field is read by its name, which is a key of the file: no dots, no index)
-		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text)) {
-			refused->push_back(key);
+		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text, &why)) {
+			refused->push_back(why.empty() ? key : key + " (" + why + ")");
 			if (first == B_OK)
 				first = field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE;
 			continue;

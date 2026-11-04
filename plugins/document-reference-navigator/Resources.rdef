@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
 
-	internal = 4,
+	internal = 5,
 
 	short_info = "SENSEI Document Reference Navigator",
 	long_info  = "SEN module to open the targets of DocumentReference relations (a page, a section... of a document) in the viewer of the document, with the places mapped to its arguments."
@@ -29,6 +29,8 @@ resource(1, "SEN:plugin:extract")  0;
 resource(2, "SEN:plugin:enrich")   0;
 resource(3, "SEN:plugin:identify") 0;
 resource(4, "SEN:plugin:navigate") 1;
+// whether the settings window of SEN has anything to show for this plugin (a plugin that says false is not listed there)
+resource(20, "SEN:plugin:hasSettings") false;
 
 resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.docref"

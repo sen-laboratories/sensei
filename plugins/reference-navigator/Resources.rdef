@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
 
-	internal = 4,
+	internal = 5,
 
 	short_info = "SENSEI Reference Navigator",
 	long_info  = "SEN module to open the targets of references: what they point to decides how (a MIME type, its attribute, any other file)."
@@ -28,6 +28,8 @@ resource(1, "SEN:plugin:extract")  0;
 resource(2, "SEN:plugin:enrich")   0;
 resource(3, "SEN:plugin:identify") 0;
 resource(4, "SEN:plugin:navigate") 1;
+// whether the settings window of SEN has anything to show for this plugin (a plugin that says false is not listed there)
+resource(20, "SEN:plugin:hasSettings") false;
 
 /* generic references, what a type contains (its attributes) and the attributes themselves */
 resource file_types message {
