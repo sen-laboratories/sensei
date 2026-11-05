@@ -126,7 +126,7 @@ int main(int argc, char** argv)
 	namespace attr = sen::onto::movies::attr;
 	CHECK(Text(file, attr::kTitle) == "Test Movie Zz" && Text(file, attr::kOriginalTitle) == "Der Testfilm Zz");
 	CHECK(Text(file, attr::kDuration) == "PT2H16M" && Text(file, attr::kDescription) == "A test.");
-	CHECK(Text(file, attr::kGenre) == "Action;Science Fiction" && Text(file, attr::kInLanguage) == "en;fr" && Text(file, attr::kCountryOfOrigin) == "US");
+	CHECK(Text(file, attr::kGenre) == "Action,Science Fiction" && Text(file, attr::kInLanguage) == "en,fr" && Text(file, attr::kCountryOfOrigin) == "US");
 	CHECK(Text(file, attr::kSameAs).find("themoviedb.org/movie/90000") != std::string::npos && Text(file, attr::kSameAs).find("imdb.com/title/tt0000000") != std::string::npos);
 	CHECK(Text(file, sen::attr::kType) == sen::onto::movies::mime::kMovie);
 	BNode node(&file);
@@ -146,7 +146,7 @@ int main(int argc, char** argv)
 	CHECK(movie::WriteMovie(file, details, true) == B_OK);
 	CHECK(Text(file, attr::kTitle) == "Test Movie Zz");
 	// (the same links again are not listed twice)
-	CHECK(sen::list::Split(Text(file, attr::kSameAs), ';').size() == 4);
+	CHECK(sen::list::Split(Text(file, attr::kSameAs), ',').size() == 4);
 
 	// the poster is the thumbnail; kept without overwrite
 	const std::string image(reinterpret_cast<const char*>(kPng), sizeof(kPng));
@@ -243,6 +243,23 @@ int main(int argc, char** argv)
 	if (server) {
 		CHECK(Sets(directorFile, sen::onto::core::mime::kContribution, IdOf(file)) == 2);
 		CHECK(Sets(actorFile, sen::onto::core::mime::kContribution, IdOf(file)) == 1);
+	}
+
+	// TMDB moves a credit (a producer is added before it) and corrects a character: the Contribution is replaced, not added to
+	if (server) {
+		std::vector<movie::Credit> moved = credits;
+		moved[0].position = 2;				// the director
+		moved[2].position = 4;				// the actor
+		moved[2].character = "Heroine";
+		FakePeople third;
+		movie::MakePeople(file, moved, &third, false, false);
+		CHECK(Sets(directorFile, sen::onto::core::mime::kContribution, IdOf(file)) == 2);	// (Director, Writer: still one for each role)
+		CHECK(Sets(actorFile, sen::onto::core::mime::kContribution, IdOf(file)) == 1);
+		BMessage stored = Stored(actorFile, sen::onto::core::mime::kContribution), set;
+		CHECK(stored.FindMessage(IdOf(file).c_str(), &set) == B_OK);
+		CHECK(set.GetInt32(sen::onto::core::attr::kRelPosition, 0) == 4);
+		CHECK(std::string(set.GetString(sen::onto::core::attr::kRelCharacter, "")) == "Heroine");
+		CHECK(Sets(file, sen::onto::core::mime::kContribution, IdOf(actorFile)) == 1);		// (and in the other direction)
 	}
 
 	// remove what was made (the Library itself stays)

@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <map>
+#include <vector>
 
 #include <sen/Sen.h>
 #include <sen/SenList.h>
@@ -82,6 +83,55 @@ WritePerson(const entry_ref& ref, const PersonDetails& person, const std::string
 }
 
 
+/**
+ * Takes away the Contributions of the person to the movie that have the role of the credit but are not the credit: the place in the credits moves when TMDB adds or removes a
+ * credit, the character is corrected. A person has one Contribution for each role, so a credit that changed replaces the old one (else a second "Producer" would stay).
+ */
+void
+RemoveOutdated(BMessenger& server, const entry_ref& person, const entry_ref& movieFile, const Credit& credit)
+{
+	BString movieId;
+	if (BNode(&movieFile).ReadAttrString(sen::attr::kId, &movieId) != B_OK || movieId.IsEmpty())
+		return;		// (the movie has no id yet: nothing is related to it)
+
+	BMessage get(sen::cmd::kRelationsGet), answer;
+	get.AddRef(sen::key::kSourceRef, &person);
+	get.AddString(sen::key::kRelationType, sen::onto::core::mime::kContribution);
+	BMessage relations;
+	if (server.SendMessage(&get, &answer, 10000000, 10000000) != B_OK || answer.FindMessage(sen::key::kRelations, &relations) != B_OK)
+		return;
+
+	type_code type;
+	int32 count = 0;
+	if (relations.GetInfo(movieId.String(), &type, &count) != B_OK || count < 1)
+		return;
+
+	std::vector<BString> outdated;
+	for (int32 index = 0; index < count; index++) {
+		BMessage set;
+		if (relations.FindMessage(movieId.String(), index, &set) != B_OK)
+			continue;
+		if (credit.role != set.GetString(sen::onto::core::attr::kRelRole, ""))
+			continue;
+		const bool same = set.GetInt32(sen::onto::core::attr::kRelPosition, 0) == credit.position
+			&& credit.character == set.GetString(sen::onto::core::attr::kRelCharacter, "");
+		const char* relationId = set.GetString(sen::key::kRelationId, "");
+		// (a single set has no relation id, and is meant when none is given)
+		if (!same && (relationId[0] != '\0' || count == 1))
+			outdated.push_back(BString(relationId));
+	}
+	for (const BString& relationId : outdated) {
+		BMessage remove(sen::cmd::kRelationRemove), removed;
+		remove.AddRef(sen::key::kSourceRef, &person);
+		remove.AddString(sen::key::kRelationType, sen::onto::core::mime::kContribution);
+		remove.AddRef(sen::key::kTargetRef, &movieFile);
+		if (!relationId.IsEmpty())
+			remove.AddString(sen::key::kRelationId, relationId);
+		server.SendMessage(&remove, &removed, 10000000, 10000000);
+	}
+}
+
+
 /** the Contribution of a person to a movie, with its role, the character and the place in the credits */
 status_t
 Relate(const entry_ref& person, const entry_ref& movieFile, const Credit& credit)
@@ -89,6 +139,8 @@ Relate(const entry_ref& person, const entry_ref& movieFile, const Credit& credit
 	BMessenger server(sen::kServerSignature);
 	if (!server.IsValid())
 		return B_NOT_INITIALIZED;	// the SEN server is not running: the people are there, the relations are made by the next enrichment
+
+	RemoveOutdated(server, person, movieFile, credit);
 
 	BMessage properties;
 	properties.AddString(sen::onto::core::attr::kRelRole, credit.role.c_str());
