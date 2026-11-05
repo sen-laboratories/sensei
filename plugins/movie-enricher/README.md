@@ -31,7 +31,7 @@ its form; its type for Haiku stays. What the file has already is kept unless the
 **The people.** For each credit a person is made (a file of the type *Person* in the **Library** of the current context, `~/Library/People`; not next to the movie) with the name, the
 birthday, the biography, the links (TMDB, IMDb, Wikidata) and the photo as the thumbnail. The person has a **Contribution** relation to the movie (core ontology) for every credit, with
 the **role** (`SEN:REL:Role`: Director, Writer, Producer, Composer, Cinematographer, Editor, Actor), for an actor the **character** (`schema:characterName`), and the **place** in the
-credits (`schema:position`). A person who did two things has two Contributions. A person that exists (found by the TMDB link, or by the name) is updated and not made twice.
+credits (`schema:position`). A person who did two things has two Contributions (one for each role: when TMDB changes a credit, its place or the character, the Contribution of that role is replaced when the movie is enriched again, not added to). A person that exists (found by the TMDB link, or by the name) is updated and not made twice.
 
 ## Settings
 
