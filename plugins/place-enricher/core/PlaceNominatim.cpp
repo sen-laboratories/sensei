@@ -361,6 +361,19 @@ WikidataFrom(const std::string& links)
 }
 
 
+const Hit*
+FindByWikidata(const std::vector<Hit>& hits, const std::string& wikidataId)
+{
+	if (wikidataId.empty())
+		return nullptr;
+	for (const Hit& hit : hits) {
+		if (hit.wikidataId == wikidataId)
+			return &hit;
+	}
+	return nullptr;
+}
+
+
 bool
 IsAdministrative(const Hit& hit)
 {

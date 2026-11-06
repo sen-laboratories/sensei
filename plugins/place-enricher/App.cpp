@@ -511,6 +511,16 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	if (!place::ParseHits(body, &hits))
 		return B_ERROR;
 
+	// a place that was made from Wikidata (by the spatial navigator, for a place that contains another one) has the link to Wikidata and none to OpenStreetMap: of the answers for its name
+	// the one with that Wikidata item is the place, no question
+	if (node.ReadAttrString(sen::onto::spatial::attr::kSameAs, &text) == B_OK) {
+		const place::Hit* known = place::FindByWikidata(hits, place::WikidataFrom(text.String()));
+		if (known != NULL) {
+			*hit = *known;
+			return B_OK;
+		}
+	}
+
 	// by the name, and the position ranks the answers. The name of a file is a guess: of the places of that name only those that are near the position (25 km) fit, and if there is none
 	// the position decides; a title is what the user said, and it is not set aside
 	const double kMaxFileNameKilometres = 25.0;

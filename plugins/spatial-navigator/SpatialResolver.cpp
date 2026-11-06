@@ -62,7 +62,7 @@ PutDouble(BNode& node, const char* attribute, double value)
 }	// namespace
 
 
-Resolver::Resolver(const std::string& language, bool debug)
+Resolver::Resolver(const std::string& language, bool debug, const BMessage* libraries)
 	:
 	fLanguage(language),
 	fDebug(debug),
@@ -72,6 +72,8 @@ Resolver::Resolver(const std::string& language, bool debug)
 	BPath folder;
 	if (find_directory(B_USER_CACHE_DIRECTORY, &folder, true) == B_OK && folder.Append("sen/spatial-navigator") == B_OK)
 		fCache = new sensei::DiskCache(folder.Path());
+	if (libraries != NULL && libraries->FindRef(sen::onto::spatial::mime::kPlace, &fLibrary) == B_OK)
+		fHasLibrary = true;
 	GEOSContextHandle_t context = GEOS_init_r();
 	GEOSContext_setNoticeHandler_r(context, GeosMessage);
 	GEOSContext_setErrorHandler_r(context, GeosMessage);
@@ -133,7 +135,7 @@ Resolver::_MakePlace(const entry_ref& beside, const Ancestor& ancestor, entry_re
 			BString links;
 			node.ReadAttrString(sen::onto::spatial::attr::kSameAs, &links);
 			return links.IsEmpty() || links.FindFirst(link.c_str()) >= 0;
-		}, made, &created);
+		}, made, &created, fHasLibrary ? &fLibrary : NULL);
 	if (result != B_OK)
 		return result;
 	if (created) {
@@ -149,7 +151,7 @@ Resolver::_MakePlace(const entry_ref& beside, const Ancestor& ancestor, entry_re
 			PutDouble(node, attr::kLongitude, ancestor.longitude);
 		}
 		PutString(node, sen::attr::kType, sen::onto::spatial::mime::kPlace);
-		sensei::ApplyStickyClassifications(*made);
+		fMade.push_back(*made);
 	}
 	return B_OK;
 }

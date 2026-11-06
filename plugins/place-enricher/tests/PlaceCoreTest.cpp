@@ -190,6 +190,14 @@ TestWhatToMakeOfThem()
 	paris.wikipedia = "de:Café Central";
 	CHECK(place::SameAs(paris)[0] == "https://de.wikipedia.org/wiki/Caf%C3%A9_Central");
 
+	// a place that was made from Wikidata is found among the answers of its name by its Wikidata item
+	std::vector<place::Hit> both = hits;
+	both.insert(both.end(), wien.begin(), wien.end());
+	CHECK(place::FindByWikidata(both, "Q1741") != nullptr && place::FindByWikidata(both, "Q1741")->name == wien[0].name);
+	CHECK(place::FindByWikidata(both, "Q5943") != nullptr && place::FindByWikidata(both, "Q5943")->osmId == 212496461);
+	CHECK(place::FindByWikidata(both, "Q40") == nullptr);
+	CHECK(place::FindByWikidata(both, "") == nullptr);
+
 	CHECK(!place::IsAdministrative(dom));
 	CHECK(place::IsAdministrative(wien[0]));
 	CHECK(place::PlaceTypeIri(dom) == "https://wiki.openstreetmap.org/wiki/Tag:amenity=place_of_worship");

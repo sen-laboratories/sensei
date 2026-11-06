@@ -86,6 +86,8 @@ std::vector<std::string> SameAs(const Hit& hit);
 bool OsmFrom(const std::string& links, std::string* osmType, int64_t* osmId);
 /** The Wikidata item (`Q5943`) that a list of links names; empty if there is none. */
 std::string WikidataFrom(const std::string& links);
+/** The hit that is the Wikidata item (`Q40`), if the answers have it: a place that was made from Wikidata has that link and no link to OpenStreetMap, and is found by its name and this. NULL if none is. */
+const Hit* FindByWikidata(const std::vector<Hit>& hits, const std::string& wikidataId);
 /** Whether the place is an administrative area (a city, a state, a country: a boundary), whose shape is the place. */
 bool IsAdministrative(const Hit& hit);
 /**

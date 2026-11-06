@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Entry.h>
+#include <Message.h>
 
 #include <map>
 #include <string>
@@ -35,9 +36,12 @@ struct Target {
  */
 class Resolver {
 public:
-	/** @p language is the language of the names of places that are made (`de`, `en`); @p debug prints what is done. */
-	Resolver(const std::string& language, bool debug);
+	/** @p language is the language of the names of places that are made (`de`, `en`); @p debug prints what is done; @p libraries are the Library folders that the server gave in its request (sensei::key::kLibraries). */
+	Resolver(const std::string& language, bool debug, const BMessage* libraries = NULL);
 	~Resolver();
+
+	/** The places that this Resolver made in the Library (the parents that were missing): they have a name, a link, a position and a type, and no picture, outline or address. */
+	const std::vector<entry_ref>&	Made() const { return fMade; }
 
 	/** The places that the place of @p file is related to by the relation type (`relation/x-vnd.sen-labs.relation.spatial.within`...). A file with no position, outline or link has none: B_OK. */
 	status_t Resolve(const entry_ref& file, const std::string& relationType, std::vector<Target>* targets);
@@ -50,6 +54,9 @@ private:
 	std::string			_Matrix(const std::string& wktA, const std::string& wktB);
 
 	std::string			fLanguage;
+	std::vector<entry_ref> fMade;
+	bool				fHasLibrary = false;
+	entry_ref			fLibrary;			///< the folder for places that the server gave (kLibraries), if it did
 	bool				fDebug;
 	sensei::DiskCache*	fCache;
 	void*				fContext;		///< the context of GEOS (GEOSContextHandle_t)

@@ -8,6 +8,7 @@
 #include <Entry.h>
 #include <LocaleRoster.h>
 #include <Message.h>
+#include <Messenger.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,7 +69,9 @@ App::_Resolve(BMessage* message)
 	if (message->FindRef("refs", &file) != B_OK || message->FindString(sen::key::kRelationType, &type) != B_OK) {
 		result = B_BAD_VALUE;
 	} else {
-		spatial::Resolver resolver(SystemLanguage(), fDebug);
+		BMessage libraries;
+		message->FindMessage(sensei::key::kLibraries, &libraries);
+		spatial::Resolver resolver(SystemLanguage(), fDebug, &libraries);
 		std::vector<spatial::Target> targets;
 		result = resolver.Resolve(file, type, &targets);
 		for (const spatial::Target& target : targets) {
@@ -80,6 +83,20 @@ App::_Resolve(BMessage* message)
 			reply.AddMessage(sensei::key::kTargets, &item);
 		}
 		printf("%s: %zu place(s) %s\n", file.name, targets.size(), type);
+
+		// the places that were made (the parents that were missing) have no picture, outline or address: SUESS enriches them in the background, one after the other, as the server queues it.
+		// What they have is kept; the settings of SUESS (picture, outline) decide the rest; nothing is asked of the user (auto)
+		if (!resolver.Made().empty()) {
+			BMessenger server(sen::kServerSignature);
+			if (server.IsValid()) {
+				BMessage enrich(sen::cmd::kEnrichRefs);
+				for (const entry_ref& made : resolver.Made())
+					enrich.AddRef("refs", &made);
+				enrich.AddBool("wipe", false);
+				enrich.AddBool("auto", true);
+				server.SendMessage(&enrich);
+			}
+		}
 	}
 	reply.AddInt32(sensei::key::kResult, result);
 	message->SendReply(&reply, this);

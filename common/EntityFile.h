@@ -48,6 +48,18 @@ ApplyStickyClassifications(const entry_ref& file)
 	server.SendMessage(&request, &reply, 3000000, 3000000);
 }
 
+/** The same without waiting for the answer: for a plugin that the server is waiting for. */
+inline void
+ApplyStickyClassificationsLater(const entry_ref& file)
+{
+	BMessenger server(sen::kServerSignature);
+	if (!server.IsValid())
+		return;
+	BMessage request(sen::cmd::kClassificationApplySticky);
+	request.AddRef(sen::key::kSourceRef, &file);
+	server.SendMessage(&request);
+}
+
 /**
  * The file of an entity of a type with a name.
  *
@@ -62,10 +74,11 @@ ApplyStickyClassifications(const entry_ref& file)
  * @param isSame whether a file of that name and type is the entity (NULL: any such file is)
  * @param found gets the file
  * @param created true if the file was made
+ * @param library the folder to make the file in (NULL: the Library of the current context, asked of the server); a plugin that was asked by the server (sensei::cmd::kResolve) is given it
  */
 inline status_t
 FindOrCreateEntityFile(const entry_ref& beside, const char* mimeType, const char* name, const char* disambiguator, const std::function<bool(BNode&)>& isSame,
-	entry_ref* found, bool* created)
+	entry_ref* found, bool* created, const entry_ref* library = NULL)
 {
 	BString fileName(name);
 	fileName.ReplaceAll('/', '-');		// (a file name cannot hold a path)
@@ -77,9 +90,10 @@ FindOrCreateEntityFile(const entry_ref& beside, const char* mimeType, const char
 
 	// where to look: the Library first, which is also where a new file goes; else the folder of the file (the place of earlier versions)
 	std::vector<BDirectory> folders;
-	entry_ref library;
-	if (sen::library::FolderFor(mimeType, &library) == B_OK) {
-		BDirectory directory(&library);
+	entry_ref libraryFolder;
+	// (a plugin that the server asked and waits for (kResolve) is given the folder: it cannot ask the server, which cannot answer while it waits)
+	if (library != NULL || sen::library::FolderFor(mimeType, &libraryFolder) == B_OK) {
+		BDirectory directory(library != NULL ? library : &libraryFolder);
 		if (directory.InitCheck() == B_OK)
 			folders.push_back(directory);
 	}
@@ -122,8 +136,13 @@ FindOrCreateEntityFile(const entry_ref& beside, const char* mimeType, const char
 			return result;
 		*created = true;
 		status_t made = BEntry(&folders[target], candidate.String()).GetRef(found);
-		if (made == B_OK)
-			ApplyStickyClassifications(*found);		// (a new entity is in the current context, if that is sticky)
+		if (made == B_OK) {
+			// (a new entity is in the current context, if that is sticky; a plugin that the server waits for does not wait for the server: it is told, and answers later)
+			if (library != NULL)
+				ApplyStickyClassificationsLater(*found);
+			else
+				ApplyStickyClassifications(*found);
+		}
 		return made;
 	}
 	return B_NAME_IN_USE;
