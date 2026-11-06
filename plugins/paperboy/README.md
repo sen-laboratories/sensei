@@ -21,7 +21,7 @@ SenPaperboy --identify paper.pdf          # is it a paper? (sets the semantic ty
 SenPaperboy --enrich --email me@example.org *.pdf    # look up and write the attributes
 SenPaperboy --extract --local paper.pdf   # cited papers that are on this computer
 ```
-The server calls the plugin with the file (`B_REFS_RECEIVED` with `SEN:self` for the extraction, `'SEer'` for enrich, `'SEid'` for identify). **Tracker's Enrich** sends `B_REFS_RECEIVED` *without* `SEN:self` and with `wipe` (Shift held): that is an enrichment, and the answer is a **notification** ("Paper enriched" with what was found, or why nothing was). `SenPaperboy --help` lists the options, `--facts` shows what is read from a document.
+The server calls the plugin with the file (`B_REFS_RECEIVED` with `SEN:self` for the extraction, `'SEer'` for enrich, `'SEid'` for identify). **Tracker's Enrich** sends `B_REFS_RECEIVED` *without* `SEN:self` and with `wipe` (Shift held): that is an enrichment, and the work is announced by a notification ("Enriching paper") which the answer replaces ("Paper enriched" with what was found, or why nothing was). `SenPaperboy --help` lists the options, `--facts` shows what is read from a document.
 
 **Why the feature flag `extract` is off.** The server asks every plugin with this flag for the *contained* relations of a file and uses the first one that it finds for a file type; the signature of Paperboy sorts before that of the PDF extractor, so with both installed the bookmarks of PDFs would disappear from the menus. The citations are outgoing relations, which the server does not ask extractors for yet. When it does, set `SEN:plugin:extract` to 1 in `Resources.rdef`.
 

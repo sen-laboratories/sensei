@@ -307,6 +307,8 @@ App::_Handle(BMessage* message)
 			result = _Service()->Identify(ref, &reply);
 			break;
 		case sensei::cmd::kEnrich:
+			if (fNotify)		// (the lookup takes a while: say that it has begun)
+				sensei::NotifyStarted("SEN Paperboy", "Enriching paper", ref.name);
 			result = _Service()->Enrich(&ref, &reply, message->GetBool("wipe", false));
 			if (fNotify && result != B_CANCELED)	// (whoever cancelled knows)
 				_Notify(ref, result, _Service()->SummaryTitle(), _Service()->Summary());

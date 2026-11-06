@@ -209,6 +209,9 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     fOverwrite = message->GetBool("wipe", true);
     fAuto = message->GetBool("auto", !fSettings.choose);
 
+    if (!fAuto)     // (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
+        sensei::NotifyStarted("SEN Book Enricher", "Enriching book", ref.name);
+
     delete fBaseEnricher;
     fBaseEnricher = new BaseEnricher(&ref, fMapper);
 

@@ -428,6 +428,9 @@ App::Enrich(BMessage* message, BMessage* reply)
 		return B_NOT_ALLOWED;
 	}
 
+	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
+		sensei::NotifyStarted("SEN Akari", "Enriching movie", ref.name);
+
 	delete fHttp;
 	fHttp = new BaseEnricher(&ref, fMapper);
 	if (movie::IsReadToken(fSettings.apiKey))
