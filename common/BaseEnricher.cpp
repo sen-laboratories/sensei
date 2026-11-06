@@ -4,6 +4,7 @@
  */
 
 #include "BaseEnricher.h"
+#include "SocketHttp.h"
 #include "SharedHttpSession.h"
 
 #include <DataIO.h>
@@ -493,19 +494,41 @@ LoggedUrl(const BUrl& url)
     return text;
 }
 
+const char* BaseEnricher::_UserAgent() const
+{
+    return fUserAgent.empty() ? "Haiku/SEN (Senity Book Enricher)" : fUserAgent.c_str();
+}
+
+status_t BaseEnricher::_FetchOverSocket(const BUrl& httpUrl, std::string* resultBody)
+{
+    printf("sending HTTP request %s over a socket...\n", LoggedUrl(httpUrl).String());
+    int httpStatus = 0;
+    status_t result = sensei::SocketGet(httpUrl.UrlString().String(), _UserAgent(), "*/*", resultBody, &httpStatus);
+    fLastHttpStatus = httpStatus;
+    if (result == B_OK)
+        printf("got HTTP result with BODY length %zu\n", resultBody->size());
+    return result == B_OK ? B_OK : (result == B_ENTRY_NOT_FOUND || result == B_NOT_ALLOWED || result == B_BUSY ? B_ERROR : result);
+}
+
 status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resultBody)
 {
     fLastHttpStatus = 0;
+    // Wikimedia sends a header with an empty value (valid, RFC 9110); Haiku's client throws an exception for it that ends the program (a bug of Haiku): those hosts are asked over a socket
+    if (httpUrl.HasHost() && sensei::NeedsSocketClient(httpUrl.Host().String()))
+        return _FetchOverSocket(httpUrl, resultBody);
+
     auto request = BHttpRequest(httpUrl);
     request.SetTimeout(kRequestTimeout);
 
     auto fields = request.Fields();
-    fields.AddField("User-Agent"sv, "Haiku/SEN (Senity Book Enricher)"sv);
+    fields.AddField("User-Agent"sv, std::string_view(_UserAgent()));
     fields.AddField("Accept"sv, "*/*"sv);
     if (!fBearerToken.empty()) {
         const std::string authorization = "Bearer " + fBearerToken;
         fields.AddField("Authorization"sv, std::string_view(authorization));
     }
+    // (Fields() is a const reference and `fields` a copy: the headers are in the request only after this. Until it was here none of them was sent: no User-Agent, no Accept, no token.)
+    request.SetFields(fields);
 
 	auto body = make_exclusive_borrow<BMallocIO>();
     BHttpStatus status;
@@ -520,6 +543,10 @@ status_t BaseEnricher::FetchRemoteContent(const BUrl& httpUrl, std::string* resu
         result.Body();  // synchronize with BBorrow buffer (see HttpSession::Execute docs)
     } catch (const BPrivate::Network::BNetworkRequestError& err) {
         return err.ErrorCode();
+    } catch (const BPrivate::Network::BError& err) {
+        // (the answer could not be read by Haiku's client, e.g. a header with an empty value that it wrongly refuses; the same request over a socket reads it)
+        printf("Haiku's HTTP client could not read the answer (%s), trying a socket\n", err.Message());
+        return _FetchOverSocket(httpUrl, resultBody);
     }
     if (status.code >= 200 && status.code < 400) {
         try {

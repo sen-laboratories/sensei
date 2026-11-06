@@ -90,7 +90,7 @@ The authors of an enriched paper become **people**: files of the type `entity/x-
 
 The setting `authors` says which authors: `all` (the default, the first ones: *Max. number of entities to extract* in the settings of SEN, 10 by default), `orcid` (only those with an iD) or `no`. The photos are somebody else's work: their license and photographer are in the attributes, so that an application that shows the photo can say who made it.
 
-(Wikimedia sends an answer that Haiku's HTTP client cannot read, a header with an empty value, so Paperboy reads Wikimedia over a socket of its own; the other services go through the client of Haiku.)
+(Wikimedia sends a header with an empty value, which is valid HTTP but which Haiku's HTTP client wrongly refuses, so Wikimedia is read over a socket, `common/SocketHttp.h`; the other services go through the client of Haiku.)
 
 ## Citations
 
