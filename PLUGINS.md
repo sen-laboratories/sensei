@@ -17,6 +17,7 @@ sensei
     ├── paperboy              enrich, identify
     ├── pdf-extractor         extract
     ├── personal-relation-navigatornavigate
+    ├── place-enricher        enrich
     ├── reference-navigator   navigate
     ├── relation-navigator    navigate
     ├── sourcecode-extractor  extract, identify
@@ -34,6 +35,7 @@ sensei
 | `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0 | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.citation` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
 | `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0 | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
 | `personal-relation-navigator` (SENSEI Personal Relation Navigator) | `sen_plugin_personal_relation_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.person`, `relation/x-vnd.sen-labs.relation.person.acquaintance`, `relation/x-vnd.sen-labs.relation.person.friend`, `relation/x-vnd.sen-labs.relation.person.close-friend`, `relation/x-vnd.sen-labs.relation.person.partner`, `relation/x-vnd.sen-labs.relation.person.parent`, `relation/x-vnd.sen-labs.relation.person.sibling`, `relation/x-vnd.sen-labs.relation.person.relative`, `relation/x-vnd.sen-labs.relation.person.colleague`, `relation/x-vnd.sen-labs.relation.person.superior`, `relation/x-vnd.sen-labs.relation.person.mentor`, `relation/x-vnd.sen-labs.relation.person.collaborator`, `relation/x-vnd.sen-labs.relation.person.client`, `relation/x-vnd.sen-labs.relation.person.employment`, `relation/x-vnd.sen-labs.relation.person.membership` | - | `application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator` |
+| `place-enricher` (SEN SUESS (Place Enricher)) | `sen_plugin_place_enricher` 0.1.0~dev | enrich | `entity/x-vnd.sen-labs.entity.place`, `entity/x-vnd.sen-labs.entity.location` | - | `application/x-vnd.sen-plugin.sen-labs.place-enricher` |
 | `reference-navigator` (SENSEI Reference Navigator) | `sen_plugin_reference_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.reference`, `relation/x-vnd.sen-labs.relation.dependency`, `relation/x-vnd.sen-labs.relation.contains`, `meta/x-vnd.sen-labs.meta-mime-attribute` | - | `application/x-vnd.sen-plugin.sen-labs.reference-navigator` |
 | `relation-navigator` (SENSEI Relation Navigator) | `sen_plugin_relation_navigator` 0.1.0 | navigate | `relation` | - | `application/x-vnd.sen-plugin.sen-labs.relation-navigator` |
 | `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0 | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
@@ -56,6 +58,8 @@ sensei
 **pdf-extractor**: SEN module to extract structure outline from PDFs.
 
 **personal-relation-navigator**: SEN module to open the person or organization that a personal relation (knows, friend, colleague, employment...) ends at with its application.
+
+**place-enricher**: Looks a place up at OpenStreetMap (Nominatim): name, other names, kind of place, position, bounding box, outline and address, with a picture from Wikidata. Data (c) OpenStreetMap contributors (ODbL).
 
 **reference-navigator**: SEN module to open the targets of references: what they point to decides how (a MIME type, its attribute, any other file).
 
