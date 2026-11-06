@@ -69,7 +69,8 @@ WritePlace(const entry_ref& file, const Hit& hit, const std::string& description
 	PutString(node, attr::kTitle, hit.name, overwrite);
 	PutList(node, attr::kAlternateName, hit.otherNames, overwrite);
 	PutString(node, attr::kDescription, description, overwrite);
-	PutString(node, attr::kPlaceType, PlaceTypeIri(hit), overwrite);
+	PutString(node, attr::kPlaceType, PlaceTypeName(hit), overwrite);
+	PutString(node, attr::kPlaceTypeUri, PlaceTypeIri(hit), overwrite);
 	PutString(node, attr::kUrl, hit.website, overwrite);
 
 	// the position that the file has is its own (where a photo was taken): the place found does not replace it, whatever @p overwrite says

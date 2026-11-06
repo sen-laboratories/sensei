@@ -7,5 +7,5 @@
 set -e
 cd "$(dirname "$0")/.."
 out=${TMPDIR:-/tmp}/place-core-test
-${CXX:-c++} -std=c++20 -Wall -Wextra -Icore ${JSON_INCLUDE:+-I$JSON_INCLUDE} -DFIXTURES="\"$PWD/tests/fixtures\"" -o "$out" tests/PlaceCoreTest.cpp core/*.cpp
+${CXX:-c++} -std=c++20 -Wall -Wextra -Icore ${JSON_INCLUDE:+-I$JSON_INCLUDE} -DFIXTURES="\"$PWD/tests/fixtures\"" -o "$out" tests/PlaceCoreTest.cpp core/*.cpp ../../common/HttpCache.cpp
 "$out"

@@ -13,7 +13,7 @@
  * network and no Haiku here: the answers are the JSON text, so everything can be tested on any computer.
  *
  * The data are by OpenStreetMap contributors and under the Open Database License (ODbL, https://www.openstreetmap.org/copyright). The public service wants an identifying User-Agent,
- * at most one request per second, that results are kept (see PlaceCache.h) and no autocomplete.
+ * at most one request per second, that results are kept (see common/HttpCache.h) and no autocomplete.
  */
 namespace place {
 
@@ -93,6 +93,11 @@ bool IsAdministrative(const Hit& hit);
  * `place` that it is in an address (`Tag:place=city`), which says more than `boundary=administrative`. Empty if Nominatim says nothing.
  */
 std::string PlaceTypeIri(const Hit& hit);
+/**
+ * What kind of place it is, in a word or two, for people: the name of the type without the key and the underscores (`place of worship`, `cafe`, `city`; `administrative area` for a boundary of which
+ * Nominatim does not say the kind). The IRI of the type is PlaceTypeIri(). Empty if Nominatim says nothing.
+ */
+std::string PlaceTypeName(const Hit& hit);
 /** The postal address in one line (`Stephansplatz 3, 1010 Wien, Österreich`); empty for a place that has no street and no postcode (a city has no postal address). */
 std::string AddressLine(const Hit& hit);
 /** The names in other languages (from `namedetails`): each once, without the name of the place itself, at most @p limit. */

@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "../../common/BaseEnricher.h"
-#include "PlaceCache.h"
+#include "../../common/HttpCache.h"
 #include "PlaceNominatim.h"
 #include "PlaceSettingsForm.h"
 #include "PlaceWikidata.h"
@@ -78,8 +78,8 @@ private:
 	sensei::SettingsSession	fSession;
 	MappingUtil*			fMapper;
 	BaseEnricher*			fHttp;
-	place::DiskCache*		fCache;
-	place::RateLimiter*		fLimiter;
+	sensei::DiskCache*		fCache;
+	sensei::RateLimiter*		fLimiter;
 	std::string				fLanguage;			///< what is asked for: the setting, else the language of the system
 	std::string				fWanted;
 	bool					fDebug;

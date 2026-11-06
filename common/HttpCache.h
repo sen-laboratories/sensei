@@ -7,10 +7,10 @@
 #include <string>
 
 /**
- * What the policy of the public Nominatim service asks of a program that uses it: the answers are kept (the same question is not asked twice), and there is at most one request per
+ * What the policy of the public services (Nominatim of OpenStreetMap, the query service of Wikidata) asks of a program that uses them: the answers are kept (the same question is not asked twice), and there is at most one request per
  * second, however many instances of the plugin run (every enrichment is its own process, so the time of the last request is a file). Plain C++ (POSIX files), no Haiku.
  */
-namespace place {
+namespace sensei {
 
 /** Answers on disk, one file for each address: the first line is the address (a collision of the name is no hit), the rest is the answer. */
 class DiskCache {
@@ -43,4 +43,4 @@ private:
 	long		fMinMilliseconds;
 };
 
-}	// namespace place
+}	// namespace sensei

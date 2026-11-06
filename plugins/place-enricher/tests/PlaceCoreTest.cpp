@@ -11,7 +11,7 @@
 #include <sstream>
 #include <string>
 
-#include "PlaceCache.h"
+#include "../../../common/HttpCache.h"
 #include "PlaceNominatim.h"
 #include "PlaceSettings.h"
 #include "PlaceWikidata.h"
@@ -196,6 +196,19 @@ TestWhatToMakeOfThem()
 	CHECK(place::PlaceTypeIri(wien[0]) == "https://wiki.openstreetmap.org/wiki/Tag:place=city");
 	place::Hit nothing;
 	CHECK(place::PlaceTypeIri(nothing).empty());
+	// the type in words
+	CHECK(place::PlaceTypeName(dom) == "place of worship");
+	CHECK(place::PlaceTypeName(wien[0]) == "city");
+	CHECK(place::PlaceTypeName(nothing).empty());
+	place::Hit building = nothing;
+	building.category = "building"; building.type = "yes";
+	CHECK(place::PlaceTypeName(building) == "building");
+	building.category = "tourism"; building.type = "guest_house";
+	CHECK(place::PlaceTypeName(building) == "guest house");
+	building.category = "boundary"; building.type = "administrative"; building.addressType = "";
+	CHECK(place::PlaceTypeName(building) == "administrative area");
+	building.addressType = "state_district";
+	CHECK(place::PlaceTypeName(building) == "state district");
 
 	CHECK(place::AddressLine(dom) == "Stephansplatz 3, 1010 Wien, Österreich");
 	CHECK(place::AddressLine(wien[0]).empty());		// (a city has no postal address)
@@ -392,7 +405,7 @@ TestCache()
 {
 	const std::string base = std::string(std::getenv("TMPDIR") != nullptr ? std::getenv("TMPDIR") : "/tmp") + "/place-cache-test-" + std::to_string((long)std::rand());
 	{
-		place::DiskCache cache(base + "/answers");
+		sensei::DiskCache cache(base + "/answers");
 		std::string body;
 		CHECK(!cache.Get("https://x/a", &body, -1));
 		cache.Put("https://x/a", "line one\nline two\n");
@@ -400,21 +413,21 @@ TestCache()
 		CHECK(!cache.Get("https://x/b", &body, -1));
 		cache.Put("https://x/a", "new");
 		CHECK(cache.Get("https://x/a", &body, 3600) && body == "new");
-		CHECK(place::DiskCache::FileName("https://x/a").size() == 16);
-		CHECK(place::DiskCache::FileName("https://x/a") == place::DiskCache::FileName("https://x/a"));
-		CHECK(place::DiskCache::FileName("https://x/a") != place::DiskCache::FileName("https://x/b"));
+		CHECK(sensei::DiskCache::FileName("https://x/a").size() == 16);
+		CHECK(sensei::DiskCache::FileName("https://x/a") == sensei::DiskCache::FileName("https://x/a"));
+		CHECK(sensei::DiskCache::FileName("https://x/a") != sensei::DiskCache::FileName("https://x/b"));
 		// a file of another address with the same name is no hit
 		{
-			std::ofstream clash(base + "/answers/" + place::DiskCache::FileName("https://x/c"));
+			std::ofstream clash(base + "/answers/" + sensei::DiskCache::FileName("https://x/c"));
 			clash << "https://x/other\nbody";
 		}
 		CHECK(!cache.Get("https://x/c", &body, -1));
-		place::DiskCache nowhere("");
+		sensei::DiskCache nowhere("");
 		nowhere.Put("k", "v");
 		CHECK(!nowhere.Get("k", &body, -1));
 	}
 	{
-		place::RateLimiter limiter(base + "/stamp/last", 300);
+		sensei::RateLimiter limiter(base + "/stamp/last", 300);
 		CHECK(limiter.Wait() == 0);						// (the first request: no waiting)
 		const long waited = limiter.Wait();				// (the second at once: the rest of the 300 ms)
 		CHECK(waited > 150 && waited <= 300);

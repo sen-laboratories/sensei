@@ -32,7 +32,7 @@ APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.place-enricher
 #	means this Makefile will not work correctly if two source files with the
 #	same name (source.c or source.cpp) are included from different directories.
 #	Also note that spaces in folder names do not work well with this Makefile.
-SRCS =  App.cpp PlaceSettingsForm.cpp PlaceWriter.cpp core/PlaceNominatim.cpp core/PlaceWikidata.cpp core/PlaceCache.cpp core/PlaceSettings.cpp \
+SRCS =  App.cpp PlaceSettingsForm.cpp PlaceWriter.cpp core/PlaceNominatim.cpp core/PlaceWikidata.cpp core/PlaceSettings.cpp ../../common/HttpCache.cpp \
 	../../common/BaseEnricher.cpp ../../common/SocketHttp.cpp ../../common/MappingUtil.cpp ../../common/ThumbnailUtil.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be

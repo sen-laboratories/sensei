@@ -383,6 +383,21 @@ PlaceTypeIri(const Hit& hit)
 
 
 std::string
+PlaceTypeName(const Hit& hit)
+{
+	std::string name;
+	if (hit.category == "boundary" && hit.type == "administrative")
+		name = hit.addressType.empty() ? "administrative area" : hit.addressType;
+	else if (!hit.type.empty() && hit.type != "yes")
+		name = hit.type;		// (`place_of_worship`, `city`)
+	else
+		name = hit.category;	// (`building=yes` is a building)
+	std::replace(name.begin(), name.end(), '_', ' ');
+	return name;
+}
+
+
+std::string
 AddressLine(const Hit& hit)
 {
 	if (hit.road.empty() && hit.postcode.empty())

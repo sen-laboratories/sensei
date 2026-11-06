@@ -61,8 +61,8 @@ App::App()
 {
 	BPath folder;
 	if (find_directory(B_USER_CACHE_DIRECTORY, &folder, true) == B_OK && folder.Append("sen/place-enricher") == B_OK) {
-		fCache = new place::DiskCache(folder.Path());
-		fLimiter = new place::RateLimiter(std::string(folder.Path()) + "/nominatim.last", kNominatimGapMilliseconds);
+		fCache = new sensei::DiskCache(folder.Path());
+		fLimiter = new sensei::RateLimiter(std::string(folder.Path()) + "/nominatim.last", kNominatimGapMilliseconds);
 	}
 	_ReloadSettings();
 }
@@ -306,11 +306,7 @@ App::GetImage(const std::string& url, std::string* data)
 static std::string
 KindOf(const place::Hit& hit)
 {
-	std::string kind = hit.addressType.empty() || hit.addressType == hit.category ? hit.type : hit.addressType;
-	if (kind == "administrative" || kind.empty())
-		kind = hit.addressType.empty() ? hit.category : hit.addressType;
-	std::replace(kind.begin(), kind.end(), '_', ' ');
-	return kind;
+	return place::PlaceTypeName(hit);
 }
 
 

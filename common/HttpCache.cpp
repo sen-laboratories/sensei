@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
  */
 
-#include "PlaceCache.h"
+#include "HttpCache.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -16,7 +16,7 @@
 #include <sstream>
 #include <thread>
 
-namespace place {
+namespace sensei {
 
 namespace {
 
@@ -136,4 +136,4 @@ RateLimiter::Wait()
 	return waited;
 }
 
-}	// namespace place
+}	// namespace sensei

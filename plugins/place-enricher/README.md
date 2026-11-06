@@ -44,7 +44,7 @@ What the file has already is kept; *Enrich (Overwrite)* (Shift) replaces it.
 |---|---|
 | Name, other names (the English one and the alternative names first, at most 12) | `dc:title`, `schema:alternateName` |
 | Short description (Wikidata, in your language) | `dc:description` |
-| What kind of place | `schema:additionalType`: the tag of OpenStreetMap as IRI, `https://wiki.openstreetmap.org/wiki/Tag:amenity=place_of_worship`; for a city, state or country (an administrative boundary) `Tag:place=city`, which says more than "boundary" |
+| What kind of place | `SEN:placeType`: the name in words, `place of worship`, `city` (what the forms and columns show); `schema:additionalType`: the same as an IRI, the tag of OpenStreetMap, `https://wiki.openstreetmap.org/wiki/Tag:amenity=place_of_worship`; for a city, state or country (an administrative boundary) `Tag:place=city`, which says more than "boundary" |
 | Web site | `schema:url` |
 | Links (OpenStreetMap, Wikidata, Wikipedia) | `schema:sameAs` (the link to OpenStreetMap is how the place is found again) |
 | Position | `schema:latitude`, `schema:longitude` |
