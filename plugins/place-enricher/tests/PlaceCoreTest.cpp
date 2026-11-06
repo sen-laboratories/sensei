@@ -225,6 +225,15 @@ TestWhatToMakeOfThem()
 	country.west = -180; country.east = 180;											// (the whole world: never more than 0.01)
 	CHECK(place::BoundaryTolerance(country) == 0.01);
 
+	// the answer in English calls Vienna "Vienna", the file is called "Wien": that is the name in the language of the place, in `namedetails`
+	place::Hit vienna;
+	CHECK(place::ParseHit("{\"osm_type\":\"relation\",\"osm_id\":109166,\"lat\":\"48.2\",\"lon\":\"16.3\",\"name\":\"Vienna\",\"display_name\":\"Vienna, Austria\","
+		"\"namedetails\":{\"name\":\"Wien\",\"name:en\":\"Vienna\",\"name:de\":\"Wien\",\"name:fr\":\"Vienne\"}}", &vienna));
+	CHECK(vienna.name == "Vienna");
+	CHECK(Has(vienna.otherNames, "Wien") && Has(vienna.otherNames, "Vienne") && !Has(vienna.otherNames, "Vienna"));
+	CHECK(place::TitleMatches(vienna, "Wien"));
+	CHECK(place::ScoreHit(vienna, 0, 1, "Wien") > 0.6f);
+
 	CHECK(place::OtherNames("a", {"a", "b", "b", "", "c"}, 5).size() == 2);
 	CHECK(place::OtherNames("a", {"b", "c", "d"}, 2).size() == 2);
 }

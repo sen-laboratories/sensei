@@ -156,7 +156,8 @@ ToHit(const Json& json, Hit* hit)
 			h.website = Str(*extra, "contact:website");
 	}
 
-	// the other names: the English one and the alternative names first (the ones that a reader knows), then the other languages by their code
+	// the other names: the English one and the alternative names first (the ones that a reader knows), then the other languages by their code. The name in the language of the place
+	// (`name`) is one of them when the answer is in another language: \"Wien\" for Vienna, which is what a file of that place is called.
 	std::vector<std::string> english, names, later;
 	auto details = json.find("namedetails");
 	if (details != json.end() && details->is_object()) {
@@ -166,7 +167,7 @@ ToHit(const Json& json, Hit* hit)
 			const std::string& key = it.key();
 			if (!it->is_string())
 				continue;
-			const bool first = key == "name:en" || key == "alt_name" || key == "loc_name" || key == "official_name" || key == "old_name" || key == "short_name";
+			const bool first = key == "name:en" || key == "name" || key == "alt_name" || key == "loc_name" || key == "official_name" || key == "old_name" || key == "short_name";
 			if (!first && key.compare(0, 5, "name:") != 0)
 				continue;
 			// (alt_name and the like hold several names with a semicolon)
@@ -480,8 +481,11 @@ ScoreHit(const Hit& hit, int position, int count, const std::string& wantedName)
 	const std::string asked = Plain(wantedName);
 	float name = 0.5f;		// (nothing asked)
 	if (!asked.empty()) {
-		const std::string plain = Plain(hit.name);
-		if (plain == asked)
+		// (the same as the name, or as another name of the place: the same)
+		bool same = Plain(hit.name) == asked;
+		for (const std::string& other : hit.otherNames)
+			same = same || Plain(other) == asked;
+		if (same)
 			name = 1.0f;
 		else if (TitleMatches(hit, wantedName))
 			name = 0.6f;
