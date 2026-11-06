@@ -57,3 +57,20 @@ These characters capture the essence of what makes a true teacher: leadership (å
 
 (Note: I sadly don't speak Japanese so please correct me if this is wrong, just love references to Japanese culture as a nod to BeOS and Haiku, and of course
 to the origins of these references).
+
+## Settings of a plugin
+
+A plugin has no window for its settings: the settings window of SEN (`sen_settings`, in the Settings item of the Deskbar menu) lists the plugins and shows the form of Shoji for the selected one. The window asks the plugin for its settings as a message and sends back what the user changes; **the plugin keeps and validates them itself**, in the place and format of its choice, and SEN never reads or writes them (loose coupling: the plugin decides how and when a change takes effect; a job that runs keeps the settings it started with).
+
+What a plugin does (`common/SettingsSession.h`; Paperboy and the movie enricher are the examples: `PaperSettingsForm.cpp`, `MovieSettingsForm.cpp`, `App.cpp`; `common/SettingsText.h` reads and updates settings files of `key = value` lines without losing comments):
+
+1. implement `sensei::SettingsProvider`: `Describe()` gives the settings as a `BMessage` (one field per setting, in its type: bool, integers, doubles, strings, times), a **schema** (per field name a message with `label`, `help`, `kind`, `choices`, `min`, `max`, `step`, ...: see `SenSettingsForm.h`; the form derives labels and controls from the types without one) and the **defaults**; `Apply()` gets the changed fields (each under its path key, which for a flat message is the name), validates, stores and names the ones it refuses;
+2. keep a `SettingsSession` in the application and give it the messages (`kSettings`, `kSettingsSet`, `kSettingsClose`) in `MessageReceived()`;
+3. end the application when the session is over: `IsEnded()` after `kSettingsClose`, and `Expired()` (the window is gone, or it was quiet for a minute) in `Pulse()`.
+
+The window starts the plugin with the request (`be_roster->Launch(file, &request)`), so the plugin answers to the messenger in the request (`kSettingsReply`), and a multiple launch application is talked to at the instance that has the session. A plugin that does not know the request is asked to quit after a few seconds. `sen_settings --plugin <file>` shows the settings of a build of a plugin instead of the installed copy.
+
+
+## Where new entities go
+
+A plugin that makes entities for a file (people for the authors of a book, the director of a movie) puts them into the **Library of the current context** (`~/Library/People`...), which the SEN server tells: `sensei::FindOrCreateEntityFile()` (`common/EntityFile.h`) finds the file of an entity by its name and what makes it the same entity (a key, an ORCID iD: a function of yours), in the Library and next to the file where earlier versions put it, and makes it in the Library if there is none; without a server it makes it next to the file as before. Do not make entity files in the folder of the file yourself. Entities are a core feature of SEN, so they are made by default: the settings of SEN (the node *Plugins* of the settings window) have *Extract entities into* Files (default: a rich entity with properties of its own, related to the file) or Attributes (only the plain names in the attributes of the file, the FAIR layer, for those who do not want entity files). A plugin asks `sen::plugins::ExtractEntitiesIntoFiles()` (`SenPluginSettings.h`) and, for Attributes, writes the names only (the Movie Enricher: `schema:director`, `schema:actor`; BERT and Paperboy: `dc:creator` is written in any case) and makes no entity files and no relations.

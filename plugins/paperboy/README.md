@@ -21,7 +21,7 @@ SenPaperboy --identify paper.pdf          # is it a paper? (sets the semantic ty
 SenPaperboy --enrich --email me@example.org *.pdf    # look up and write the attributes
 SenPaperboy --extract --local paper.pdf   # cited papers that are on this computer
 ```
-The server calls the plugin with the file (`B_REFS_RECEIVED` with `SEN:self` for the extraction, `'SEer'` for enrich, `'SEid'` for identify). **Tracker's Enrich** sends `B_REFS_RECEIVED` *without* `SEN:self` and with `wipe` (Shift held): that is an enrichment, and the answer is a **notification** ("Paper enriched" with what was found, or why nothing was). `SenPaperboy --help` lists the options, `--facts` shows what is read from a document.
+The server calls the plugin with the file (`B_REFS_RECEIVED` with `SEN:self` for the extraction, `'SEer'` for enrich, `'SEid'` for identify). **Tracker's Enrich** sends `B_REFS_RECEIVED` *without* `SEN:self` and with `wipe` (Shift held): that is an enrichment, and the work is announced by a notification ("Enriching paper") which the answer replaces ("Paper enriched" with what was found, or why nothing was). `SenPaperboy --help` lists the options, `--facts` shows what is read from a document.
 
 **Why the feature flag `extract` is off.** The server asks every plugin with this flag for the *contained* relations of a file and uses the first one that it finds for a file type; the signature of Paperboy sorts before that of the PDF extractor, so with both installed the bookmarks of PDFs would disappear from the menus. The citations are outgoing relations, which the server does not ask extractors for yet. When it does, set `SEN:plugin:extract` to 1 in `Resources.rdef`.
 
@@ -34,7 +34,7 @@ In this order, the first that OpenAlex knows wins:
 3. the text of the **first page**; an arXiv stamp (`arXiv:1706.03762v5`) gives the DOI that DataCite registers for it, `10.48550/arxiv.1706.03762`
 4. a DOI on the following pages (the first 3 pages are read, `max_pages`): only the first two, they are most likely cited papers, and *identify* does not take them as a sign of a paper
 5. the **title** (the Title field of the document if it looks like a title, else the biggest text of the first page) searched in OpenAlex; a hit is taken only if its title is at least 85 % the same words
-   Several hits can be this like the title: they are rated (how like the title, then the rank of OpenAlex, then that a year is known) and shown in the window of SEN for choices, the best first, with where each comes from (the registrant of its DOI: arXiv, Zenodo, bioRxiv, a publisher...). Cancel, and nothing is written. `--auto` or `choose = no` takes the best without asking, which is what a batch of files wants.
+   Several hits can be this like the title: they are rated (how like the title, then the rank of OpenAlex, then that a year is known) and shown in the window of SEN for choices, the best first, with where each comes from (the registrant of its DOI: arXiv, Zenodo, bioRxiv, a publisher...). Cancel, and nothing is written. `--auto` (or *Ask which one if several are found* off in the settings of SEN) takes the best without asking, which is what a batch of files wants.
 
 ### The other sources
 
@@ -88,7 +88,7 @@ The authors of an enriched paper become **people**: files of the type `entity/x-
 
 `schema:sameAs` lists the iDs of the person (ORCID, Wikidata, Wikipedia): a person is found again by the ORCID iD, anywhere on the volume, and not made twice; one without an iD is found by the name in the folder of the paper. What a person has written stays unless you overwrite (Shift on Enrich). An author without an ORCID iD is a person with the name alone.
 
-The setting `authors` says which authors: `all` (the default, the first `max_authors`, 10 by default), `orcid` (only those with an iD) or `no`. The photos are somebody else's work: their license and photographer are in the attributes, so that an application that shows the photo can say who made it.
+The setting `authors` says which authors: `all` (the default, the first ones: *Max. number of entities to extract* in the settings of SEN, 10 by default), `orcid` (only those with an iD) or `no`. The photos are somebody else's work: their license and photographer are in the attributes, so that an application that shows the photo can say who made it.
 
 (Wikimedia sends an answer that Haiku's HTTP client cannot read, a header with an empty value, so Paperboy reads Wikimedia over a socket of its own; the other services go through the client of Haiku.)
 
@@ -99,7 +99,7 @@ The papers that cite this one are not stored (only their number); relations are 
 
 ## Settings
 
-A plugin has no window: `~/config/settings/sen/paperboy.settings`, lines of `key = value` (`#` starts a comment); the command line and the environment (`SEN_PAPERBOY_EMAIL`) win over it.
+A plugin has no window of its own: the settings are shown by the **Settings window of SEN** (Deskbar menu, *Settings…*, under *Plugins*), which asks the plugin for them and gives it back what you change; the plugin keeps them in `~/config/settings/sen/paperboy.settings`, lines of `key = value` (`#` starts a comment), which you can also edit by hand (comments and unknown lines stay when the window changes a value). The command line and the environment (`SEN_PAPERBOY_EMAIL`) win over the file.
 
 | Key | Default | |
 |---|---|---|
@@ -111,12 +111,13 @@ A plugin has no window: `~/config/settings/sen/paperboy.settings`, lines of `key
 | `overwrite` | no | replace title, authors, ... that the file already has (Tracker: Shift on Enrich) |
 | `api_key` | - | your free key of OpenAlex ([openalex.org/settings/api](https://openalex.org/settings/api)). Without one all requests from your address share a small daily budget that can be used up (the notification then says so) |
 | `title_search` | yes | look a paper up by its title if there is no DOI |
-| `choose` | yes | if the title search finds **several papers** (a preprint and the published one, copies in a repository), ask in a window which one it is; `no` (or `--auto`) takes the best |
 | `semantic_scholar`, `dblp`, `arxiv` | yes | ask this source for a paper that OpenAlex does not know (`arxiv = no` also stops the look-up of an arXiv identifier of the document) |
 | `authors` | all | make people of the authors of an enriched paper: `all`, `orcid` (only those with an ORCID iD) or `no` |
-| `max_authors` | 10 | how many authors (from the first) are made |
 | `max_pages` | 3 | pages from the start that are searched for a DOI |
 | `local_only` | no | extraction: only cited papers that are on this computer |
+
+`choose` (ask which one if several are found) and the most entities that are made (the first authors of a long list) are not set here: they are the same for all plugins and are set once in the Settings window of SEN, under **Plugins** (*Ask which one if several are found*, *Max. number of entities to extract*). An older `choose` or `max_authors` line in the file is ignored; `--auto` takes the best for one run.
+
 
 **Privacy.** What leaves the computer: the DOI, and your address if you gave one; for the authors the ORCID iDs. The title search sends the title (at most 250 characters) of the document, to OpenAlex and, if it does not know the paper, to the other sources: switch it off with `title_search = no`, or a source with its own setting. Nothing else of the document is sent. The requests are paced (about 6 a second, a "slow down" is waited out) and sequential: a batch of files is worked one by one.
 

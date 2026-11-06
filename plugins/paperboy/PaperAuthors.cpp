@@ -3,6 +3,7 @@
  * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
  */
 
+#include "../../common/EntityFile.h"
 #include "PaperAuthors.h"
 
 #include <Directory.h>
@@ -195,54 +196,18 @@ AuthorMaker::_FindOrCreate(const entry_ref& paper, const PersonData& person, ent
 		return B_OK;
 	}
 
-	BEntry paperEntry(&paper);
-	BDirectory folder;
-	status_t result = paperEntry.InitCheck();
-	if (result == B_OK)
-		result = paperEntry.GetParent(&folder);
-	if (result != B_OK)
-		return result;
-
-	BString fileName(person.name.c_str());
-	fileName.ReplaceAll('/', '-');
-	fileName.Trim();
-	if (fileName.IsEmpty())
+	// (the Library of the current context, where a new person is made; a person of that name there, or next to the paper where an earlier version put it, is the same
+	// one unless it is known to be another: another ORCID iD)
+	if (person.name.empty())
 		return B_BAD_VALUE;
-
-	for (int attempt = 0; attempt < 2; attempt++) {
-		BEntry entry(&folder, fileName.String());
-		if (entry.Exists()) {
-			BNode node(&entry);
-			char type[B_MIME_TYPE_LENGTH];
-			type[0] = '\0';
-			BNodeInfo(&node).GetType(type);
+	return sensei::FindOrCreateEntityFile(paper, sen::onto::people::mime::kPerson, person.name.c_str(), person.orcid.empty() ? "author" : person.orcid.c_str(),
+		[&person](BNode& node) {
 			BString sameAs;
 			node.ReadAttrString(sen::onto::people::attr::kSameAs, &sameAs);
-			// the same person: a person of this name that is not known to be another one (another ORCID iD)
 			const bool other = !sameAs.IsEmpty() && !person.orcid.empty() && sameAs.FindFirst("orcid.org/") >= 0
 				&& sameAs.FindFirst(person.orcid.c_str()) < 0;
-			if (strcmp(type, sen::onto::people::mime::kPerson) != 0 || other) {
-				// somebody else, or another kind of file: this person is named with the iD
-				fileName << " (" << (person.orcid.empty() ? "author" : person.orcid.c_str()) << ")";
-				continue;
-			}
-			*created = false;
-			return entry.GetRef(found);
-		}
-
-		BFile file;
-		result = folder.CreateFile(fileName.String(), &file, true);
-		if (result != B_OK)
-			return result;
-		file.Sync();		// (the attributes are written to the file as it is now)
-		BNodeInfo info(&file);
-		result = info.SetType(sen::onto::people::mime::kPerson);
-		if (result != B_OK)
-			return result;
-		*created = true;
-		return BEntry(&folder, fileName.String()).GetRef(found);
-	}
-	return B_NAME_IN_USE;
+			return !other;
+		}, found, created);
 }
 
 

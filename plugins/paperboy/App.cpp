@@ -21,6 +21,7 @@
 #include <Path.h>
 
 #include <sen/Sen.h>
+#include <sen/SenPluginSettings.h>
 #include <sen/Sensei.h>
 #include <spdlog/spdlog.h>
 
@@ -63,6 +64,7 @@ App::App()
 	:
 	BApplication(kApplicationSignature),
 	fPaperboy(NULL),
+	fCommandLine(false),
 	fDebug(false),
 	fNotify(true),
 	fExitCode(0)
@@ -70,7 +72,23 @@ App::App()
 	if (const char* level = getenv(kLogVariable))
 		spdlog::set_level(spdlog::level::from_str(level));
 
+	_ReloadSettings();
+}
+
+
+void
+App::_ReloadSettings()
+{
+	if (fCommandLine)
+		return;
+	delete fPaperboy;
+	fPaperboy = NULL;
+	fSettings = paperboy::Settings();
 	ReadSettings(&fSettings);
+	// (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
+	const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
+	fSettings.choose = shared.askIfSeveral;
+	fSettings.maxAuthors = shared.maxEntities;
 }
 
 
@@ -122,6 +140,7 @@ void
 App::ArgvReceived(int32 argc, char** argv)
 {
 	fNotify = false;		// a person at the command line reads the output
+	fCommandLine = true;
 	uint32 what = sensei::cmd::kExtract;
 	bool self = false, local = false, rename = false, noRename = false, overwrite = false, facts = false;
 	std::vector<std::string> files;
@@ -215,6 +234,7 @@ void
 App::RefsReceived(BMessage* message)
 {
 	// B_REFS_RECEIVED is how the server asks for the extraction
+	_ReloadSettings();
 	_Handle(message);
 	Quit();
 }
@@ -230,16 +250,34 @@ App::_Notify(const entry_ref& file, status_t result, const std::string& headline
 void
 App::MessageReceived(BMessage* message)
 {
+	// the settings window of SEN asks for the settings and sends the changes; the instance that is started for it ends with the session
+	if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
+		if (fSession.IsEnded())
+			Quit();
+		else
+			SetPulseRate(5000000);
+		return;
+	}
+
 	switch (message->what) {
 		case sensei::cmd::kIdentify:
 		case sensei::cmd::kEnrich:
 		case sensei::cmd::kExtract:
+			_ReloadSettings();
 			_Handle(message);
 			Quit();
 			break;
 		default:
 			BApplication::MessageReceived(message);
 	}
+}
+
+
+void
+App::Pulse()
+{
+	if (fSession.Expired())
+		Quit();
 }
 
 
@@ -269,6 +307,8 @@ App::_Handle(BMessage* message)
 			result = _Service()->Identify(ref, &reply);
 			break;
 		case sensei::cmd::kEnrich:
+			if (fNotify)		// (the lookup takes a while: say that it has begun)
+				sensei::NotifyStarted("SEN Paperboy", "Enriching paper", ref.name);
 			result = _Service()->Enrich(&ref, &reply, message->GetBool("wipe", false));
 			if (fNotify && result != B_CANCELED)	// (whoever cancelled knows)
 				_Notify(ref, result, _Service()->SummaryTitle(), _Service()->Summary());

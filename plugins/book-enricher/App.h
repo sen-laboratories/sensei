@@ -11,6 +11,7 @@
 #include <sen/SenOntoBooks.h>
 
 #include "../../common/BaseEnricher.h"
+#include "BertSettings.h"
 
 #define BOOK_MIME_TYPE          sen::onto::books::mime::kBook
 
@@ -58,6 +59,7 @@ private:
     BStringList         fAuthorNames;
     entry_ref           fEnrichedRef;   // the file that was enriched, as it is called now (it may have been renamed after its title)
     int32               fExitCode;
+    bert::Settings      fSettings;          // the settings of SEN that all plugins share; the options of the command line win for one run
 
     BaseEnricher*       fBaseEnricher;
     MappingUtil*        fMapper;

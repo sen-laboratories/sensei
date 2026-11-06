@@ -5,6 +5,8 @@
 
 #include "PaperSettings.h"
 
+#include "../../../common/SettingsText.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -57,6 +59,52 @@ LooksLikeEmail(const std::string& text)
 }
 
 
+bool
+ValidateSetting(const std::string& key, const std::string& value, std::string* reason)
+{
+	auto fail = [reason](const char* text) {
+		if (reason != nullptr)
+			*reason = text;
+		return false;
+	};
+
+	const std::string v = Trim(value);
+	if (v.find_first_of("#\n\r") != std::string::npos)
+		return fail("a # or a line break cannot be stored in the settings file");
+
+	auto isBool = [&v]() { return ParseBool(v, true) == ParseBool(v, false); };
+	auto number = [&v](int low, int high) {
+		char* end = nullptr;
+		long n = std::strtol(v.c_str(), &end, 10);
+		return !v.empty() && *end == '\0' && n >= low && n <= high;
+	};
+
+	if (key == "email")
+		return v.empty() || LooksLikeEmail(v) ? true : fail("that is not an e-mail address");
+	if (key == "api_key")
+		return v.find_first_of(" \t&?=") == std::string::npos ? true : fail("a key has no blanks, & ? or =");
+	if (key == "rename_pattern")
+		return v.empty() ? fail("the pattern is empty") : true;
+	if (key == "authors") {
+		const std::string mode = Lower(v);
+		return mode == "all" || mode == "orcid" || mode == "no" ? true : fail("one of all, orcid and no");
+	}
+	if (key == "max_pages")
+		return number(1, 20) ? true : fail("a number from 1 to 20");
+	if (key == "unpaywall" || key == "rename" || key == "rename_underscores" || key == "overwrite" || key == "title_search"
+			|| key == "semantic_scholar" || key == "dblp" || key == "arxiv" || key == "local_only")
+		return isBool() ? true : fail("yes or no");
+	return fail("no such setting");
+}
+
+
+std::string
+UpdateSettingsText(const std::string& text, const std::vector<std::pair<std::string, std::string>>& changes)
+{
+	return sensei::settingstext::Update(text, changes);
+}
+
+
 void
 ParseSettings(const std::string& text, Settings* settings)
 {
@@ -103,12 +151,6 @@ ParseSettings(const std::string& text, Settings* settings)
 				settings->authors = mode;
 			else if (ParseBool(value, true) == false)
 				settings->authors = "no";
-		} else if (key == "max_authors") {
-			int count = std::atoi(value.c_str());
-			if (count >= 1 && count <= 100)
-				settings->maxAuthors = count;
-		} else if (key == "choose") {
-			settings->choose = ParseBool(value, settings->choose);
 		} else if (key == "local_only") {
 			settings->localOnly = ParseBool(value, settings->localOnly);
 		} else if (key == "max_pages") {

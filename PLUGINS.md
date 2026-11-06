@@ -13,6 +13,7 @@ sensei
     ├── document-reference-navigatornavigate
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
+    ├── movie-enricher        enrich
     ├── paperboy              enrich, identify
     ├── pdf-extractor         extract
     ├── personal-relation-navigatornavigate
@@ -29,6 +30,7 @@ sensei
 | `document-reference-navigator` (SENSEI Document Reference Navigator) | `sen_plugin_document_reference_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.document-reference-navigator` |
 | `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0 | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
 | `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1 | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
+| `movie-enricher` (SEN Akari (Movie Enricher)) | `sen_plugin_movie_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.movie`, `video` | - | `application/x-vnd.sen-plugin.sen-labs.movie-enricher` |
 | `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0 | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.citation` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
 | `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0 | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
 | `personal-relation-navigator` (SENSEI Personal Relation Navigator) | `sen_plugin_personal_relation_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.person`, `relation/x-vnd.sen-labs.relation.person.acquaintance`, `relation/x-vnd.sen-labs.relation.person.friend`, `relation/x-vnd.sen-labs.relation.person.close-friend`, `relation/x-vnd.sen-labs.relation.person.partner`, `relation/x-vnd.sen-labs.relation.person.parent`, `relation/x-vnd.sen-labs.relation.person.sibling`, `relation/x-vnd.sen-labs.relation.person.relative`, `relation/x-vnd.sen-labs.relation.person.colleague`, `relation/x-vnd.sen-labs.relation.person.superior`, `relation/x-vnd.sen-labs.relation.person.mentor`, `relation/x-vnd.sen-labs.relation.person.collaborator`, `relation/x-vnd.sen-labs.relation.person.client`, `relation/x-vnd.sen-labs.relation.person.employment`, `relation/x-vnd.sen-labs.relation.person.membership` | - | `application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator` |
@@ -46,6 +48,8 @@ sensei
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
 
 **mime-extractor**: SEN module to extract the attributes of a MIME type as its contents.
+
+**movie-enricher**: Grabs movie metadata from The Movie Database: title, release, length, poster, and director, crew and cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB.
 
 **paperboy**: Finds scientific papers, looks up their metadata and free copies (DOI, arXiv ID or title), makes people of the authors (ORCID, Wikidata) and extracts cited papers.\nSources: OpenAlex, Unpaywall, arXiv, Semantic Scholar, DBLP; no keys needed.
 

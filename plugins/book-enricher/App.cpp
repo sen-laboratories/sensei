@@ -23,6 +23,7 @@
 #include "../../common/ThumbnailUtil.h"
 #include <sen/SenAbout.h>
 #include <sen/SenChoice.h>
+#include <sen/SenPluginSettings.h>
 #include <sen/Sen.h>
 #include <sen/Sensei.h>
 
@@ -41,6 +42,10 @@ App::App()
     fBaseEnricher(NULL),
     fMapper(new MappingUtil())
 {
+    // (what all plugins share is set in the settings of SEN; `--auto` wins over it for one run)
+    const sen::plugins::SharedSettings shared = sen::plugins::LoadSharedSettings();
+    fSettings.choose = shared.askIfSeveral;
+    fSettings.maxAuthors = shared.maxEntities;
 }
 
 App::~App()
@@ -200,8 +205,12 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     }
 
     fDebugMode = message->GetBool("debug", false);
+    // the action decides what is replaced ("wipe": Enrich (Overwrite), the Shift key of the menu); the command line wins over the settings for one run
     fOverwrite = message->GetBool("wipe", true);
-    fAuto = message->GetBool("auto", false);
+    fAuto = message->GetBool("auto", !fSettings.choose);
+
+    if (!fAuto)     // (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
+        sensei::NotifyStarted("SEN Book Enricher", "Enriching book", ref.name);
 
     delete fBaseEnricher;
     fBaseEnricher = new BaseEnricher(&ref, fMapper);
@@ -300,9 +309,17 @@ status_t App::Enrich(BMessage *message, BMessage *reply)
     printf("All Book data retrieved successfully, done.\n");
 
     // the authors: each one a person next to the book, with its photo as the thumbnail, and related to the book (see Authors.h)
-    if (fAuthorKeys.IsEmpty()) {
+    if (!sen::plugins::ExtractEntitiesIntoFiles()) {
+        printf("entities are kept in the attributes (the settings of SEN), no people made for the authors.\n");
+    } else if (fAuthorKeys.IsEmpty()) {
         printf("no author in the result, skipping.\n");
     } else {
+        // (the settings limit the list: the keys and the names stay in the same order)
+        while (fAuthorKeys.CountStrings() > fSettings.maxAuthors) {
+            fAuthorKeys.Remove(fAuthorKeys.CountStrings() - 1);
+            if (fAuthorNames.CountStrings() > fAuthorKeys.CountStrings())
+                fAuthorNames.Remove(fAuthorNames.CountStrings() - 1);
+        }
         AuthorMaker authors(fBaseEnricher, fOverwrite, fDebugMode);
         int32 made = authors.MakeAuthors(resultRef, fAuthorKeys, fAuthorNames);
         printf("%d of %d authors made.\n", (int) made, (int) fAuthorKeys.CountStrings());
