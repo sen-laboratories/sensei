@@ -72,8 +72,9 @@ WritePlace(const entry_ref& file, const Hit& hit, const std::string& description
 	PutString(node, attr::kPlaceType, PlaceTypeIri(hit), overwrite);
 	PutString(node, attr::kUrl, hit.website, overwrite);
 
-	PutDouble(node, attr::kLatitude, hit.latitude, overwrite);
-	PutDouble(node, attr::kLongitude, hit.longitude, overwrite);
+	// the position that the file has is its own (where a photo was taken): the place found does not replace it, whatever @p overwrite says
+	PutDouble(node, attr::kLatitude, hit.latitude, false);
+	PutDouble(node, attr::kLongitude, hit.longitude, false);
 	if (hit.hasBox) {
 		PutDouble(node, attr::kBoxSouth, hit.south, overwrite);
 		PutDouble(node, attr::kBoxNorth, hit.north, overwrite);

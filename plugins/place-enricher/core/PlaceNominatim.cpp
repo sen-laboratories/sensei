@@ -198,6 +198,9 @@ ToHit(const Json& json, Hit* hit)
 		h.region = FirstOf(*address, {"state", "region", "county"});
 		h.countryCode = Upper(Str(*address, "country_code"));
 		h.country = Str(*address, "country");
+		// a building that has no name of its own (a house at a position) is its address: `Naglergasse 4`, not `4`
+		if (h.name.empty() && !h.road.empty() && !h.houseNumber.empty())
+			h.name = h.road + " " + h.houseNumber;
 		if (h.name.empty())
 			h.name = Str(*address, h.addressType.c_str());
 	}
@@ -495,6 +498,82 @@ ScoreHit(const Hit& hit, int position, int count, const std::string& wantedName)
 	const float known = (float)std::min(1.0, std::max(0.0, hit.importance));
 	const float order = count > 1 ? 1.0f - (float)position / (float)count : 1.0f;
 	return 0.4f * name + 0.3f * known + 0.3f * order;
+}
+
+
+double
+DistanceKm(const Hit& hit, const Position& position)
+{
+	const double kRadius = 6371.0088;
+	const double kPi = 3.14159265358979323846;
+	auto radians = [kPi](double degrees) { return degrees * kPi / 180.0; };
+	double latitude = hit.latitude, longitude = hit.longitude;
+	if (hit.hasBox) {
+		// (inside the box: there; else the nearest point of the box)
+		latitude = std::min(std::max(position.latitude, std::min(hit.south, hit.north)), std::max(hit.south, hit.north));
+		longitude = std::min(std::max(position.longitude, std::min(hit.west, hit.east)), std::max(hit.west, hit.east));
+	}
+	// haversine
+	const double dLatitude = radians(latitude - position.latitude);
+	const double dLongitude = radians(longitude - position.longitude);
+	const double a = std::sin(dLatitude / 2) * std::sin(dLatitude / 2)
+		+ std::cos(radians(position.latitude)) * std::cos(radians(latitude)) * std::sin(dLongitude / 2) * std::sin(dLongitude / 2);
+	return 2 * kRadius * std::asin(std::min(1.0, std::sqrt(a)));
+}
+
+
+std::string
+DistanceText(double kilometres)
+{
+	char buffer[32];
+	if (kilometres < 0.1)
+		return "at the position";
+	if (kilometres < 1.0)
+		std::snprintf(buffer, sizeof(buffer), "%d m", (int)(kilometres * 1000.0 / 10.0 + 0.5) * 10);
+	else if (kilometres < 10.0)
+		std::snprintf(buffer, sizeof(buffer), "%.1f km", kilometres);
+	else
+		std::snprintf(buffer, sizeof(buffer), "%.0f km", kilometres);
+	return buffer;
+}
+
+
+bool
+LooksLikeName(const std::string& name)
+{
+	int letters = 0, digits = 0;
+	for (unsigned char c : name) {
+		if (c >= 0x80) {
+			// (the bytes of a UTF-8 letter: one for each letter, counted at its first byte)
+			if ((c & 0xC0) != 0x80)
+				letters++;
+		} else if (std::isalpha(c)) {
+			letters++;
+		} else if (std::isdigit(c)) {
+			digits++;
+		}
+	}
+	return letters >= 2 && letters > digits;
+}
+
+
+float
+ScoreHitNear(const Hit& hit, int position, int count, const std::string& wantedName, const Position& near)
+{
+	// the parts of ScoreHit that are not the position: the name 0.4 -> 0.35, how well known 0.3 -> 0.15, the order 0.3 -> 0.15
+	const std::string asked = Plain(wantedName);
+	float name = 0.5f;
+	if (!asked.empty()) {
+		bool same = Plain(hit.name) == asked;
+		for (const std::string& other : hit.otherNames)
+			same = same || Plain(other) == asked;
+		name = same ? 1.0f : (TitleMatches(hit, wantedName) ? 0.6f : 0.0f);
+	}
+	const double kilometres = DistanceKm(hit, near);
+	const float closeness = (float)std::min(1.0, std::max(0.0, 1.0 - std::log10(std::max(kilometres, 1.0)) / 2.0));
+	const float known = (float)std::min(1.0, std::max(0.0, hit.importance));
+	const float order = count > 1 ? 1.0f - (float)position / (float)count : 1.0f;
+	return 0.35f * name + 0.35f * closeness + 0.15f * known + 0.15f * order;
 }
 
 }	// namespace place

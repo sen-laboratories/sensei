@@ -40,7 +40,7 @@ struct Field {
 
 const Field kFields[] = {
 	{"language", kText, "Language", "The language of the names and descriptions of places. The first entry is the language of the system."},
-	{"lookup_by_position", kBool, "Look up files by their position", "A file without a name to search for but with a position (the attributes schema:latitude and schema:longitude, as a photo has them) is looked up by that position. OFF by default: the position of your file is sent to the Nominatim service of OpenStreetMap."},
+	{"lookup_by_position", kBool, "Use GPS location for lookup", "Look up a photo or another file by its GPS location (the attributes schema:latitude and schema:longitude) when it has no title or name of a place to search for. OFF by default: the location of your file is then sent to the Nominatim service of OpenStreetMap. A Place or Location file with a location and no name is always looked up by it, and a location that only ranks the answers of a search by name is never sent."},
 	{"picture", kBool, "Picture of the place", "Use a picture that Wikidata names (a photo, the coat of arms, the flag, a map) as the thumbnail, with its license and author. Two more requests, to Wikidata and Wikimedia Commons."},
 	{"boundary", kBool, "Keep the outline of the place", "The simplified outline is what tells where places are in relation to each other (within, touches, overlaps). A large outline takes room in the file."},
 };

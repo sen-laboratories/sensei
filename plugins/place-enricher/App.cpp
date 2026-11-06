@@ -9,6 +9,7 @@
 #include <FindDirectory.h>
 #include <LocaleRoster.h>
 #include <Node.h>
+#include <NodeInfo.h>
 #include <Path.h>
 #include <String.h>
 #include <Url.h>
@@ -53,7 +54,7 @@ App::App()
 	fDebug(false),
 	fLanguageGiven(false),
 	fPositionGiven(false),
-	fHasPositionHint(false),
+	fNeedsConsent(false),
 	fOverwrite(true),
 	fAuto(false),
 	fExitCode(0)
@@ -141,11 +142,15 @@ App::PrintUsage(const char* error)
 	std::cout
 		<< "Usage: SenPlaceEnricher [options] <file>...\n"
 		<< "Looks a place up at OpenStreetMap Nominatim: writes its name, kind, position, bounding box, outline and address to the file, and a picture from Wikidata as its thumbnail.\n"
-		<< "Data (c) OpenStreetMap contributors, Open Database License (https://www.openstreetmap.org/copyright).\n\n"
+		<< "Data (c) OpenStreetMap contributors, Open Database License (https://www.openstreetmap.org/copyright).\n"
+<< "\n"
+		<< "A file is searched for by its title (dc:title), else by its name; a position (schema:latitude, schema:longitude) ranks the answers by distance (nothing is sent for that). A file that has\n"
+		<< "a position and no title and no name of a place (IMG_0001.jpg) is looked up by its position alone: always for a Place or Location file; for any other file, such as a photo, only with --position\n"
+		<< "or the setting, because the position is then sent to OpenStreetMap.\n\n"
 		<< "  -a, --auto         if several places are found, take the best without asking\n"
 		<< "  -w, --wipe         replace attributes that the file has (the default for a request of the menu)\n"
+		<< "  -p, --position     look up a file that is no place and has a position and no name by that position (sends the position to OpenStreetMap)\n"
 		<< "  -l, --language <l> the language of the names (de, en, ...); the default is the language of the system\n"
-		<< "  -p, --position     look a file up by its position (schema:latitude, schema:longitude) if it has no title: the position is sent to OpenStreetMap\n"
 		<< "      --debug        print what is done\n\n"
 		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/suess.settings.\n";
 }
@@ -311,7 +316,7 @@ KindOf(const place::Hit& hit)
 
 /** One answer as it is shown in the list of sen::ChooseCandidate(): the name, what it is and where, the whole line of Nominatim, the source. */
 static sen::Candidate
-Describe(const place::Hit& hit, float score)
+Describe(const place::Hit& hit, float score, const std::string& distance)
 {
 	sen::Candidate candidate;
 	candidate.title = hit.name.c_str();
@@ -329,6 +334,11 @@ Describe(const place::Hit& hit, float score)
 			candidate.subtitle << " - ";
 		candidate.subtitle << where;
 	}
+	if (!distance.empty()) {
+		if (!candidate.subtitle.IsEmpty())
+			candidate.subtitle << " - ";
+		candidate.subtitle << distance.c_str();
+	}
 	BString line(hit.displayName.c_str());
 	if (line.CountChars() > 110) {
 		line.TruncateChars(110);
@@ -342,48 +352,74 @@ Describe(const place::Hit& hit, float score)
 
 
 status_t
-App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, place::Hit* chosen)
+App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen)
 {
-	std::vector<sen::Candidate> candidates;
+	struct Entry {
+		size_t	index;
+		float	score;
+		double	kilometres;
+		bool	fits;			///< the name is the one that was asked for
+	};
+	std::vector<Entry> pool;
 	const size_t count = std::min<size_t>(hits.size(), 10);
-	size_t best = count;
-	float bestScore = -1;
-	size_t matching = 0;
 	for (size_t i = 0; i < count; i++) {
-		const float score = place::ScoreHit(hits[i], (int)i, (int)hits.size(), wanted);
-		candidates.push_back(Describe(hits[i], score));
-		if (place::TitleMatches(hits[i], wanted))
-			matching++;
-		// (a place that is not the one that was asked for is no help, however well Nominatim ranks it: the best of those that fit)
-		if ((!fAuto || place::TitleMatches(hits[i], wanted)) && score > bestScore) {
-			best = i;
-			bestScore = score;
+		Entry entry;
+		entry.index = i;
+		entry.kilometres = near != NULL ? place::DistanceKm(hits[i], *near) : 0;
+		if (near != NULL && maxKilometres > 0 && entry.kilometres > maxKilometres)
+			continue;		// (a place of that name, but far from where the file says it is)
+		entry.score = near != NULL ? place::ScoreHitNear(hits[i], (int)i, (int)hits.size(), wanted, *near) : place::ScoreHit(hits[i], (int)i, (int)hits.size(), wanted);
+		entry.fits = place::TitleMatches(hits[i], wanted);
+		pool.push_back(entry);
+	}
+	if (pool.empty())
+		return B_ENTRY_NOT_FOUND;
+	// the best first (and so in the list that the user sees)
+	std::stable_sort(pool.begin(), pool.end(), [](const Entry& a, const Entry& b) { return a.score > b.score; });
+
+	size_t matching = 0, nearMatching = 0, nearest = pool.size();
+	for (size_t i = 0; i < pool.size(); i++) {
+		if (!pool[i].fits)
+			continue;
+		matching++;
+		if (near != NULL && pool[i].kilometres <= 5.0) {
+			nearMatching++;
+			nearest = i;
 		}
 	}
-	if (candidates.empty())
-		return B_ENTRY_NOT_FOUND;
 
 	if (fAuto) {
-		if (best == count) {
-			printf("got %zu places, none of them called '%s'.\n", hits.size(), wanted.c_str());
-			return B_ENTRY_NOT_FOUND;
+		// (a place that is not the one that was asked for is no help, however well Nominatim ranks it: the best of those that fit)
+		for (size_t i = 0; i < pool.size(); i++) {
+			if (pool[i].fits) {
+				printf("got %zu places, taking the best: '%s'.\n", hits.size(), hits[pool[i].index].name.c_str());
+				*chosen = hits[pool[i].index];
+				return B_OK;
+			}
 		}
-		printf("got %zu places, taking the best: '%s'.\n", hits.size(), hits[best].name.c_str());
-		*chosen = hits[best];
+		printf("got %zu places, none of them called '%s'%s.\n", hits.size(), wanted.c_str(), near != NULL ? " that is near the position" : "");
+		return B_ENTRY_NOT_FOUND;
+	}
+	// one answer and it is the place that was asked for: nothing to ask; the same for the one place of that name that is near the position of the file
+	if (pool.size() == 1 && matching == 1) {
+		*chosen = hits[pool[0].index];
 		return B_OK;
 	}
-	// one answer and it is the place that was asked for: nothing to ask
-	if (hits.size() == 1 && matching == 1) {
-		*chosen = hits[0];
+	if (nearMatching == 1) {
+		printf("got %zu places, only '%s' of that name is near the position.\n", hits.size(), hits[pool[nearest].index].name.c_str());
+		*chosen = hits[pool[nearest].index];
 		return B_OK;
 	}
 
+	std::vector<sen::Candidate> candidates;
+	for (const Entry& entry : pool)
+		candidates.push_back(Describe(hits[entry.index], entry.score, near != NULL ? place::DistanceText(entry.kilometres) : std::string()));
 	printf("got %zu places, asking the user...\n", hits.size());
 	const int32 picked = sen::ChooseCandidate("Choose a place", "OpenStreetMap found several places. Which one is yours?", candidates,
 		sen::LoadPluginLogo(kApplicationSignature));
 	if (picked < 0)
 		return B_CANCELED;
-	*chosen = hits[picked];
+	*chosen = hits[pool[picked].index];
 	return B_OK;
 }
 
@@ -401,6 +437,22 @@ NameOf(BNode& node, const entry_ref& file)
 		name.erase(dot);
 	std::replace(name.begin(), name.end(), '_', ' ');
 	return name;
+}
+
+
+/** Whether the file is a place or a location, an entity of SEN (its semantic type, or its type for Haiku): the position that it has is what it says of itself, not where its user was. */
+static bool
+IsPlaceFile(BNode& node)
+{
+	auto isPlace = [](const char* type) {
+		return strcmp(type, sen::onto::spatial::mime::kPlace) == 0 || strcmp(type, sen::onto::spatial::mime::kLocation) == 0;
+	};
+	BString semantic;
+	if (node.ReadAttrString(sen::attr::kType, &semantic) == B_OK && isPlace(semantic.String()))
+		return true;
+	char mime[B_MIME_TYPE_LENGTH];
+	BNodeInfo info(&node);
+	return info.GetType(mime) == B_OK && isPlace(mime);
 }
 
 
@@ -434,22 +486,25 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 		// (the object is gone from OpenStreetMap: what the file says is searched for instead)
 	}
 
-	// no title but a position, and the user allows it: the place at that position
-	double latitude = 0, longitude = 0;
+	// where the file says that it is, and what it is called
+	place::Position position;
+	const bool hasPosition = ReadDouble(node, sen::onto::spatial::attr::kLatitude, &position.latitude) && ReadDouble(node, sen::onto::spatial::attr::kLongitude, &position.longitude);
 	const bool hasTitle = node.ReadAttrString(sen::onto::spatial::attr::kTitle, &text) == B_OK && !text.IsEmpty();
-	const bool hasPosition = ReadDouble(node, sen::onto::spatial::attr::kLatitude, &latitude) && ReadDouble(node, sen::onto::spatial::attr::kLongitude, &longitude);
-	fHasPositionHint = hasPosition;
-	if (!hasTitle && hasPosition && fSettings.lookupByPosition) {
-		fWanted = "";
-		std::string body;
-		status_t result = Get(place::ReverseUrl(latitude, longitude, language, fSettings.boundary), kNominatim, &body);
-		if (result != B_OK)
-			return result;
-		return place::ParseHit(body, hit) ? B_OK : B_ENTRY_NOT_FOUND;
-	}
-
 	const std::string name = NameOf(node, file);
 	fWanted = name;
+
+	// sending the position of a file to OpenStreetMap: the position of a place is the place's own, the position of a photo is the user's and needs the user's word
+	const bool mayUsePosition = hasPosition && !hasTitle && (IsPlaceFile(node) || fSettings.lookupByPosition);
+	fNeedsConsent = false;
+
+	// a position and no name to search for (a photo called IMG_0001.jpg): the place at that position
+	if (hasPosition && !hasTitle && !place::LooksLikeName(name)) {
+		if (mayUsePosition)
+			return FindByPosition(position, hit);
+		fNeedsConsent = true;
+		return B_ENTRY_NOT_FOUND;
+	}
+
 	if (name.empty())
 		return B_ENTRY_NOT_FOUND;
 	std::string body;
@@ -459,9 +514,30 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	std::vector<place::Hit> hits;
 	if (!place::ParseHits(body, &hits))
 		return B_ERROR;
-	if (hits.empty())
-		return B_ENTRY_NOT_FOUND;
-	return ChoosePlace(hits, name, hit);
+
+	// by the name, and the position ranks the answers. The name of a file is a guess: of the places of that name only those that are near the position (25 km) fit, and if there is none
+	// the position decides; a title is what the user said, and it is not set aside
+	const double kMaxFileNameKilometres = 25.0;
+	result = hits.empty() ? B_ENTRY_NOT_FOUND
+		: ChoosePlace(hits, name, hasPosition ? &position : NULL, hasPosition && !hasTitle ? kMaxFileNameKilometres : 0, hit);
+	if (result == B_ENTRY_NOT_FOUND && hasPosition && !hasTitle) {
+		if (mayUsePosition)
+			return FindByPosition(position, hit);
+		fNeedsConsent = true;
+	}
+	return result;
+}
+
+
+status_t
+App::FindByPosition(const place::Position& position, place::Hit* hit)
+{
+	fWanted = "";
+	std::string body;
+	status_t result = Get(place::ReverseUrl(position.latitude, position.longitude, fLanguage, fSettings.boundary), kNominatim, &body);
+	if (result != B_OK)
+		return result;
+	return place::ParseHit(body, hit) ? B_OK : B_ENTRY_NOT_FOUND;
 }
 
 
@@ -489,8 +565,8 @@ App::Enrich(BMessage* message, BMessage* reply)
 	fHttp = new BaseEnricher(&ref, fMapper);
 	fHttp->SetUserAgent(kUserAgent);
 
-	fHasPositionHint = false;
 	place::Hit hit;
+	fNeedsConsent = false;
 	status_t result = FindPlace(ref, &hit);
 	if (result == B_CANCELED)
 		return result;
@@ -503,10 +579,15 @@ App::Enrich(BMessage* message, BMessage* reply)
 		return result;
 	}
 	if (result == B_ENTRY_NOT_FOUND) {
-		BString text("OpenStreetMap has no place called \"");
-		text << fWanted.c_str() << "\". Set the title of the file (dc:title), or name the file after the place.";
-		if (fHasPositionHint && !fSettings.lookupByPosition)
-			text << " The file has a position: turn on \"Look up files by their position\" in the settings of SEN to look it up by that.";
+		BString text;
+		if (fWanted.empty())
+			text << "OpenStreetMap knows no place at the position of the file.";
+		else if (fNeedsConsent && !place::LooksLikeName(fWanted))
+			text << "The file has a position but no name to search for. Turn on \"Use GPS location for lookup\" in the settings of SEN to look it up by that: the position is then sent to OpenStreetMap."
+				" (Or set the title of the file, dc:title.)";
+		else
+			text << "OpenStreetMap has no place called \"" << fWanted.c_str() << "\". Set the title of the file (dc:title), or name the file after the place."
+				<< (fNeedsConsent ? " The file has a position: turn on \"Use GPS location for lookup\" in the settings of SEN to look it up by that." : "");
 		ShowError(text.String());
 		return result;
 	}

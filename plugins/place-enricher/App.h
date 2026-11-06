@@ -53,9 +53,21 @@ private:
 	status_t		Get(const std::string& url, Service service, std::string* body);
 	/** the picture itself: not kept (it is the thumbnail of the file) */
 	status_t		GetImage(const std::string& url, std::string* data);
-	/** the place that is meant: by the link to OpenStreetMap that the file has, else by the position (if the user allows it and the file has no title), else by a search (and the user's choice if there are several) */
+	/**
+	 * The place that is meant: by the link to OpenStreetMap that the file has; else, if the file has a position and no title and its name is no name of a place (`IMG_0001.jpg`), by the
+	 * position alone; else by the name (the title, else the name of the file), where the position, if the file has one, ranks the answers (that is worked out here and sends nothing);
+	 * and if a file that has a position and no title has a name that finds no place near the position, by the position. Sending a position to OpenStreetMap is done for a Place or
+	 * Location file (the position is the place's own), and for any other file only if the user allows it (the setting, or --position).
+	 */
 	status_t		FindPlace(const entry_ref& file, place::Hit* hit);
-	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, place::Hit* chosen);
+	/**
+	 * Takes the place that is meant out of the answers of a search: @p near is the position that the file has (NULL: none), which ranks the places by how near they are and, if @p
+	 * maxKilometres is more than 0, leaves out those that are farther away. The user chooses if more than one fits (the nearest and best first, with the distance), unless exactly one fits and
+	 * is within 5 km of the position.
+	 */
+	/** the place at a position (reverse geocoding): the position is sent to OpenStreetMap */
+	status_t		FindByPosition(const place::Position& position, place::Hit* hit);
+	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen);
 	void			ShowError(const char* message);
 	void			PrintUsage(const char* error = NULL);
 	/** the settings as they are now (the file, the settings of SEN that all plugins share): the instance may have been started before the user changed them; what the command line gave is kept */
@@ -72,8 +84,8 @@ private:
 	std::string				fWanted;
 	bool					fDebug;
 	bool					fLanguageGiven;
-	bool					fPositionGiven;
-	bool					fHasPositionHint;	///< the file has a position (to say so when the name finds nothing)
+	bool					fPositionGiven;		///< the command line allows the lookup by position (--position)
+	bool					fNeedsConsent;		///< the file has a position that was not used because the user has not allowed it (to say so)
 	bool					fOverwrite;
 	bool					fAuto;
 	int32					fExitCode;

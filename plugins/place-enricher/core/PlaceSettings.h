@@ -16,8 +16,9 @@ struct Settings {
 	/** The language of the names and descriptions: `de`, `en`, `de-AT`...; empty: the language of the system (the application asks the system), else what the place has locally. */
 	std::string language;
 	/**
-	 * Look a file up by its position (the attributes schema:latitude and schema:longitude, as a photo from a camera has them) when it has no name to search for. OFF by default: the position
-	 * of the user's file goes to a third party (the Nominatim service of OpenStreetMap) when it is on.
+	 * Look up a file that is NOT a place by its position: an ordinary file (a photo from a camera) that has a position (schema:latitude, schema:longitude) and no title and no name of a
+	 * place. OFF by default: the position of the user's file goes to a third party (the Nominatim service of OpenStreetMap). A Place or Location file that has a position and no name is
+	 * always looked up by it (the position is the place's own, not where the user was), and a position that only ranks the answers of a search by name is never sent.
 	 */
 	bool lookupByPosition = false;
 	/** a picture of the place as the thumbnail: the photo, coat of arms, flag or map that Wikidata names, with its credit (two more requests, to Wikidata and Wikimedia Commons) */

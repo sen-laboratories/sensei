@@ -142,6 +142,13 @@ TestParse()
 	// the answer of a reverse lookup is one object: the first of the fixture's list, as it is
 	CHECK(place::ParseHit("{\"osm_type\":\"node\",\"osm_id\":7,\"lat\":\"1.5\",\"lon\":\"2.5\",\"display_name\":\"Somewhere, There\",\"category\":\"place\",\"type\":\"village\"}", &one));
 	CHECK(one.osmId == 7 && one.latitude == 1.5 && one.longitude == 2.5 && one.name == "Somewhere");
+	// a house that has no name: its address is its name
+	place::Hit house;
+	CHECK(place::ParseHit("{\"osm_type\":\"way\",\"osm_id\":8,\"lat\":\"48.2\",\"lon\":\"16.3\",\"addresstype\":\"place\",\"display_name\":\"4, Naglergasse, Wien\","
+		"\"address\":{\"house_number\":\"4\",\"road\":\"Naglergasse\",\"city\":\"Wien\",\"country\":\"Österreich\",\"country_code\":\"at\"}}", &house));
+	CHECK(house.name == "Naglergasse 4");
+	// a house number alone is no name: the first part of the line of Nominatim
+	CHECK(place::ParseHit("{\"osm_type\":\"way\",\"osm_id\":9,\"lat\":\"1\",\"lon\":\"2\",\"display_name\":\"Rathausplatz, Wien\",\"address\":{\"house_number\":\"1\"}}", &house) && house.name == "Rathausplatz");
 }
 
 
@@ -322,6 +329,65 @@ TestCommons()
 
 
 static void
+TestPosition()
+{
+	std::vector<place::Hit> hits, wien;
+	place::ParseHits(Fixture("nominatim-search-stephansdom.json"), &hits);
+	place::ParseHits(Fixture("nominatim-search-wien.json"), &wien);
+	if (hits.empty() || wien.empty())
+		return;
+	const place::Hit& dom = hits[0];
+	place::Position here;						// (in front of the cathedral)
+	here.latitude = 48.2085; here.longitude = 16.3731;
+	place::Position home;						// (Karlsplatz, 800 m away from it)
+	home.latitude = 48.2005; home.longitude = 16.3697;
+	place::Position salzburg;
+	salzburg.latitude = 47.8095; salzburg.longitude = 13.0550;
+
+	// the distance: 0 inside the bounding box, else to the nearest point of it
+	CHECK(place::DistanceKm(dom, here) == 0.0);
+	CHECK(place::DistanceKm(dom, home) > 0.7 && place::DistanceKm(dom, home) < 1.0);
+	CHECK(place::DistanceKm(wien[0], here) == 0.0);						// (inside the box of the city)
+	CHECK(place::DistanceKm(wien[0], salzburg) > 200 && place::DistanceKm(wien[0], salzburg) < 260);
+	place::Hit point;											// (no box: the centre)
+	point.latitude = 48.0; point.longitude = 16.0;
+	place::Position onePointOneDegreeNorth;
+	onePointOneDegreeNorth.latitude = 49.0; onePointOneDegreeNorth.longitude = 16.0;
+	CHECK(place::DistanceKm(point, onePointOneDegreeNorth) > 111.0 && place::DistanceKm(point, onePointOneDegreeNorth) < 111.4);	// (one degree of latitude)
+
+	CHECK(place::DistanceText(0.02) == "at the position");
+	CHECK(place::DistanceText(0.35) == "350 m");
+	CHECK(place::DistanceText(2.34) == "2.3 km");
+	CHECK(place::DistanceText(123.4) == "123 km");
+	CHECK(place::DistanceText(9.96) == "10.0 km");
+
+	// the name of a file: a name has more letters than digits
+	CHECK(place::LooksLikeName("Stephansdom"));
+	CHECK(place::LooksLikeName("Café Central"));
+	CHECK(place::LooksLikeName("Route 66"));
+	CHECK(place::LooksLikeName("Österreich"));
+	CHECK(place::LooksLikeName("Wien 1"));
+	CHECK(!place::LooksLikeName("IMG 0001"));
+	CHECK(!place::LooksLikeName("DSC00412"));
+	CHECK(!place::LooksLikeName("2023-05-01 14.32.07"));
+	CHECK(!place::LooksLikeName("PXL_20230501_143207"));
+	CHECK(!place::LooksLikeName(""));
+	CHECK(!place::LooksLikeName("A"));
+
+	// the position ranks the places of one name: Cathedral of Saint Stephen in Vienna and one with the same name far away
+	place::Hit farAway = dom;
+	farAway.osmId = 1;
+	farAway.latitude = 40.7; farAway.longitude = -74.0;
+	farAway.south = 40.699; farAway.north = 40.701; farAway.west = -74.001; farAway.east = -73.999;
+	CHECK(place::ScoreHitNear(dom, 1, 2, "Stephansdom", here) > place::ScoreHitNear(farAway, 0, 2, "Stephansdom", here));	// (also when the far one comes first)
+	CHECK(place::ScoreHitNear(farAway, 0, 2, "Stephansdom", place::Position{40.7, -74.0}) > place::ScoreHitNear(dom, 1, 2, "Stephansdom", place::Position{40.7, -74.0}));
+	CHECK(place::ScoreHitNear(dom, 0, 1, "Stephansdom", here) > place::ScoreHitNear(dom, 0, 1, "Stephansdom", salzburg));
+	CHECK(place::ScoreHitNear(wien[0], 0, 1, "Wien", here) > 0.9f);							// (a photo that was taken in a city)
+	CHECK(place::ScoreHitNear(dom, 0, 1, "Schönbrunn", here) < place::ScoreHitNear(dom, 0, 1, "Stephansdom", here));
+}
+
+
+static void
 TestCache()
 {
 	const std::string base = std::string(std::getenv("TMPDIR") != nullptr ? std::getenv("TMPDIR") : "/tmp") + "/place-cache-test-" + std::to_string((long)std::rand());
@@ -365,7 +431,7 @@ TestSettings()
 	place::ParseSettings("language = de-AT\nlookup_by_position = yes\npicture = no\nboundary = no  # large\nunknown = 1\n", &s);
 	CHECK(s.language == "de-AT" && s.lookupByPosition && !s.picture && !s.boundary);
 	place::ParseSettings("language = Deutsch\nlookup_by_position = maybe\n", &s);
-	CHECK(s.language == "de-AT" && s.lookupByPosition);									// (bad values leave what is there)
+	CHECK(s.language == "de-AT" && s.lookupByPosition);									// (bad values leave what is there)									// (bad values leave what is there)
 	place::ParseSettings("language = \n", &s);
 	CHECK(s.language.empty());
 
@@ -376,6 +442,7 @@ TestSettings()
 	CHECK(!place::ValidateSetting("language", "german", &why) && !why.empty());
 	CHECK(!place::ValidateSetting("language", "de # x", &why));
 	CHECK(place::ValidateSetting("lookup_by_position", "no", &why));
+	CHECK(!place::ValidateSetting("lookup_by_position", "maybe", &why));
 	CHECK(!place::ValidateSetting("picture", "maybe", &why));
 	CHECK(!place::ValidateSetting("nothing", "x", &why) && why == "no such setting");
 }
@@ -389,6 +456,7 @@ main()
 	TestWhatToMakeOfThem();
 	TestWikidata();
 	TestCommons();
+	TestPosition();
 	TestCache();
 	TestSettings();
 	std::printf("%d checks, %d failures\n", sChecks, sFailures);

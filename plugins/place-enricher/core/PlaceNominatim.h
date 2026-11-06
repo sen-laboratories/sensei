@@ -47,6 +47,12 @@ struct Hit {
 /** How far the outline may differ from the real one, in degrees: about 11 metres. Enough for a building, and a city is 17 KB. */
 const double kBoundaryTolerance = 0.0001;
 
+/** A position (WGS 84, degrees): where a file says that it is. */
+struct Position {
+	double	latitude = 0;
+	double	longitude = 0;
+};
+
 // ---- the addresses
 
 /**
@@ -98,6 +104,20 @@ std::vector<std::string> OtherNames(const std::string& name, const std::vector<s
  * was asked for.
  */
 bool TitleMatches(const Hit& hit, const std::string& wanted);
+/** The distance in kilometres from the position to the place: 0 if the position is inside its bounding box, else to the nearest point of the box (to its centre if it has none). */
+double DistanceKm(const Hit& hit, const Position& position);
+/** The distance as text for a list: `at the position` (under 100 metres), `350 m`, `2.3 km`, `120 km`. */
+std::string DistanceText(double kilometres);
+/**
+ * Whether the name of a file can be the name of a place, or is only a number that a camera gave (`IMG_0001.jpg`, `DSC00412`, `2023-05-01`): a name has more letters than digits (a blank,
+ * a dash or a dot is neither). A file with a position and no title is looked up by the position when its name is none; it is not searched for.
+ */
+bool LooksLikeName(const std::string& name);
+/**
+ * ScoreHit for a file that has a position: the name (35%), how near the place is to the position (35%: within 1 km is 1, 10 km is 0.5, 100 km and more is 0), how well known it is (15%)
+ * and the order of Nominatim (15%). A place that the position is inside of counts as near, which a city is for a photo that was taken in it.
+ */
+float ScoreHitNear(const Hit& hit, int position, int count, const std::string& wantedName, const Position& near);
 /**
  * How good a hit is for the place that was asked for, from 0 to 1: the name (40%: the same is 1, one holds the other 0.6), how well known the place is (Nominatim's importance, 30%)
  * and the order of Nominatim (30%). The weights are a guess that is easy to change.
