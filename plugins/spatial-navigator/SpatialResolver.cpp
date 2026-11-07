@@ -157,12 +157,15 @@ Resolver::_MakePlace(const entry_ref& beside, const Ancestor& ancestor, entry_re
 }
 
 
-void
-Resolver::_AddAncestors(const PlaceData& place, const std::map<std::string, entry_ref>& byWikidata, std::vector<Target>* targets)
+bool
+Resolver::_Ancestors(const std::string& wikidataId, std::vector<Ancestor>* ancestors)
 {
-	if (place.wikidataId.empty())
-		return;
-	const std::string url = AncestorsUrl(place.wikidataId, fLanguage);
+	auto known = fAncestors.find(wikidataId);
+	if (known != fAncestors.end()) {
+		*ancestors = known->second;
+		return true;
+	}
+	const std::string url = AncestorsUrl(wikidataId, fLanguage);
 	std::string body;
 	if (fCache == NULL || !fCache->Get(url, &body, kCacheSeconds)) {
 		// (the query service answers 502 or 503 now and then: asked once more after a moment)
@@ -174,17 +177,45 @@ Resolver::_AddAncestors(const PlaceData& place, const std::map<std::string, entr
 			result = sensei::SocketGet(url, kUserAgent, "application/sparql-results+json", &body, &status);
 		}
 		if (result != B_OK) {
-			printf("could not ask Wikidata for the places that contain %s (status %d)\n", place.wikidataId.c_str(), status);
-			return;
+			printf("could not ask Wikidata for the places that contain %s (status %d)\n", wikidataId.c_str(), status);
+			return false;
 		}
 		if (fCache != NULL)
 			fCache->Put(url, body);
 	}
-	std::vector<Ancestor> ancestors;
-	if (!ParseAncestors(body, &ancestors)) {
-		printf("the answer of Wikidata for %s is not one\n", place.wikidataId.c_str());
-		return;
+	if (!ParseAncestors(body, ancestors)) {
+		printf("the answer of Wikidata for %s is not one\n", wikidataId.c_str());
+		return false;
 	}
+	fAncestors[wikidataId] = *ancestors;
+	return true;
+}
+
+
+bool
+Resolver::_WikidataContains(const std::string& a, const std::string& b)
+{
+	std::vector<Ancestor> ancestors;
+	for (const auto& pair : {std::make_pair(a, b), std::make_pair(b, a)}) {
+		if (!_Ancestors(pair.first, &ancestors))
+			continue;
+		for (const Ancestor& each : ancestors) {
+			if (each.id == pair.second)
+				return true;
+		}
+	}
+	return false;
+}
+
+
+void
+Resolver::_AddAncestors(const PlaceData& place, const std::map<std::string, entry_ref>& byWikidata, std::vector<Target>* targets)
+{
+	if (place.wikidataId.empty())
+		return;
+	std::vector<Ancestor> ancestors;
+	if (!_Ancestors(place.wikidataId, &ancestors))
+		return;
 
 	for (const Ancestor& ancestor : ancestors) {
 		entry_ref ref;
@@ -243,6 +274,13 @@ Resolver::Resolve(const entry_ref& file, const std::string& relationType, std::v
 		const Relation relation = FromDe9im(_Matrix(geometry, otherGeometry));
 		if (relation == Relation::kNone || relation == Relation::kDisjoint || TypeOf(relation) != relationType)
 			continue;
+		// what Wikidata says wins over simplified outlines that cross or meet where a place reaches the limit of its parent
+		if ((relation == Relation::kOverlap || relation == Relation::kTouch) && !place.wikidataId.empty() && !other.wikidataId.empty()
+				&& !AgreesWithWikidata(relation, _WikidataContains(place.wikidataId, other.wikidataId))) {
+			if (fDebug)
+				printf("%s %s %s (%s): left out, Wikidata says that one is located in the other\n", place.name.c_str(), LabelOf(relation).c_str(), other.name.c_str(), CodeOf(relation).c_str());
+			continue;
+		}
 		if (fDebug)
 			printf("%s %s %s (%s)\n", place.name.c_str(), LabelOf(relation).c_str(), other.name.c_str(), CodeOf(relation).c_str());
 		Target target;

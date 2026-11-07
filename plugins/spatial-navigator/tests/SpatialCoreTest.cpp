@@ -82,6 +82,10 @@ TestRelations()
 	CHECK(spatial::KindOf(Relation::kCoveredBy) == "tangential proper part" && spatial::KindOf(Relation::kCovers) == "tangential proper part (inverse)");
 	CHECK(spatial::KindOf(Relation::kTouch) == "externally connected" && spatial::KindOf(Relation::kOverlap) == "partially overlapping" && spatial::KindOf(Relation::kEqual) == "equal");
 	CHECK(spatial::KindOf(Relation::kNone).empty());
+	// what Wikidata says about the containment wins over a touch or overlap of simplified outlines
+	CHECK(!spatial::AgreesWithWikidata(Relation::kOverlap, true) && !spatial::AgreesWithWikidata(Relation::kTouch, true));
+	CHECK(spatial::AgreesWithWikidata(Relation::kWithin, true) && spatial::AgreesWithWikidata(Relation::kCoveredBy, true) && spatial::AgreesWithWikidata(Relation::kEqual, true));
+	CHECK(spatial::AgreesWithWikidata(Relation::kOverlap, false) && spatial::AgreesWithWikidata(Relation::kTouch, false));
 
 	// the boxes: only places whose boxes meet can be related
 	spatial::Box vienna;

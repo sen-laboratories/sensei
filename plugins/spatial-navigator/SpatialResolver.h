@@ -49,11 +49,16 @@ public:
 private:
 	/** the parents of the place from Wikidata, as targets; the files that are not there yet are made */
 	void				_AddAncestors(const PlaceData& place, const std::map<std::string, entry_ref>& byWikidata, std::vector<Target>* targets);
+	/** the places that contain the one with this Wikidata item (kept for the Resolver, and for a month on disk); false if Wikidata could not be asked */
+	bool				_Ancestors(const std::string& wikidataId, std::vector<Ancestor>* ancestors);
+	/** whether Wikidata says that the place A is located in B or B in A */
+	bool				_WikidataContains(const std::string& a, const std::string& b);
 	status_t			_MakePlace(const entry_ref& beside, const Ancestor& ancestor, entry_ref* made);
 	/** the matrix of two geometries (empty if they cannot be compared) */
 	std::string			_Matrix(const std::string& wktA, const std::string& wktB);
 
 	std::string			fLanguage;
+	std::map<std::string, std::vector<Ancestor>>	fAncestors;	///< what was asked of Wikidata by this Resolver, by item
 	std::vector<entry_ref> fMade;
 	bool				fHasLibrary = false;
 	entry_ref			fLibrary;			///< the folder for places that the server gave (kLibraries), if it did

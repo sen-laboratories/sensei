@@ -119,13 +119,22 @@ App::_Resolve(BMessage* message)
 }
 
 
-/** the place that the file of a relation stands for (SEN:REL:TRG, a ref as a message holds it); false if the file is not one or the place is gone */
+/**
+ * The place that a file stands for. The file of a relation (double-clicked in a relation folder) has its target in SEN:REL:TRG (a ref as a message holds it); false if the place is gone.
+ * A file with no such attribute is the place itself (an item of a menu hands over the target, which is the place).
+ */
 static bool
 PlaceOf(const entry_ref& file, entry_ref* place)
 {
 	BNode node(&file);
 	attr_info info;
-	if (node.InitCheck() != B_OK || node.GetAttrInfo(sen::attr::kRelationTargetRef, &info) != B_OK || info.type != B_REF_TYPE || info.size <= 0)
+	if (node.InitCheck() != B_OK)
+		return false;
+	if (node.GetAttrInfo(sen::attr::kRelationTargetRef, &info) != B_OK) {
+		*place = file;
+		return true;
+	}
+	if (info.type != B_REF_TYPE || info.size <= 0)
 		return false;
 	bool found = false;
 	char* buffer = new char[info.size];
@@ -145,12 +154,12 @@ PlaceOf(const entry_ref& file, entry_ref* place)
 void
 App::RefsReceived(BMessage* message)
 {
-	// this plugin is the application of the spatial relation types (the server finds it by that), so a double click on the file of a relation comes here. It has nothing of its own to show:
-	// the relation stands for the place at its other end, which is opened with the application of its type (Shoji), as a double click on the place would
+	// this plugin is the application of the spatial relation types (the server finds it by that), so a double click on the file of a relation, and a click on a place in the menu of a relation,
+	// come here. It has nothing of its own to show: the place is opened with the application of its type (Shoji), as a double click on the place would
 	entry_ref file, place;
 	for (int32 index = 0; message->FindRef("refs", index, &file) == B_OK; index++) {
 		if (!PlaceOf(file, &place)) {
-			fprintf(stderr, "%s: no place to open (the file of the relation is gone or is none).\n", file.name);
+			fprintf(stderr, "%s: no place to open (the place of the relation is gone).\n", file.name);
 			continue;
 		}
 		status_t result = be_roster->Launch(&place);

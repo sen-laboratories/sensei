@@ -135,6 +135,13 @@ KindOf(Relation relation)
 
 
 bool
+AgreesWithWikidata(Relation relation, bool oneInTheOther)
+{
+	return !oneInTheOther || (relation != Relation::kTouch && relation != Relation::kOverlap);
+}
+
+
+bool
 BoxesMeet(const Box& a, const Box& b, double degrees)
 {
 	if (!a.valid || !b.valid)

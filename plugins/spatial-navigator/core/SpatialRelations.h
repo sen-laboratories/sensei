@@ -52,6 +52,13 @@ std::string CodeOf(Relation relation);
  */
 std::string KindOf(Relation relation);
 
+/**
+ * Whether what the shapes say can stand next to what Wikidata says of the same two places. If Wikidata says that one is located in the other, the shapes can only say that it is inside
+ * (within or covered by) or equal: "touch" and "overlap" are then an effect of the simplified outlines, whose borders coincide where the place reaches the limit of its parent (a district at the
+ * edge of its city), and are left out. @p oneInTheOther: Wikidata says that A is located in B or B in A.
+ */
+bool AgreesWithWikidata(Relation relation, bool oneInTheOther);
+
 /** The coordinates of a place that cover it: its bounding box, or a point (south = north, west = east). */
 struct Box {
 	double	south = 0, north = 0, west = 0, east = 0;

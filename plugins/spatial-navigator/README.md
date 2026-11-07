@@ -27,7 +27,11 @@ Disjoint (DC) is not a relation: nearly every two places are disjoint.
 **provenance** (`prov:wasAttributedTo`): this plugin's signature for what it worked out from the shapes, `https://www.wikidata.org/wiki/Property:P131` for what Wikidata said. That is also why a place at the edge of its parent
 (a district of Vienna that reaches the city limit: really *covered by*) can be in the list from Wikidata only: the simplified outlines of the two cross a little, which the shapes call *overlaps*.
 
-**Opening the file of a relation** (a double click in the folder of the relation) opens the place that it stands for, with the application of its type (Shoji).
+**Opening a place of a relation** is the same from everywhere: a double click on the file of the relation in its folder, and a click on the place in the menu of the relation, both open the place with the application of its type (Shoji,
+with the map of the place). The file of a relation names its place (`SEN:REL:TRG`); the item of a menu is the place itself.
+
+**What Wikidata says wins over the outlines for touch and overlap.** If Wikidata says that one place is located in the other, *touches* and *overlaps* are left out for that pair (the outlines of a district at the limit of its
+city cross a little because they are simplified, and the shapes would say *overlaps* for a place that is inside); *within*, *covered by* and *equal* stay.
 
 ## Where the answer comes from
 
