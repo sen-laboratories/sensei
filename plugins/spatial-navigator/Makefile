@@ -32,7 +32,7 @@ APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.spatial-navigator
 #	means this Makefile will not work correctly if two source files with the
 #	same name (source.c or source.cpp) are included from different directories.
 #	Also note that spaces in folder names do not work well with this Makefile.
-SRCS =  App.cpp SpatialPlace.cpp SpatialResolver.cpp core/SpatialOverpass.cpp core/SpatialRelations.cpp core/SpatialWikidata.cpp \
+SRCS =  App.cpp SpatialSettingsForm.cpp SpatialPlace.cpp SpatialResolver.cpp core/SpatialOverpass.cpp core/SpatialRelations.cpp core/SpatialSettings.cpp core/SpatialWikidata.cpp \
 	../../common/HttpCache.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be

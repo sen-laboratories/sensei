@@ -179,12 +179,28 @@ App::RefsReceived(BMessage* message)
 void
 App::MessageReceived(BMessage* message)
 {
+	// the settings window of SEN: the instance that is started for it ends with the session
+	if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
+		if (fSession.IsEnded())
+			Quit();
+		else
+			SetPulseRate(5000000);
+		return;
+	}
 	if (message->what == sensei::cmd::kResolve) {
 		_Resolve(message);
 		Quit();		// (a plugin is a multiple launch application that ends when it has answered)
 		return;
 	}
 	BApplication::MessageReceived(message);
+}
+
+
+void
+App::Pulse()
+{
+	if (fSession.Expired())
+		Quit();
 }
 
 

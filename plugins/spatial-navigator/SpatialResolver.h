@@ -15,6 +15,7 @@
 #include "SpatialOverpass.h"
 #include "SpatialPlace.h"
 #include "SpatialRelations.h"
+#include "SpatialSettings.h"
 #include "SpatialWikidata.h"
 
 namespace spatial {
@@ -73,6 +74,7 @@ private:
 	std::map<std::string, std::vector<Ancestor>>	fAncestors;	///< what was asked of Wikidata by this Resolver, by item
 	std::vector<entry_ref> fMade;
 	int					fMadePois = 0;
+	Settings			fSettings;		///< which server answers for the points of interest (SpatialSettingsForm.h)
 	bool				fHasLibrary = false;
 	entry_ref			fLibrary;			///< the folder for places that the server gave (kLibraries), if it did
 	bool				fDebug;

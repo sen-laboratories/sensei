@@ -86,6 +86,20 @@ addattr -t double SEN:boxWest -- 16.18 City; addattr -t double SEN:boxEast -- 16
 $NAV $POI "$T/City" > city.txt 2>&1
 [ "$(grep -c '^  point' city.txt)" = 0 ] && grep -q "too large" city.txt && check ok "a city is too large" || check FAIL "a city was asked for"
 
+# the mirror of the settings answers (a place away from the others: the answer of the public server is kept, and would be used)
+SETTINGS="$HOME/config/settings/sen/spatial-navigator.settings"
+mkdir -p "$(dirname "$SETTINGS")"
+[ -f "$SETTINGS" ] && cp "$SETTINGS" "$T/settings.saved"
+printf 'overpass_mirror = vk-maps\n' > "$SETTINGS"
+touch There
+addattr -t mime BEOS:TYPE entity/x-vnd.sen-labs.entity.location There
+addattr -t string dc:title There There
+addattr -t double schema:latitude -- 48.2088 There; addattr -t double schema:longitude -- 16.3125 There
+$NAV $POI "$T/There" > there.txt 2>&1
+grep -q '^asking https://maps.mail.ru/osm/tools/overpass/api/interpreter' there.txt && check ok "the mirror of the settings (VK Maps) is the one that is asked" || check FAIL "the mirror was not asked"
+[ "$(grep -c '^  point of interest ' there.txt)" -ge 10 ] && check ok "the mirror answers: $(grep -c '^  point of interest ' there.txt) points of interest" || { check FAIL "the mirror gave no points of interest"; cat there.txt; }
+if [ -f "$T/settings.saved" ]; then cp "$T/settings.saved" "$SETTINGS"; else rm -f "$SETTINGS"; fi
+
 # remove what was made (not in the folder of the test, which is removed as a whole)
 IFS='
 '

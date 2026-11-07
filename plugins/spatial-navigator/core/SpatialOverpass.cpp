@@ -140,12 +140,28 @@ PoiBox(const Box& place)
 
 
 std::string
-PoisUrl(const Box& box)
+PoisUrl(const Box& box, const std::string& endpoint)
 {
 	char area[128];
 	// (Overpass: south, west, north, east; the position is rounded to 11 cm, which also keeps the same area one question for the cache)
 	std::snprintf(area, sizeof(area), "(%.6f,%.6f,%.6f,%.6f)", box.south, box.west, box.north, box.east);
-	return "https://overpass-api.de/api/interpreter?data=" + PercentEncode(std::string("[out:json][timeout:25];nwr[name]") + area + ";out center;");
+	return endpoint + (endpoint.find('?') == std::string::npos ? "?data=" : "&data=")
+		+ PercentEncode(std::string("[out:json][timeout:25];nwr[name]") + area + ";out center;");
+}
+
+
+std::string
+WithKey(const std::string& endpoint, const std::string& key)
+{
+	static const std::string kPlace = "{key}";
+	const std::string encoded = PercentEncode(key);
+	std::string result = endpoint;
+	size_t at = 0;
+	while ((at = result.find(kPlace, at)) != std::string::npos) {
+		result.replace(at, kPlace.size(), encoded);
+		at += encoded.size();
+	}
+	return result;
 }
 
 

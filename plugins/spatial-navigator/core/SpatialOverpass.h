@@ -43,8 +43,14 @@ const double kPoiMaxKm = 3.0;
 /** The area for the points of interest of a place: its box, at least kPoiMinKm on each side around its centre. Not valid if the place is larger than kPoiMaxKm on one side or has no box. */
 Box PoiBox(const Box& place);
 
-/** The question for all named things in the box (`nwr[name](south,west,north,east); out center;`, the order of Overpass, not that of Nominatim), with a time limit of 25 seconds. */
-std::string PoisUrl(const Box& box);
+/**
+ * The question for all named things in the box (`nwr[name](south,west,north,east); out center;`, the order of Overpass, not that of Nominatim), with a time limit of 25 seconds, to the
+ * interpreter at @p endpoint (the public server, or a mirror: they answer the same). The same box gives the same text of the question on every server.
+ */
+std::string PoisUrl(const Box& box, const std::string& endpoint = "https://overpass-api.de/api/interpreter");
+
+/** The address with the key in the place of `{key}` (percent-encoded); the address as it is if it has none. */
+std::string WithKey(const std::string& endpoint, const std::string& key);
 
 /**
  * The things of the answer, without those that are no points of interest: the roads (highway, except what is a stop or a stand), the borders (boundary), things that have a name and nothing

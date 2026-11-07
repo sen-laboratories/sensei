@@ -13,6 +13,7 @@
 
 #include "SpatialOverpass.h"
 #include "SpatialRelations.h"
+#include "SpatialSettings.h"
 #include "SpatialWikidata.h"
 
 #ifndef FIXTURES
@@ -243,12 +244,57 @@ TestOverpass()
 }
 
 
+static void
+TestSettings()
+{
+	using namespace spatial;
+	// the default is the public server; the mirrors and the custom one are chosen by their id
+	Settings settings;
+	CHECK(OverpassEndpoint(settings) == "https://overpass-api.de/api/interpreter" && OverpassKey(settings).empty());
+	ParseSettings("# a comment\noverpass_mirror = vk-maps\n", &settings);
+	CHECK(OverpassEndpoint(settings) == "https://maps.mail.ru/osm/tools/overpass/api/interpreter");
+	ParseSettings("overpass_mirror = private-coffee", &settings);
+	CHECK(OverpassEndpoint(settings) == "https://overpass.private.coffee/api/interpreter");
+	// the last choice is the custom one; with no address it is the default; the key belongs to it alone
+	ParseSettings("overpass_mirror = custom\noverpass_key = secret123", &settings);
+	CHECK(OverpassEndpoint(settings) == kDefaultOverpassUrl && OverpassKey(settings) == "secret123");
+	ParseSettings("overpass_url = https://overpass.example.org/api/interpreter", &settings);
+	CHECK(OverpassEndpoint(settings) == "https://overpass.example.org/api/interpreter");
+	ParseSettings("overpass_mirror = vk-maps", &settings);
+	CHECK(OverpassKey(settings).empty());
+	// what is not valid is ignored: an unknown mirror, an address that is none
+	ParseSettings("overpass_mirror = nowhere\noverpass_url = ftp://x\n", &settings);
+	CHECK(settings.overpassMirror == "vk-maps" && settings.overpassUrl == "https://overpass.example.org/api/interpreter");
+	const std::vector<Mirror>& mirrors = Mirrors();
+	CHECK(mirrors.size() == 4 && std::string(mirrors.back().id) == "custom");		// (the last choice is the custom mirror)
+
+	std::string why;
+	CHECK(ValidateSetting("overpass_mirror", "custom") && ValidateSetting("overpass_mirror", "default"));
+	CHECK(!ValidateSetting("overpass_mirror", "other", &why) && !why.empty());
+	CHECK(ValidateSetting("overpass_url", "") && ValidateSetting("overpass_url", "http://localhost:8080/api/interpreter"));
+	CHECK(!ValidateSetting("overpass_url", "overpass.example.org") && !ValidateSetting("overpass_url", "https://a b"));
+	CHECK(!ValidateSetting("overpass_url", "https://example.org/#x") && !ValidateSetting("overpass_key", "a b") && ValidateSetting("overpass_key", ""));
+	CHECK(!ValidateSetting("nothing", "x"));
+
+	// the question goes to the interpreter that is chosen; the key can be in the address
+	Box box;
+	box.south = 48.196; box.north = 48.201; box.west = 16.298; box.east = 16.304; box.valid = true;
+	const std::string vk = PoisUrl(box, "https://maps.mail.ru/osm/tools/overpass/api/interpreter");
+	CHECK(vk.rfind("https://maps.mail.ru/osm/tools/overpass/api/interpreter?data=%5Bout", 0) == 0);
+	CHECK(vk.substr(vk.find("?data=")) == PoisUrl(box).substr(PoisUrl(box).find("?data=")));
+	CHECK(PoisUrl(box, "https://x.org/api?apikey=k").find("api?apikey=k&data=") != std::string::npos);
+	CHECK(WithKey("https://overpass.geofabrik.de/{key}/api/interpreter", "a/b c") == "https://overpass.geofabrik.de/a%2Fb%20c/api/interpreter");
+	CHECK(WithKey("https://x.org/api/interpreter", "k") == "https://x.org/api/interpreter");
+}
+
+
 int
 main()
 {
 	TestRelations();
 	TestWikidata();
 	TestOverpass();
+	TestSettings();
 	std::printf("%d checks, %d failures\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;
 }

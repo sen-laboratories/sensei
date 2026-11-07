@@ -28,6 +28,7 @@
 
 #include "../../common/EntityFile.h"
 #include "../../common/SocketHttp.h"
+#include "SpatialSettingsForm.h"
 #include "SpatialWikidata.h"
 
 namespace spatial {
@@ -76,6 +77,7 @@ Resolver::Resolver(const std::string& language, bool debug, const BMessage* libr
 	fCache(NULL),
 	fContext(NULL)
 {
+	LoadSettings(&fSettings);
 	BPath folder;
 	if (find_directory(B_USER_CACHE_DIRECTORY, &folder, true) == B_OK && folder.Append("sen/spatial-navigator") == B_OK)
 		fCache = new sensei::DiskCache(folder.Path());
@@ -294,9 +296,23 @@ Resolver::_MakePoi(const entry_ref& beside, const Poi& poi, entry_ref* made)
 bool
 Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 {
+	// (the answer is kept under the question of the public server, whichever server answered: the data are the same)
 	const std::string url = PoisUrl(area);
+	// the server of the settings, and its key: sent as a bearer token, or in the address; not over a connection that is not secure
+	const std::string key = OverpassKey(fSettings);
+	std::string endpoint = WithKey(OverpassEndpoint(fSettings), key);
+	std::string authorization;
+	if (!key.empty() && OverpassEndpoint(fSettings).find("{key}") == std::string::npos) {
+		if (endpoint.compare(0, 8, "https://") == 0)
+			authorization = "Bearer " + key;
+		else
+			printf("the key of the Overpass server is not sent: the address is not https\n");
+	}
+	const std::string request = PoisUrl(area, endpoint);
 	std::string body;
 	if (fCache == NULL || !fCache->Get(url, &body, kPoiCacheSeconds)) {
+		if (fDebug)
+			printf("asking %s\n", OverpassEndpoint(fSettings).c_str());		// (not the address with the key)
 		// (the public Overpass server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. One that fails at once - 429, 502 when
 		// it is busy - is asked once more after a moment, if there is time)
 		int status = 0;
@@ -309,10 +325,10 @@ Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 				snooze(3000000);
 			}
 			const bigtime_t left = kPoiLimit - (system_time() - started);
-			result = sensei::SocketGet(url, kUserAgent, "application/json", &body, &status, left);
+			result = sensei::SocketGet(request, kUserAgent, "application/json", &body, &status, left, authorization);
 		}
 		if (result != B_OK) {
-			printf("could not ask Overpass for the points of interest (status %d)\n", status);
+			printf("could not ask Overpass (%s) for the points of interest (status %d)\n", OverpassEndpoint(fSettings).c_str(), status);
 			return false;
 		}
 		// (kept only if it is an answer: a timeout is one with a remark and no elements)

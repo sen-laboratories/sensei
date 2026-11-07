@@ -54,9 +54,25 @@ city cross a little because they are simplified, and the shapes would say *overl
   (`~/Library/<context>/Places`) with its name, link, position, short description and **type** (`country`, `city`, `district`...; the kinds that are told are a short list, in this order of preference:
   country, city, state, county, municipality, district, town, village, region, continent), so that it can be opened; it can be enriched with SUESS like any place. The answer is kept for a month.
 
-* **OpenStreetMap through the Overpass API**, for *point of interest*: one request for the box (`nwr[name](south,west,north,east); out center;`; note that Overpass takes south, west, north, east, and
+* **OpenStreetMap through the Overpass API**, for *point of interest* (the server is chosen in the settings, see below): one request for the box (`nwr[name](south,west,north,east); out center;`; note that Overpass takes south, west, north, east, and
   Nominatim south, north, west, east), kept for a day. The public server works out an answer for half a minute when it is busy, so the first time takes long; the SEN server waits 90 seconds for a
   navigator. The data are by OpenStreetMap contributors (ODbL).
+
+## Settings
+
+In the settings window of SEN, under the spatial navigator: **Overpass server**, the server that is asked for the points of interest. The public server (`overpass-api.de`, the default) is often busy
+(half a minute for an answer is common), so there are mirrors that give the same data with other limits:
+
+| Choice | Address | |
+|---|---|---|
+| overpass-api.de | `https://overpass-api.de/api/interpreter` | the default |
+| Private.coffee | `https://overpass.private.coffee/api/interpreter` | no limit, no registration |
+| VK Maps | `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | no limit, no registration |
+| Custom mirror | the address you type | enables the two fields below |
+
+For the custom mirror, **Custom mirror URL** is the address of its interpreter and **API key** the key of a service that wants one (a free tier after registration, or a paid server). The key is sent as
+`Authorization: Bearer <key>` and only over https; a server that takes the key in the path (`https://overpass.geofabrik.de/<key>/api/interpreter`) gets it in place of `{key}` in the address.
+The key is kept as typed in `~/config/settings/sen/spatial-navigator.settings` (no `#`, which starts a comment there). The answer of a question is kept for a day whichever server gave it.
 
 ## Dependencies
 

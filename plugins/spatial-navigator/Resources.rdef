@@ -29,7 +29,7 @@ resource(2, "SEN:plugin:enrich")   0;
 resource(3, "SEN:plugin:identify") 0;
 resource(4, "SEN:plugin:navigate") 1;
 // whether the settings window of SEN has anything to show for this plugin (a plugin that says false is not listed there)
-resource(20, "SEN:plugin:hasSettings") false;
+resource(20, "SEN:plugin:hasSettings") true;
 
 /* the relation types that it works out: the server asks the plugin that names a dynamic relation type here (it becomes the preferred application of the type) */
 resource file_types message {
