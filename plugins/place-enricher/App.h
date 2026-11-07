@@ -69,9 +69,10 @@ private:
 	status_t		FindByPosition(const place::Position& position, place::Hit* hit);
 	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen);
 	/**
-	 * What a Location, a photo or another file that is no Place is "located at": the Place that Nominatim found for it. It is the file of a Place that has its link to OpenStreetMap
-	 * (or Wikidata), else it is made in the Library with what Nominatim says and enriched later (picture, outline) in the background; the relation `located at` from the file to it is stored.
-	 * The relation is the same as one that the user makes by hand.
+	 * What a Location, a photo or another file that is no Place is "located near": the Place that Nominatim found for it, and the Places on this computer that are near its position (within 250 metres,
+	 * and no larger than 2 km across: a district or a city that contains it is reached through the place). The Place that was found is the file of a Place that has its link to OpenStreetMap
+	 * (or Wikidata), else it is made in the Library with what Nominatim says and enriched later (picture, outline) in the background. The relations `located near` are stored, the same as ones
+	 * that the user makes by hand.
 	 */
 	status_t		RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description);
 	void			ShowError(const char* message);

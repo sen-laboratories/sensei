@@ -86,10 +86,18 @@ SenPlaceEnricher [-a|--auto] [-w|--wipe] [-l|--language de] [-p|--position] [--d
 
 ## Where a Location or a photo is located
 
-A file that is **no Place** (a Location, a photo with a position, anything else that SUESS looked up) is *located at* the place that was found. When the lookup has worked, SUESS stores the relation
-**located at** (`relation/x-vnd.sen-labs.relation.spatial.located-at`) from the file to that place, the same relation that you can make by hand: the file of the **Place** is the one that has the link to
-OpenStreetMap (or Wikidata) of the place, else it is made in the Library (name, kind, position, outline, address, as for any place) and enriched later in the background (the picture, the description). The position of a
-Location is its own and is always used; the GPS position of a photo only with *Use GPS location for lookup*. A Place that is looked up is not related to anything: its data are the place's.
+A file that is **no Place** (a Location, a photo with a position, anything else that SUESS looked up) is *located near* the place that was found. When the lookup has worked, SUESS stores the relation
+**located near** (`relation/x-vnd.sen-labs.relation.spatial.located-near`) from the file to that place, the same relation that you can make by hand, and to **the places on this computer that are near the position**
+(within 250 metres and no larger than 2 km across: a district or a city that contains the position is reached through the place, as a place is *within* it), so there can be several. The file of the **Place** that was
+found is the one that has the link to OpenStreetMap (or Wikidata) of the place, else it is made in the Library (name, kind, position, outline, address, as for any place) and enriched later in the background (the picture,
+the description); a building that has no name gets its address as the name (`Anton-Langer-Gasse 66`). The position of a Location is its own and is always used; the GPS position of a photo only with *Use GPS location for lookup*.
+A Place that is looked up is not related to anything: its data are the place's.
+
+## Looking up an address
+
+A file that has an **address** (`schema:address`, e.g. `Anton-Langer-Gasse 66, 1130 Wien`) and **no position** is looked up by the address: the best answer of the search is the house or the street, and what Nominatim
+says is written to the file: the **position** (the file had none), the bounding box, the kind of place (`apartments`, `building`; as an IRI `Tag:building=apartments`), the link to OpenStreetMap (its object type and id),
+the address parts. A file that has a position uses it; one that has both is looked up by the position. Then, as for any lookup, a Location or photo is located near the place.
 
 ## What it does not do
 

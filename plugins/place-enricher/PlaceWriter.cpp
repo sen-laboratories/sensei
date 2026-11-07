@@ -66,7 +66,7 @@ WritePlace(const entry_ref& file, const Hit& hit, const std::string& description
 		return result;
 
 	namespace attr = sen::onto::spatial::attr;
-	PutString(node, attr::kTitle, hit.name, overwrite);
+	PutString(node, attr::kTitle, NameFor(hit), overwrite);
 	PutList(node, attr::kAlternateName, hit.otherNames, overwrite);
 	PutString(node, attr::kDescription, description, overwrite);
 	PutString(node, attr::kPlaceType, PlaceTypeName(hit), overwrite);

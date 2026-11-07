@@ -259,6 +259,38 @@ ReverseUrl(double latitude, double longitude, const std::string& language, bool 
 }
 
 
+std::string
+NameFor(const Hit& hit)
+{
+	if (!hit.name.empty())
+		return hit.name;
+	if (!hit.road.empty())
+		return hit.houseNumber.empty() ? hit.road : hit.road + " " + hit.houseNumber;
+	return hit.displayName.substr(0, hit.displayName.find(','));
+}
+
+
+double
+ExtentKm(const Hit& hit)
+{
+	if (!hit.hasBox)
+		return 0;
+	const double kKilometresPerDegree = 111.195;
+	const double kPi = 3.14159265358979323846;
+	const double middle = (hit.south + hit.north) / 2.0;
+	const double height = std::fabs(hit.north - hit.south) * kKilometresPerDegree;
+	const double width = std::fabs(hit.east - hit.west) * kKilometresPerDegree * std::cos(middle * kPi / 180.0);
+	return std::max(height, width);
+}
+
+
+bool
+IsNear(const Hit& hit, const Position& position, double nearKm, double maxKm)
+{
+	return ExtentKm(hit) <= maxKm && DistanceKm(hit, position) <= nearKm;
+}
+
+
 double
 BoundaryTolerance(const Hit& hit)
 {

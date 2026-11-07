@@ -88,6 +88,18 @@ bool OsmFrom(const std::string& links, std::string* osmType, int64_t* osmId);
 std::string WikidataFrom(const std::string& links);
 /** The hit that is the Wikidata item (`Q40`), if the answers have it: a place that was made from Wikidata has that link and no link to OpenStreetMap, and is found by its name and this. NULL if none is. */
 const Hit* FindByWikidata(const std::vector<Hit>& hits, const std::string& wikidataId);
+/**
+ * The name for the file of a place: its name; a building has an address and often no name, so the street and the house number (`Anton-Langer-Gasse 66`); else the first part of the display
+ * name. Empty only if Nominatim says nothing at all.
+ */
+std::string NameFor(const Hit& hit);
+/** How far the place reaches, in kilometres: the longer side of its bounding box; 0 if it has none. */
+double ExtentKm(const Hit& hit);
+/**
+ * Whether a place is near a position: its nearest point is within @p nearKm, and it is no larger than @p maxKm across (a city or a country contains a position, it is not near it: what contains
+ * it is within reach through the places that it contains).
+ */
+bool IsNear(const Hit& hit, const Position& position, double nearKm, double maxKm);
 /** Whether the place is an administrative area (a city, a state, a country: a boundary), whose shape is the place. */
 bool IsAdministrative(const Hit& hit);
 /**

@@ -87,6 +87,33 @@ TestAddresses()
 	const std::string reverse = place::ReverseUrl(48.2084923, 16.3731269, "", false);
 	CHECK(Contains(reverse, "/reverse?lat=48.2084923&lon=16.3731269&"));
 	CHECK(Contains(reverse, "&layer=address&"));
+
+	// the name of the file of a place: a building has an address and no name
+	{
+		place::Hit named, building, bare;
+		named.name = "Karlskirche";
+		building.road = "Anton-Langer-Gasse";
+		building.houseNumber = "66";
+		bare.displayName = "66, Anton-Langer-Gasse, Wien";
+		CHECK(place::NameFor(named) == "Karlskirche");
+		CHECK(place::NameFor(building) == "Anton-Langer-Gasse 66");
+		building.houseNumber = "";
+		CHECK(place::NameFor(building) == "Anton-Langer-Gasse");
+		CHECK(place::NameFor(bare) == "66");
+	}
+	// near: a small place close by, not a city that contains the position and not one that is far
+	{
+		place::Position home{48.1689, 16.2826};
+		place::Hit shop, city, far;
+		shop.hasBox = true; shop.south = 48.1692; shop.north = 48.1694; shop.west = 16.2829; shop.east = 16.2832;		// about 40 metres away
+		shop.latitude = 48.1693; shop.longitude = 16.2830;
+		city.hasBox = true; city.south = 48.1; city.north = 48.3; city.west = 16.1; city.east = 16.6;				// contains the position, 30 km across
+		far.hasBox = true; far.south = 48.2000; far.north = 48.2002; far.west = 16.3000; far.east = 16.3002;		// kilometres away
+		CHECK(place::IsNear(shop, home, 0.25, 2.0));
+		CHECK(!place::IsNear(city, home, 0.25, 2.0));
+		CHECK(!place::IsNear(far, home, 0.25, 2.0));
+		CHECK(place::ExtentKm(city) > 20 && place::ExtentKm(shop) < 0.1);
+	}
 	CHECK(Contains(place::ReverseUrl(-33.5, -70.25, "", false), "lat=-33.5000000&lon=-70.2500000"));
 }
 

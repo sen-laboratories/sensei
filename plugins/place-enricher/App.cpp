@@ -11,6 +11,9 @@
 #include <Node.h>
 #include <NodeInfo.h>
 #include <Path.h>
+#include <Query.h>
+#include <Volume.h>
+#include <VolumeRoster.h>
 #include <String.h>
 #include <Url.h>
 #include <fs_attr.h>
@@ -503,6 +506,23 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	const std::string name = NameOf(node, file);
 	fWanted = name;
 
+	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
+	BString address;
+	if (!hasPosition && node.ReadAttrString(sen::onto::spatial::attr::kAddress, &address) == B_OK && !address.IsEmpty()) {
+		fWanted = address.String();
+		std::string addressBody;
+		status_t found = Get(place::SearchUrl(address.String(), language, fSettings.boundary, 3), kNominatim, &addressBody);
+		if (found != B_OK)
+			return found;
+		std::vector<place::Hit> addressHits;
+		if (!place::ParseHits(addressBody, &addressHits))
+			return B_ERROR;
+		if (addressHits.empty())
+			return B_ENTRY_NOT_FOUND;
+		*hit = addressHits[0];
+		return B_OK;
+	}
+
 	// sending the position of a file to OpenStreetMap: the position of a place is the place's own, the position of a photo is the user's and needs the user's word
 	const bool mayUsePosition = hasPosition && !hasTitle && (IsPlaceFile(node) || fSettings.lookupByPosition);
 	fNeedsConsent = false;
@@ -561,6 +581,44 @@ App::FindByPosition(const place::Position& position, place::Hit* hit)
 }
 
 
+/** how near a place has to be to a position to be "near" it, and how large it may be (a district or a city contains the position: what contains it is reached through the places in it) */
+static const double kNearKilometres = 0.25;
+static const double kMaxNearKilometres = 2.0;
+
+
+/** The files of the Places on this computer that are near the position (the place of the file itself and the one that was found are not among them). */
+static void
+FindNearbyPlaces(const place::Position& position, const std::vector<entry_ref>& except, std::vector<entry_ref>* found)
+{
+	BVolumeRoster roster;
+	BVolume volume;
+	while (roster.GetNextVolume(&volume) == B_OK) {
+		if (!volume.KnowsQuery())
+			continue;
+		BQuery query;
+		query.SetVolume(&volume);
+		query.PushAttr("BEOS:TYPE");
+		query.PushString(sen::onto::spatial::mime::kPlace);
+		query.PushOp(B_EQ);
+		if (query.Fetch() != B_OK)
+			continue;
+		entry_ref ref;
+		while (query.GetNextRef(&ref) == B_OK) {
+			if (std::find(except.begin(), except.end(), ref) != except.end())
+				continue;
+			BNode node(&ref);
+			place::Hit each;
+			if (!ReadDouble(node, sen::onto::spatial::attr::kLatitude, &each.latitude) || !ReadDouble(node, sen::onto::spatial::attr::kLongitude, &each.longitude))
+				continue;
+			each.hasBox = ReadDouble(node, sen::onto::spatial::attr::kBoxSouth, &each.south) && ReadDouble(node, sen::onto::spatial::attr::kBoxNorth, &each.north)
+				&& ReadDouble(node, sen::onto::spatial::attr::kBoxWest, &each.west) && ReadDouble(node, sen::onto::spatial::attr::kBoxEast, &each.east);
+			if (place::IsNear(each, position, kNearKilometres, kMaxNearKilometres))
+				found->push_back(ref);
+		}
+	}
+}
+
+
 status_t
 App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description)
 {
@@ -571,15 +629,13 @@ App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string
 	// the place that is meant: the one with this link to OpenStreetMap or Wikidata, or one of that name that has no link (made by hand)
 	const std::string osm = place::OsmUrl(hit);
 	const std::string wikidata = hit.wikidataId.empty() ? std::string() : "wikidata.org/wiki/" + hit.wikidataId;
-	BString name(hit.name.c_str());
-	if (name.IsEmpty())
-		name = hit.displayName.substr(0, hit.displayName.find(',')).c_str();
+	const std::string name = place::NameFor(hit);
 	BString key;
 	key << hit.osmType.c_str() << "-" << (int64) hit.osmId;
 
 	entry_ref placeRef;
 	bool created = false;
-	status_t result = sensei::FindOrCreateEntityFile(file, sen::onto::spatial::mime::kPlace, name.String(), key.String(),
+	status_t result = sensei::FindOrCreateEntityFile(file, sen::onto::spatial::mime::kPlace, name.c_str(), key.String(),
 		[&osm, &wikidata](BNode& node) {
 			BString links;
 			node.ReadAttrString(sen::onto::spatial::attr::kSameAs, &links);
@@ -599,20 +655,37 @@ App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string
 		server.SendMessage(&enrich);
 	}
 
-	BMessage add(sen::cmd::kRelationAdd), answer;
-	add.AddString(sen::key::kRelationType, sen::onto::spatial::mime::kLocatedAt);
-	add.AddRef(sen::key::kSourceRef, &file);
-	add.AddRef(sen::key::kTargetRef, &placeRef);
-	result = server.SendMessage(&add, &answer, 10000000, 10000000);
-	if (result != B_OK)
-		return result;
-	if (answer.GetInt32(sen::key::kStatus, 0) >= 400) {
-		printf("the SEN server: %s\n", answer.GetString(sen::key::kDetail, "no relation"));
-		return B_ERROR;
+	// the places that are near the position as well: the places on this computer, not what OpenStreetMap has around (one request is made for the place; a search of the surroundings is not what its public service is for)
+	std::vector<entry_ref> places(1, placeRef);
+	place::Position position;
+	BNode fileNode(&file);
+	if (!ReadDouble(fileNode, sen::onto::spatial::attr::kLatitude, &position.latitude) || !ReadDouble(fileNode, sen::onto::spatial::attr::kLongitude, &position.longitude)) {
+		position.latitude = hit.latitude;
+		position.longitude = hit.longitude;
 	}
-	if (fDebug)
-		printf("%s is located at %s%s\n", file.name, placeRef.name, created ? " (made)" : "");
-	return B_OK;
+	std::vector<entry_ref> except(places);
+	except.push_back(file);
+	FindNearbyPlaces(position, except, &places);
+
+	status_t status = B_OK;
+	for (const entry_ref& target : places) {
+		BMessage add(sen::cmd::kRelationAdd), answer;
+		add.AddString(sen::key::kRelationType, sen::onto::spatial::mime::kLocatedNear);
+		add.AddRef(sen::key::kSourceRef, &file);
+		add.AddRef(sen::key::kTargetRef, &target);
+		result = server.SendMessage(&add, &answer, 10000000, 10000000);
+		if (result == B_OK && answer.GetInt32(sen::key::kStatus, 0) >= 400) {
+			printf("the SEN server: %s\n", answer.GetString(sen::key::kDetail, "no relation"));
+			result = B_ERROR;
+		}
+		if (result != B_OK) {
+			status = result;
+			continue;
+		}
+		if (fDebug)
+			printf("%s is located near %s%s\n", file.name, target.name, (target == placeRef && created) ? " (made)" : "");
+	}
+	return status;
 }
 
 
@@ -728,7 +801,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 		}
 	}
 
-	// a Location, a photo, any file that is no Place: it is located at the place that was found (a Place has the data of the place itself)
+	// a Location, a photo, any file that is no Place: it is located near the place that was found and the places that are near it (a Place has the data of the place itself)
 	{
 		BNode node(&ref);
 		if (!IsPlaceType(node)) {
