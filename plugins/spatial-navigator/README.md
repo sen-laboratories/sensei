@@ -21,9 +21,11 @@ Region Connection Calculus (RCC-8) in the words of everyday use:
 
 Disjoint (DC) is not a relation: nearly every two places are disjoint.
 
-**What a relation says about itself.** Each place of the answer has the property **Kind** (`SEN:REL:Kind`), the name of the relation in words (`non-tangential proper part`, `tangential proper part`, `externally connected`,
-`partially overlapping`, `equal`; the opposite directions of the first two say `(inverse)`), and the hidden property **RCC-8** (`SEN:REL:Rcc8`), the code that the comparison of the shapes gave (`NTPP`, `NTPPi`, `TPP`, `TPPi`, `EC`,
-`PO`, `EQ`), which is what a program asks for. A place that Wikidata says is a parent ("located in") has the Kind `located in (Wikidata)` and no code: no shapes were compared.
+**What a relation says about itself.** A place that the shapes were compared for has the property **Kind** (`SEN:REL:Kind`), the name of the relation in words (`non-tangential proper part`, `tangential proper part`, `externally connected`,
+`partially overlapping`, `equal`; the opposite directions of the first two say `(inverse)`), and the hidden property **RCC-8** (`SEN:REL:Rcc8`), the code that the comparison gave (`NTPP`, `NTPPi`, `TPP`, `TPPi`, `EC`,
+`PO`, `EQ`), which is what a program asks for. A place that Wikidata says contains this one ("located in") has neither: no shapes were compared, and "located in" says nothing about the border. Where a relation comes from is its
+**provenance** (`prov:wasAttributedTo`): this plugin's signature for what it worked out from the shapes, `https://www.wikidata.org/wiki/Property:P131` for what Wikidata said. That is also why a place at the edge of its parent
+(a district of Vienna that reaches the city limit: really *covered by*) can be in the list from Wikidata only: the simplified outlines of the two cross a little, which the shapes call *overlaps*.
 
 **Opening the file of a relation** (a double click in the folder of the relation) opens the place that it stands for, with the application of its type (Shoji).
 

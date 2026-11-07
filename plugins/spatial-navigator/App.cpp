@@ -22,12 +22,15 @@
 #include <sen/Sen.h>
 #include <sen/SenAbout.h>
 #include <sen/SenAttributes.h>
+#include <sen/SenOntoCore.h>
 #include <sen/Sensei.h>
 
 #include "SpatialRelations.h"
 #include "SpatialResolver.h"
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.spatial-navigator";
+/** the source of a relation that Wikidata says: the property P131, "located in the administrative territorial entity" */
+static const char* kWikidataLocatedIn = "https://www.wikidata.org/wiki/Property:P131";
 
 
 App::App()
@@ -83,10 +86,13 @@ App::_Resolve(BMessage* message)
 			item.AddRef(sen::key::kTargetRef, &target.ref);
 			// the label of the direction: the relation seen from the file that was opened ("within" for the place that it is in, "contains" for a place in it)
 			item.AddString(sen::attr::kRelationLabel, spatial::LabelOf(target.relation).c_str());
-			// what it is: in words for people, and the code of the Region Connection Calculus that the shapes gave (a place that Wikidata says it is located in has no shapes compared, so no code)
+			// what it is: in words for people (Kind) and the code of the Region Connection Calculus that the shapes gave (Rcc8). A place that Wikidata says contains this one has neither: no
+			// shapes were compared, "located in" says nothing about the border. Where the relation comes from is its provenance: this plugin worked it out from the shapes, or Wikidata said it
+			// (the property "located in the administrative territorial entity")
 			if (target.fromWikidata) {
-				item.AddString(sen::attr::kRelationKind, "located in (Wikidata)");
+				item.AddString(sen::onto::core::attr::kRelProvenance, kWikidataLocatedIn);
 			} else {
+				item.AddString(sen::onto::core::attr::kRelProvenance, kApplicationSignature);
 				item.AddString(sen::attr::kRelationKind, spatial::KindOf(target.relation).c_str());
 				item.AddString(sen::attr::kRelationRcc8, spatial::CodeOf(target.relation).c_str());
 			}
