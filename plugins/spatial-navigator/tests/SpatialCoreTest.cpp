@@ -254,6 +254,23 @@ TestOverpass()
 		}
 	}
 
+	// what is gone or not there yet is no point of interest (the old track of a tram line), what stands next to it stays
+	{
+		const std::string gone = "{\"elements\":["
+			"{\"type\":\"way\",\"id\":31,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Old track of tram 60\",\"railway\":\"abandoned\"}},"
+			"{\"type\":\"way\",\"id\":32,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Old line\",\"abandoned:railway\":\"tram\"}},"
+			"{\"type\":\"node\",\"id\":33,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Closed bakery\",\"disused:shop\":\"bakery\"}},"
+			"{\"type\":\"node\",\"id\":34,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Old cafe\",\"amenity\":\"cafe\",\"disused\":\"yes\"}},"
+			"{\"type\":\"way\",\"id\":35,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"New tower\",\"building\":\"construction\"}},"
+			"{\"type\":\"way\",\"id\":36,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Haus Alt\",\"building\":\"yes\",\"disused:shop\":\"bakery\"}},"
+			"{\"type\":\"node\",\"id\":37,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Ruine\",\"historic\":\"ruins\"}},"
+			"{\"type\":\"way\",\"id\":38,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Tram 60\",\"railway\":\"tram_stop\"}}]}";
+		std::vector<spatial::Poi> alive;
+		CHECK(spatial::ParsePois(gone, "de", &alive) && alive.size() == 3);
+		if (alive.size() == 3)
+			CHECK(alive[0].name == "Haus Alt" && alive[1].name == "Ruine" && alive[2].name == "Tram 60");
+	}
+
 	CHECK(spatial::ParsePois("{\"elements\":[]}", "de", &pois) && pois.empty());			// (nothing there is an answer)
 	CHECK(!spatial::ParsePois("{\"remark\":\"runtime error: Query timed out\"}", "de", &pois));
 	CHECK(!spatial::ParsePois("not json", "de", &pois));

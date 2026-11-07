@@ -72,6 +72,47 @@ IsTechnical(const Json& tags)
 	return transport == "platform" && Tag(tags, "highway") != "bus_stop" && railway != "tram_stop" && railway != "halt" && railway != "station";
 }
 
+/**
+ * Things that are gone or not there yet: an abandoned or disused railway ("old track of tram 60"), a building that is planned or being built, a shop that closed (`disused:shop`).
+ * OpenStreetMap keeps them, with their names, as what they were (`railway=abandoned`, `disused=yes`, `abandoned:railway=tram`, `was:amenity=cafe`), and a search for what has a name finds
+ * them. A thing that has another, living kind next to the lifecycle tag stays (a house whose shop closed is still a house).
+ */
+bool
+IsDefunct(const Json& tags)
+{
+	static const char* const kGoneValues[] = {"abandoned", "disused", "razed", "demolished", "removed", "destroyed", "construction", "proposed", "planned"};
+	static const char* const kLifecyclePrefixes[] = {"abandoned:", "disused:", "was:", "razed:", "demolished:", "removed:", "destroyed:", "proposed:", "construction:", "planned:"};
+
+	const std::string abandoned = Tag(tags, "abandoned"), disused = Tag(tags, "disused");
+	if (abandoned == "yes" || abandoned == "true" || disused == "yes" || disused == "true")
+		return true;
+
+	bool living = false;		// a kind key that says what the thing is now
+	for (const char* key : kKindKeys) {
+		const std::string value = Tag(tags, key);
+		if (value.empty())
+			continue;
+		bool gone = false;
+		for (const char* word : kGoneValues)
+			gone = gone || value == word;
+		if (gone)
+			return true;
+		living = true;
+	}
+	if (living)
+		return false;
+
+	for (auto it = tags.begin(); it != tags.end(); ++it) {
+		for (const char* prefix : kLifecyclePrefixes) {
+			if (it.key().compare(0, strlen(prefix), prefix) == 0)
+				return true;
+		}
+		if (it.key() == "construction" || it.key() == "proposed")
+			return true;
+	}
+	return false;
+}
+
 /** what the thing is */
 void
 KindOf(const Json& tags, Poi* poi)
@@ -254,7 +295,7 @@ ParsePois(const std::string& text, const std::string& language, std::vector<Poi>
 		if (!hasLatitude || !hasLongitude)
 			continue;
 
-		if (IsTechnical(tags))
+		if (IsTechnical(tags) || IsDefunct(tags))
 			continue;
 		KindOf(tags, &poi);
 		// (a name and nothing else - no kind, no address - is a label of the map, not a point of interest)
