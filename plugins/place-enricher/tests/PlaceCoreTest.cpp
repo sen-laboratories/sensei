@@ -86,6 +86,7 @@ TestAddresses()
 	CHECK(Contains(place::LookupUrl("node", 5, "de-AT", false), "accept-language=de-AT"));
 	const std::string reverse = place::ReverseUrl(48.2084923, 16.3731269, "", false);
 	CHECK(Contains(reverse, "/reverse?lat=48.2084923&lon=16.3731269&"));
+	CHECK(Contains(reverse, "&layer=address&"));
 	CHECK(Contains(place::ReverseUrl(-33.5, -70.25, "", false), "lat=-33.5000000&lon=-70.2500000"));
 }
 

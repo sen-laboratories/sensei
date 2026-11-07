@@ -84,6 +84,13 @@ setting that all plugins share.
 SenPlaceEnricher [-a|--auto] [-w|--wipe] [-l|--language de] [-p|--position] [--debug] <file>...
 ```
 
+## Where a Location or a photo is located
+
+A file that is **no Place** (a Location, a photo with a position, anything else that SUESS looked up) is *located at* the place that was found. When the lookup has worked, SUESS stores the relation
+**located at** (`relation/x-vnd.sen-labs.relation.spatial.located-at`) from the file to that place, the same relation that you can make by hand: the file of the **Place** is the one that has the link to
+OpenStreetMap (or Wikidata) of the place, else it is made in the Library (name, kind, position, outline, address, as for any place) and enriched later in the background (the picture, the description). The position of a
+Location is its own and is always used; the GPS position of a photo only with *Use GPS location for lookup*. A Place that is looked up is not related to anything: its data are the place's.
+
 ## What it does not do
 
 It makes **no relations and no parents**: that a place is *within* Vienna, *touches* another one or *overlaps* it is worked out when you ask for it, by the spatial navigator, from the outlines and

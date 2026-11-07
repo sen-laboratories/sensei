@@ -254,7 +254,8 @@ LookupUrl(const std::string& osmType, int64_t osmId, const std::string& language
 std::string
 ReverseUrl(double latitude, double longitude, const std::string& language, bool boundary, double tolerance)
 {
-	return std::string(kApi) + "/reverse?lat=" + Coordinate(latitude) + "&lon=" + Coordinate(longitude) + Common(language, boundary, tolerance);
+	// (layer=address: the places that have an address, buildings and areas, not what is at the position as a point of interest: for the Karlskirche the church, not a defibrillator that hangs at its wall)
+	return std::string(kApi) + "/reverse?lat=" + Coordinate(latitude) + "&lon=" + Coordinate(longitude) + "&layer=address" + Common(language, boundary, tolerance);
 }
 
 

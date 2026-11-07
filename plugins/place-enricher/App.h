@@ -68,6 +68,12 @@ private:
 	/** the place at a position (reverse geocoding): the position is sent to OpenStreetMap */
 	status_t		FindByPosition(const place::Position& position, place::Hit* hit);
 	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen);
+	/**
+	 * What a Location, a photo or another file that is no Place is "located at": the Place that Nominatim found for it. It is the file of a Place that has its link to OpenStreetMap
+	 * (or Wikidata), else it is made in the Library with what Nominatim says and enriched later (picture, outline) in the background; the relation `located at` from the file to it is stored.
+	 * The relation is the same as one that the user makes by hand.
+	 */
+	status_t		RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description);
 	void			ShowError(const char* message);
 	void			PrintUsage(const char* error = NULL);
 	/** the settings as they are now (the file, the settings of SEN that all plugins share): the instance may have been started before the user changed them; what the command line gave is kept */

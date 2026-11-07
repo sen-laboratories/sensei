@@ -62,7 +62,7 @@ struct Position {
 std::string SearchUrl(const std::string& query, const std::string& language, bool boundary, int limit = 8, double tolerance = kBoundaryTolerance);
 /** One object of OpenStreetMap by its type (node, way, relation) and id: the place that was found before. */
 std::string LookupUrl(const std::string& osmType, int64_t osmId, const std::string& language, bool boundary, double tolerance = kBoundaryTolerance);
-/** The place at a position. */
+/** The place at a position (with an address: a building or an area, not a point of interest such as a defibrillator that is at the same position). */
 std::string ReverseUrl(double latitude, double longitude, const std::string& language, bool boundary, double tolerance = kBoundaryTolerance);
 /**
  * A coarser tolerance for a place whose outline is too large to keep (a country is 455 KB at the usual one): 0.5% of the size of its bounding box, from the usual one up to 0.01 degrees.

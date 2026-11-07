@@ -29,6 +29,7 @@
 #include <sen/SenPluginSettings.h>
 #include <sen/Sensei.h>
 
+#include "../../common/EntityFile.h"
 #include "../../common/MappingUtil.h"
 #include "../../common/Notice.h"
 #include "../../common/ThumbnailUtil.h"
@@ -436,6 +437,19 @@ NameOf(BNode& node, const entry_ref& file)
 }
 
 
+/** Whether the file is a Place itself (not a Location, not a photo): its data are the place's, and it is no use to relate it to one. */
+static bool
+IsPlaceType(BNode& node)
+{
+	BString semantic;
+	if (node.ReadAttrString(sen::attr::kType, &semantic) == B_OK && semantic == sen::onto::spatial::mime::kPlace)
+		return true;
+	char mime[B_MIME_TYPE_LENGTH];
+	BNodeInfo info(&node);
+	return info.GetType(mime) == B_OK && strcmp(mime, sen::onto::spatial::mime::kPlace) == 0;
+}
+
+
 /** Whether the file is a place or a location, an entity of SEN (its semantic type, or its type for Haiku): the position that it has is what it says of itself, not where its user was. */
 static bool
 IsPlaceFile(BNode& node)
@@ -547,6 +561,61 @@ App::FindByPosition(const place::Position& position, place::Hit* hit)
 }
 
 
+status_t
+App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description)
+{
+	BMessenger server(sen::kServerSignature);
+	if (!server.IsValid())
+		return B_NOT_INITIALIZED;	// the SEN server is not running: the place is in the file, the relation is made by the next enrichment
+
+	// the place that is meant: the one with this link to OpenStreetMap or Wikidata, or one of that name that has no link (made by hand)
+	const std::string osm = place::OsmUrl(hit);
+	const std::string wikidata = hit.wikidataId.empty() ? std::string() : "wikidata.org/wiki/" + hit.wikidataId;
+	BString name(hit.name.c_str());
+	if (name.IsEmpty())
+		name = hit.displayName.substr(0, hit.displayName.find(',')).c_str();
+	BString key;
+	key << hit.osmType.c_str() << "-" << (int64) hit.osmId;
+
+	entry_ref placeRef;
+	bool created = false;
+	status_t result = sensei::FindOrCreateEntityFile(file, sen::onto::spatial::mime::kPlace, name.String(), key.String(),
+		[&osm, &wikidata](BNode& node) {
+			BString links;
+			node.ReadAttrString(sen::onto::spatial::attr::kSameAs, &links);
+			return links.IsEmpty() || links.FindFirst(osm.c_str()) >= 0 || (!wikidata.empty() && links.FindFirst(wikidata.c_str()) >= 0);
+		}, &placeRef, &created);
+	if (result != B_OK)
+		return result;
+	if (created) {
+		// all that Nominatim said (what the file of a place has); the picture, which needs more requests, is made later by the enrichment of the new place
+		result = place::WritePlace(placeRef, hit, description, fSettings.boundary, false);
+		if (result != B_OK)
+			return result;
+		BMessage enrich(sen::cmd::kEnrichRefs);
+		enrich.AddRef("refs", &placeRef);
+		enrich.AddBool("wipe", false);
+		enrich.AddBool("auto", true);
+		server.SendMessage(&enrich);
+	}
+
+	BMessage add(sen::cmd::kRelationAdd), answer;
+	add.AddString(sen::key::kRelationType, sen::onto::spatial::mime::kLocatedAt);
+	add.AddRef(sen::key::kSourceRef, &file);
+	add.AddRef(sen::key::kTargetRef, &placeRef);
+	result = server.SendMessage(&add, &answer, 10000000, 10000000);
+	if (result != B_OK)
+		return result;
+	if (answer.GetInt32(sen::key::kStatus, 0) >= 400) {
+		printf("the SEN server: %s\n", answer.GetString(sen::key::kDetail, "no relation"));
+		return B_ERROR;
+	}
+	if (fDebug)
+		printf("%s is located at %s%s\n", file.name, placeRef.name, created ? " (made)" : "");
+	return B_OK;
+}
+
+
 /**
  * The work of the plugin: find the place, write what Nominatim says of it to the attributes of the file, and a picture of it as its thumbnail. The result is that of the PLACE: that the
  * description or the picture could not be had does not undo it.
@@ -558,6 +627,11 @@ App::Enrich(BMessage* message, BMessage* reply)
 	if (message->FindRef("refs", &ref) != B_OK) {
 		ShowError("Failed to resolve input file.");
 		return B_BAD_VALUE;
+	}
+	// (a file that was removed while it waited in the queue of the server is not enriched: that would make a new place for it)
+	if (!BEntry(&ref).Exists()) {
+		printf("%s does not exist (any more).\n", ref.name);
+		return B_ENTRY_NOT_FOUND;
 	}
 	fDebug = message->GetBool("debug", fDebug);
 	// the action decides what is replaced ("wipe": Enrich (Overwrite), the Shift key of the menu); the command line wins over the settings for one run
@@ -651,6 +725,16 @@ App::Enrich(BMessage* message, BMessage* reply)
 			} else {
 				printf("error fetching the picture '%s', skipping it.\n", image.file.c_str());
 			}
+		}
+	}
+
+	// a Location, a photo, any file that is no Place: it is located at the place that was found (a Place has the data of the place itself)
+	{
+		BNode node(&ref);
+		if (!IsPlaceType(node)) {
+			status_t related = RelatePlace(ref, hit, entity.description);
+			if (related != B_OK && related != B_NOT_INITIALIZED)
+				printf("could not relate %s to the place %s: %s\n", ref.name, hit.name.c_str(), strerror(related));
 		}
 	}
 
