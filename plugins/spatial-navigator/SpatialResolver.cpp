@@ -23,6 +23,7 @@
 #include <set>
 
 #include <sen/Sen.h>
+#include <sen/SenOntoCore.h>
 #include <sen/SenOntoSpatial.h>
 
 #include "../../common/EntityFile.h"
@@ -36,6 +37,12 @@ namespace {
 const char* const kUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
 // the chain of parents of a place changes rarely: kept for a month
 const long kCacheSeconds = 30L * 24 * 3600;
+// what is around a place changes now and then (a shop closes): kept for a day
+const long kPoiCacheSeconds = 24L * 3600;
+// as many as people can read in a menu: the nearest
+const size_t kMaxPois = 100;
+// all of the time that Overpass has for one question, in microseconds
+const bigtime_t kPoiLimit = 80 * 1000000LL;
 
 void
 GeosMessage(const char* format, ...)
@@ -247,6 +254,127 @@ Resolver::_AddAncestors(const PlaceData& place, const std::map<std::string, entr
 
 
 status_t
+Resolver::_MakePoi(const entry_ref& beside, const Poi& poi, entry_ref* made)
+{
+	const std::string link = OsmUrl(poi);
+	bool created = false;
+	// (a name that many have - Billa, a bus stop - is told apart by the number at OpenStreetMap; up to a hundred are made at once: not put into the sticky context, which would be
+	// a hundred messages to the server that waits for this plugin)
+	status_t result = sensei::FindOrCreateEntityFile(beside, sen::onto::spatial::mime::kPlace, poi.name.c_str(), std::to_string(poi.osmId).c_str(),
+		[&link](BNode& node) {
+			BString links;
+			node.ReadAttrString(sen::onto::spatial::attr::kSameAs, &links);
+			return links.FindFirst(link.c_str()) >= 0;
+		}, made, &created, fHasLibrary ? &fLibrary : NULL, false);
+	if (result != B_OK)
+		return result;
+	if (created) {
+		BNode node(made);
+		namespace attr = sen::onto::spatial::attr;
+		PutString(node, attr::kTitle, poi.name);
+		std::string links = link;
+		if (!poi.wikidataId.empty())
+			links += ",https://www.wikidata.org/wiki/" + poi.wikidataId;
+		PutString(node, attr::kSameAs, links);
+		PutString(node, attr::kPlaceType, poi.kind);
+		PutString(node, attr::kPlaceTypeUri, poi.kindUri);
+		PutString(node, attr::kUrl, poi.website);
+		PutString(node, attr::kAddress, poi.address);
+		PutString(node, attr::kPostalCode, poi.postcode);
+		PutString(node, attr::kLocality, poi.locality);
+		PutDouble(node, attr::kLatitude, poi.latitude);
+		PutDouble(node, attr::kLongitude, poi.longitude);
+		PutString(node, sen::attr::kType, sen::onto::spatial::mime::kPlace);
+		fMadePois++;
+	}
+	return B_OK;
+}
+
+
+bool
+Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
+{
+	const std::string url = PoisUrl(area);
+	std::string body;
+	if (fCache == NULL || !fCache->Get(url, &body, kPoiCacheSeconds)) {
+		// (the public Overpass server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. One that fails at once - 429, 502 when
+		// it is busy - is asked once more after a moment, if there is time)
+		int status = 0;
+		status_t result = B_ERROR;
+		const bigtime_t started = system_time();
+		for (int attempt = 0; attempt < 2 && result != B_OK; attempt++) {
+			if (attempt > 0) {
+				if (system_time() - started > 15 * 1000000LL)
+					break;
+				snooze(3000000);
+			}
+			const bigtime_t left = kPoiLimit - (system_time() - started);
+			result = sensei::SocketGet(url, kUserAgent, "application/json", &body, &status, left);
+		}
+		if (result != B_OK) {
+			printf("could not ask Overpass for the points of interest (status %d)\n", status);
+			return false;
+		}
+		// (kept only if it is an answer: a timeout is one with a remark and no elements)
+		if (!ParsePois(body, fLanguage, pois)) {
+			printf("the answer of Overpass is not one for the points of interest\n");
+			return false;
+		}
+		if (fCache != NULL)
+			fCache->Put(url, body);
+		return true;
+	}
+	return ParsePois(body, fLanguage, pois);
+}
+
+
+void
+Resolver::_AddPointsOfInterest(const PlaceData& place, const std::map<std::string, entry_ref>& byOsm, std::vector<Target>* targets)
+{
+	const Box area = PoiBox(place.box);
+	if (!area.valid) {
+		printf("%s: %s\n", place.name.c_str(), place.box.valid ? "too large for the points of interest (more than 3 km across)" : "no position");
+		return;
+	}
+	std::vector<Poi> pois;
+	if (!_Pois(area, &pois))
+		return;
+	// the nearest first, from the middle of the place
+	const double middleLatitude = (place.box.south + place.box.north) / 2;
+	const double middleLongitude = (place.box.west + place.box.east) / 2;
+	std::stable_sort(pois.begin(), pois.end(), [&](const Poi& a, const Poi& b) {
+		return DistanceKm(middleLatitude, middleLongitude, a.latitude, a.longitude) < DistanceKm(middleLatitude, middleLongitude, b.latitude, b.longitude);
+	});
+
+	const std::string own = OsmKeyFrom(place.sameAs);
+	size_t added = 0;
+	for (const Poi& poi : pois) {
+		if (added >= kMaxPois)
+			break;
+		if (OsmKey(poi) == own)
+			continue;
+		entry_ref ref;
+		auto known = byOsm.find(OsmKey(poi));
+		if (known != byOsm.end()) {
+			ref = known->second;
+		} else if (_MakePoi(place.ref, poi, &ref) != B_OK) {
+			printf("could not make a place for %s (%s)\n", poi.name.c_str(), OsmKey(poi).c_str());
+			continue;
+		}
+		if (ref == place.ref)
+			continue;
+		Target target;
+		target.ref = ref;
+		target.pointOfInterest = true;
+		targets->push_back(target);
+		added++;
+	}
+	if (fDebug)
+		printf("%s: %zu of %zu named things in the area, %d made\n", place.name.c_str(), added, pois.size(), fMadePois);
+}
+
+
+status_t
 Resolver::Resolve(const entry_ref& file, const std::string& relationType, std::vector<Target>* targets)
 {
 	PlaceData place;
@@ -257,13 +385,21 @@ Resolver::Resolve(const entry_ref& file, const std::string& relationType, std::v
 	std::vector<entry_ref> candidates;
 	FindPlaceFiles(&candidates);
 
+	const bool pointsOfInterest = relationType == sen::onto::spatial::mime::kPointOfInterest;
 	std::map<std::string, entry_ref> byWikidata;
+	std::map<std::string, entry_ref> byOsm;
 	for (const entry_ref& candidate : candidates) {
 		PlaceData other;
 		if (!ReadPlace(candidate, &other) || other.node == place.node)
 			continue;
 		if (!other.wikidataId.empty())
 			byWikidata[other.wikidataId] = candidate;
+		if (pointsOfInterest) {
+			const std::string key = OsmKeyFrom(other.sameAs);
+			if (!key.empty())
+				byOsm[key] = candidate;
+			continue;		// (no outlines to compare for this relation)
+		}
 
 		// only the places whose boxes meet can be related at all (the others are disjoint): the geometry engine is asked about those
 		if (geometry.empty() || !BoxesMeet(place.box, other.box))
@@ -292,6 +428,8 @@ Resolver::Resolve(const entry_ref& file, const std::string& relationType, std::v
 	// the places that contain this one, from Wikidata: also those that have no outline or are not on this computer yet
 	if (relationType == TypeOf(Relation::kWithin))
 		_AddAncestors(place, byWikidata, targets);
+	else if (pointsOfInterest)
+		_AddPointsOfInterest(place, byOsm, targets);
 	return B_OK;
 }
 

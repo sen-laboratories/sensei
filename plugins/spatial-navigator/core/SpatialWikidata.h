@@ -15,6 +15,9 @@
  */
 namespace spatial {
 
+/** Text for an address of a request: everything but letters, digits and `-._~` as %XX. */
+std::string PercentEncode(const std::string& text);
+
 /** A place that contains another one, as Wikidata knows it. */
 struct Ancestor {
 	std::string	id;				///< `Q1741`

@@ -31,6 +31,9 @@
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.spatial-navigator";
 /** the source of a relation that Wikidata says: the property P131, "located in the administrative territorial entity" */
 static const char* kWikidataLocatedIn = "https://www.wikidata.org/wiki/Property:P131";
+/** the source of a point of interest: OpenStreetMap, asked through the Overpass API */
+static const char* kPointOfInterestLabel = "point of interest";
+static const char* kOverpassApi = "https://wiki.openstreetmap.org/wiki/Overpass_API";
 
 
 App::App()
@@ -85,11 +88,14 @@ App::_Resolve(BMessage* message)
 			BMessage item;
 			item.AddRef(sen::key::kTargetRef, &target.ref);
 			// the label of the direction: the relation seen from the file that was opened ("within" for the place that it is in, "contains" for a place in it)
-			item.AddString(sen::attr::kRelationLabel, spatial::LabelOf(target.relation).c_str());
+			item.AddString(sen::attr::kRelationLabel, target.pointOfInterest ? kPointOfInterestLabel : spatial::LabelOf(target.relation).c_str());
 			// what it is: in words for people (Kind) and the code of the Region Connection Calculus that the shapes gave (Rcc8). A place that Wikidata says contains this one has neither: no
 			// shapes were compared, "located in" says nothing about the border. Where the relation comes from is its provenance: this plugin worked it out from the shapes, or Wikidata said it
 			// (the property "located in the administrative territorial entity")
-			if (target.fromWikidata) {
+			if (target.pointOfInterest) {
+				// (a named thing in the area: no shapes were compared; it is where OpenStreetMap says it is)
+				item.AddString(sen::onto::core::attr::kRelProvenance, kOverpassApi);
+			} else if (target.fromWikidata) {
 				item.AddString(sen::onto::core::attr::kRelProvenance, kWikidataLocatedIn);
 			} else {
 				item.AddString(sen::onto::core::attr::kRelProvenance, kApplicationSignature);
@@ -206,7 +212,7 @@ App::ArgvReceived(int32 argc, char** argv)
 	std::vector<spatial::Target> targets;
 	status_t result = resolver.Resolve(file, argv[1], &targets);
 	for (const spatial::Target& target : targets)
-		printf("  %-10s %s\n", spatial::LabelOf(target.relation).c_str(), target.ref.name);
+		printf("  %-10s %s\n", target.pointOfInterest ? kPointOfInterestLabel : spatial::LabelOf(target.relation).c_str(), target.ref.name);
 	if (result != B_OK)
 		fExitCode = 1;
 	Quit();

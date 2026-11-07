@@ -5,11 +5,13 @@
 
 // Tests of core/: no Haiku and no GEOS needed, no network (the answer of Wikidata is recorded in tests/fixtures). Build and run with tests/run.sh.
 
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
 
+#include "SpatialOverpass.h"
 #include "SpatialRelations.h"
 #include "SpatialWikidata.h"
 
@@ -159,11 +161,94 @@ TestWikidata()
 }
 
 
+static void
+TestOverpass()
+{
+	using spatial::Box;
+	// the area: a point and a small building are asked for 500 m around, a district for its box, a city not at all
+	Box point = spatial::PointBox(48.2, 16.3);
+	Box area = spatial::PoiBox(point);
+	CHECK(area.valid && area.south < 48.2 && area.north > 48.2 && area.west < 16.3 && area.east > 16.3);
+	CHECK(std::abs(spatial::DistanceKm(area.south, 16.3, area.north, 16.3) - spatial::kPoiMinKm) < 0.01);
+	CHECK(std::abs(spatial::DistanceKm(48.2, area.west, 48.2, area.east) - spatial::kPoiMinKm) < 0.01);	// (the same in kilometres east to west: degrees of longitude are shorter)
+	Box district;
+	district.south = 48.19; district.north = 48.21; district.west = 16.29; district.east = 16.32; district.valid = true;
+	Box asked = spatial::PoiBox(district);
+	CHECK(asked.valid && std::abs(asked.south - district.south) < 1e-9 && std::abs(asked.north - district.north) < 1e-9 && std::abs(asked.west - district.west) < 1e-9);
+	Box city;
+	city.south = 48.12; city.north = 48.32; city.west = 16.18; city.east = 16.58; city.valid = true;
+	CHECK(!spatial::PoiBox(city).valid);
+	CHECK(!spatial::PoiBox(Box()).valid);
+
+	// the question: the order of Overpass is south, west, north, east
+	Box box;
+	box.south = 48.196; box.north = 48.201; box.west = 16.298; box.east = 16.304; box.valid = true;
+	const std::string url = spatial::PoisUrl(box);
+	CHECK(url.rfind("https://overpass-api.de/api/interpreter?data=", 0) == 0);
+	CHECK(url.find("%2848.196000%2C16.298000%2C48.201000%2C16.304000%29") != std::string::npos);
+	CHECK(url.find("nwr%5Bname%5D") != std::string::npos && url.find("out%20center%3B") != std::string::npos && url.find("%5Bout%3Ajson%5D") != std::string::npos);
+
+	// the answer (recorded for a box in the 14th district): the roads and the borders are no points of interest
+	std::vector<spatial::Poi> pois;
+	CHECK(spatial::ParsePois(Fixture("overpass-1140.json"), "de-AT", &pois));
+	CHECK(!pois.empty());
+	bool billa = false;
+	for (const spatial::Poi& poi : pois) {
+		CHECK(!poi.name.empty() && poi.latitude > 48 && poi.longitude > 16);
+		CHECK(poi.name != "H\xC3\xBCtteldorfer Stra\xC3\x9F" "e");
+		if (poi.osmType == "node" && poi.osmId == 15080180) {
+			billa = true;
+			CHECK(poi.name == "Billa Plus" && poi.kind == "supermarket" && poi.kindUri == "https://wiki.openstreetmap.org/wiki/Tag:shop=supermarket");
+			CHECK(poi.address == "H\xC3\xBCtteldorfer Stra\xC3\x9F" "e 130B" && poi.postcode == "1140" && poi.locality == "Wien" && poi.website == "https://www.billa.at");
+			CHECK(spatial::OsmUrl(poi) == "https://www.openstreetmap.org/node/15080180" && spatial::OsmKey(poi) == "node/15080180");
+		}
+	}
+	CHECK(billa);
+
+	// a way has its centre; the name in the language wins; a road, a border, a bare name and a thing without a position are left out
+	const std::string text = "{\"elements\":["
+		"{\"type\":\"way\",\"id\":7,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Church\",\"name:de\":\"Kirche\",\"amenity\":\"place_of_worship\",\"wikidata\":\"Q42\"}},"
+		"{\"type\":\"way\",\"id\":8,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Main Street\",\"highway\":\"residential\"}},"
+		"{\"type\":\"node\",\"id\":9,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Stop\",\"highway\":\"bus_stop\",\"public_transport\":\"platform\"}},"
+		"{\"type\":\"relation\",\"id\":10,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"District\",\"boundary\":\"administrative\"}},"
+		"{\"type\":\"node\",\"id\":11,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Label\"}},"
+		"{\"type\":\"way\",\"id\":12,\"tags\":{\"name\":\"Nowhere\",\"amenity\":\"cafe\"}},"
+		"{\"type\":\"way\",\"id\":13,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Haus\",\"building\":\"yes\"}},"
+		"{\"type\":\"node\",\"id\":7,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Same number, other type\",\"shop\":\"bakery\"}},"
+		"{\"type\":\"node\",\"id\":14,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Stop position\",\"public_transport\":\"stop_position\",\"bus\":\"yes\"}},"
+		"{\"type\":\"node\",\"id\":16,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Tram position\",\"public_transport\":\"stop_position\",\"railway\":\"tram_stop\"}},"
+		"{\"type\":\"way\",\"id\":17,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Tram platform\",\"public_transport\":\"platform\",\"railway\":\"platform\"}},"
+		"{\"type\":\"node\",\"id\":18,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Tram stop\",\"public_transport\":\"platform\",\"railway\":\"tram_stop\"}},"
+		"{\"type\":\"way\",\"id\":15,\"center\":{\"lat\":48.2,\"lon\":16.3},\"tags\":{\"name\":\"Platform\",\"public_transport\":\"platform\"}}]}";
+	CHECK(spatial::ParsePois(text, "de", &pois));
+	CHECK(pois.size() == 5);
+	if (pois.size() == 5) {
+		CHECK(pois[0].osmType == "way" && pois[0].name == "Kirche" && pois[0].kind == "place of worship" && pois[0].wikidataId == "Q42" && pois[0].latitude == 48.2);
+		CHECK(pois[1].name == "Stop" && pois[1].kind == "bus stop");		// (the stop itself, not its position or platform)
+		CHECK(pois[2].name == "Haus" && pois[2].kind == "building" && pois[2].kindUri == "https://wiki.openstreetmap.org/wiki/Tag:building=yes");
+		CHECK(pois[3].osmType == "node" && pois[3].osmId == 7 && pois[3].kind == "bakery");
+		CHECK(pois[4].name == "Tram stop" && pois[4].kind == "tram stop");
+	}
+	CHECK(spatial::ParsePois(text, "en", &pois) && pois[0].name == "Church");
+
+	CHECK(spatial::ParsePois("{\"elements\":[]}", "de", &pois) && pois.empty());			// (nothing there is an answer)
+	CHECK(!spatial::ParsePois("{\"remark\":\"runtime error: Query timed out\"}", "de", &pois));
+	CHECK(!spatial::ParsePois("not json", "de", &pois));
+
+	CHECK(spatial::OsmKeyFrom("https://www.wikidata.org/wiki/Q1,https://www.openstreetmap.org/way/212496461") == "way/212496461");
+	CHECK(spatial::OsmKeyFrom("https://www.openstreetmap.org/relation/9, https://www.openstreetmap.org/node/1") == "relation/9");
+	CHECK(spatial::OsmKeyFrom("https://www.openstreetmap.org/user/7").empty() && spatial::OsmKeyFrom("https://www.openstreetmap.org/node/").empty());
+	CHECK(std::abs(spatial::DistanceKm(48.2085, 16.3731, 48.2085, 16.3731)) < 1e-9);
+	CHECK(std::abs(spatial::DistanceKm(48.2085, 16.3731, 47.0707, 15.4395) - 144.6) < 0.5);		// (Vienna - Graz)
+}
+
+
 int
 main()
 {
 	TestRelations();
 	TestWikidata();
+	TestOverpass();
 	std::printf("%d checks, %d failures\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;
 }

@@ -48,7 +48,10 @@ ApplyStickyClassifications(const entry_ref& file)
 	server.SendMessage(&request, &reply, 3000000, 3000000);
 }
 
-/** The same without waiting for the answer: for a plugin that the server is waiting for. */
+/**
+ * The same without waiting for the answer: for a plugin that the server is waiting for. The server cannot read while it waits, so its queue fills up after a few dozen entities and a
+ * message would block until the server gives up on the plugin: it waits one second at most and goes on (the entity is made, it is only not put into the sticky context).
+ */
 inline void
 ApplyStickyClassificationsLater(const entry_ref& file)
 {
@@ -57,7 +60,7 @@ ApplyStickyClassificationsLater(const entry_ref& file)
 		return;
 	BMessage request(sen::cmd::kClassificationApplySticky);
 	request.AddRef(sen::key::kSourceRef, &file);
-	server.SendMessage(&request);
+	server.SendMessage(&request, (BHandler*)NULL, 1000000);
 }
 
 /**
@@ -74,11 +77,12 @@ ApplyStickyClassificationsLater(const entry_ref& file)
  * @param isSame whether a file of that name and type is the entity (NULL: any such file is)
  * @param found gets the file
  * @param created true if the file was made
+ * @param classify whether a new file is put into what is sticky (false for the many files that a plugin makes at once: the points of interest of a place)
  * @param library the folder to make the file in (NULL: the Library of the current context, asked of the server); a plugin that was asked by the server (sensei::cmd::kResolve) is given it
  */
 inline status_t
 FindOrCreateEntityFile(const entry_ref& beside, const char* mimeType, const char* name, const char* disambiguator, const std::function<bool(BNode&)>& isSame,
-	entry_ref* found, bool* created, const entry_ref* library = NULL)
+	entry_ref* found, bool* created, const entry_ref* library = NULL, bool classify = true)
 {
 	BString fileName(name);
 	fileName.ReplaceAll('/', '-');		// (a file name cannot hold a path)
@@ -138,7 +142,9 @@ FindOrCreateEntityFile(const entry_ref& beside, const char* mimeType, const char
 		status_t made = BEntry(&folders[target], candidate.String()).GetRef(found);
 		if (made == B_OK) {
 			// (a new entity is in the current context, if that is sticky; a plugin that the server waits for does not wait for the server: it is told, and answers later)
-			if (library != NULL)
+			if (!classify)
+				;
+			else if (library != NULL)
 				ApplyStickyClassificationsLater(*found);
 			else
 				ApplyStickyClassifications(*found);

@@ -13,12 +13,8 @@
 
 namespace spatial {
 
-namespace {
-
-using Json = nlohmann::json;
-
 std::string
-Encode(const std::string& text)
+PercentEncode(const std::string& text)
 {
 	std::string out;
 	for (unsigned char c : text) {
@@ -32,6 +28,10 @@ Encode(const std::string& text)
 	}
 	return out;
 }
+
+namespace {
+
+using Json = nlohmann::json;
 
 /** `de-AT` is `de` */
 std::string
@@ -90,7 +90,7 @@ AncestorsUrl(const std::string& wikidataId, const std::string& language)
 	const std::string query = "SELECT ?item ?itemLabel ?itemDescription ?coord (MIN(CONCAT(STR(?rank), ?name, \"|\", STR(?root))) AS ?kind) WHERE { wd:" + wikidataId
 		+ " wdt:P131+ ?item . OPTIONAL { ?item wdt:P625 ?coord } OPTIONAL { ?item wdt:P31/wdt:P279* ?root . VALUES (?root ?rank ?name) { " + values + "} } "
 		"SERVICE wikibase:label { bd:serviceParam wikibase:language \"" + languages + "\" } } GROUP BY ?item ?itemLabel ?itemDescription ?coord LIMIT 40";
-	return "https://query.wikidata.org/sparql?format=json&query=" + Encode(query);
+	return "https://query.wikidata.org/sparql?format=json&query=" + PercentEncode(query);
 }
 
 

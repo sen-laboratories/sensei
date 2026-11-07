@@ -37,7 +37,8 @@ resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.spatial.covered-by",
     "types" = "relation/x-vnd.sen-labs.relation.spatial.touch",
     "types" = "relation/x-vnd.sen-labs.relation.spatial.overlap",
-    "types" = "relation/x-vnd.sen-labs.relation.spatial.equal"
+    "types" = "relation/x-vnd.sen-labs.relation.spatial.equal",
+    "types" = "relation/x-vnd.sen-labs.relation.spatial.point-of-interest"
 };
 
 // the icon: "GCompris" by 3dEyes (HVIF Store, https://hvif-store.art/), MIT license, see README.md
