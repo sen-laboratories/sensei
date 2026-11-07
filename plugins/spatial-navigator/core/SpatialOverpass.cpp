@@ -115,7 +115,7 @@ Number(const Json& object, const char* key, bool* found)
 
 
 Box
-PoiBox(const Box& place)
+PoiBox(const Box& place, double minKm)
 {
 	Box none;
 	if (!place.valid)
@@ -127,8 +127,8 @@ PoiBox(const Box& place)
 	const double widthKm = (place.east - place.west) * kmPerDegreeLongitude;
 	if (heightKm > kPoiMaxKm || widthKm > kPoiMaxKm)
 		return none;
-	const double halfHeight = std::max(heightKm, kPoiMinKm) / 2 / kKmPerDegree;
-	const double halfWidth = std::max(widthKm, kPoiMinKm) / 2 / kmPerDegreeLongitude;
+	const double halfHeight = std::max(heightKm, minKm) / 2 / kKmPerDegree;
+	const double halfWidth = std::max(widthKm, minKm) / 2 / kmPerDegreeLongitude;
 	Box box;
 	box.south = middleLatitude - halfHeight;
 	box.north = middleLatitude + halfHeight;
@@ -222,6 +222,7 @@ ParsePois(const std::string& text, const std::string& language, std::vector<Poi>
 		if (poi.kind.empty() && street.empty() && Tag(tags, "website").empty() && WikidataOf(tags).empty())
 			continue;
 		poi.wikidataId = WikidataOf(tags);
+		poi.notable = !poi.wikidataId.empty() || !Tag(tags, "wikipedia").empty();
 		poi.website = Tag(tags, "website");
 		if (poi.website.empty())
 			poi.website = Tag(tags, "contact:website");
@@ -235,6 +236,25 @@ ParsePois(const std::string& text, const std::string& language, std::vector<Poi>
 	}
 	*pois = found;
 	return true;
+}
+
+
+std::vector<Poi>
+Rank(const std::vector<Poi>& pois, double latitude, double longitude, size_t limit)
+{
+	struct Scored {
+		const Poi*	poi;
+		double		score;
+	};
+	std::vector<Scored> scored;
+	scored.reserve(pois.size());
+	for (const Poi& poi : pois)
+		scored.push_back({&poi, DistanceKm(latitude, longitude, poi.latitude, poi.longitude) * (poi.notable ? 1.0 / 3 : 1.0)});
+	std::stable_sort(scored.begin(), scored.end(), [](const Scored& a, const Scored& b) { return a.score < b.score; });
+	std::vector<Poi> ranked;
+	for (size_t i = 0; i < scored.size() && i < limit; i++)
+		ranked.push_back(*scored[i].poi);
+	return ranked;
 }
 
 

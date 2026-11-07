@@ -33,15 +33,19 @@ struct Poi {
 	std::string	address;		///< the street and the house number: `Hütteldorfer Straße 130B`
 	std::string	postcode;
 	std::string	locality;
+	bool		notable = false;	///< has a Wikidata item or a Wikipedia article: known beyond the map (the sights come first)
 };
 
-/** The smallest side of the area that is asked for, in kilometres: a building or a location is a point, and what is around it is what people mean (as far as a place is near: 250 m on each side). */
+/** The smallest side of the area that is asked for, in kilometres: a building or a location is a point, and what is around it is what people mean (twice the radius: 250 m on each side by default). */
 const double kPoiMinKm = 0.5;
+/** How many are returned by default, and the largest radius (in metres) that can be set. */
+const int kPoiDefaultLimit = 40;
+const int kPoiDefaultRadius = 250;
 /** The largest side of the area that is asked for, in kilometres: a district has thousands of named things, a city hundreds of thousands, which no one can read. */
 const double kPoiMaxKm = 3.0;
 
 /** The area for the points of interest of a place: its box, at least kPoiMinKm on each side around its centre. Not valid if the place is larger than kPoiMaxKm on one side or has no box. */
-Box PoiBox(const Box& place);
+Box PoiBox(const Box& place, double minKm = kPoiMinKm);
 
 /**
  * The question for all named things in the box (`nwr[name](south,west,north,east); out center;`, the order of Overpass, not that of Nominatim), with a time limit of 25 seconds, to the
@@ -57,6 +61,12 @@ std::string WithKey(const std::string& endpoint, const std::string& key);
  * else. @p language is the language of the names (`de`; `name:de` if the thing has it). False if the text is not an answer of Overpass (a timeout is an answer with a remark and no elements).
  */
 bool ParsePois(const std::string& json, const std::string& language, std::vector<Poi>* pois);
+
+/**
+ * The things in the order of interest, at most @p limit: by their distance from the middle, but a notable one (a Wikidata item or Wikipedia article: a church, a museum, a monument) counts
+ * as three times nearer than a shop, so that the sights of a square are not pushed out by its shops. The nearest of two equally notable come first.
+ */
+std::vector<Poi> Rank(const std::vector<Poi>& pois, double latitude, double longitude, size_t limit);
 
 /** The page of the thing at OpenStreetMap: `https://www.openstreetmap.org/node/15080180`. */
 std::string OsmUrl(const Poi& poi);

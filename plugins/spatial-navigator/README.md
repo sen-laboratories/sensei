@@ -25,11 +25,12 @@ Disjoint (DC) is not a relation: nearly every two places are disjoint.
 **Points of interest** (`point of interest`, seen from the other one: `in the area of`) are the named things that OpenStreetMap knows in the area of a place: shops, cafés, sights, stops, parks, buildings
 with a name; not the roads (a street comes in dozens of pieces that all have its name) and not the borders. The area is the bounding box of the place, at least 500 m across around its centre (a Location
 or a building is a point: what is around it is meant), and **at most 3 km across**: a district has thousands of named things, a city hundreds of thousands, which no one can read, so a larger place has
-none. The 100 nearest to the middle of the place are the answer. The relation is *remote*: the views of relation folders (*All related*) do not ask for it, only opening it does.
+none. The answer is the nearest to the middle of the place, at most **40** (setting *Most points of interest*, 5 to 200), where a notable one (a Wikidata item or Wikipedia article: a church, a museum) counts as three
+times nearer than a shop, so that the sights of a square come before its shops. The area is set by the *Search radius* (50 m to 1.5 km, 250 m by default; the area is twice that across). The relation is *remote*: the views of relation folders (*All related*) do not ask for it, only opening it does.
 
 A thing that has a file of the type Place (by its OpenStreetMap link, `schema:sameAs`) is that file. One that has not is **made in the Library** (`~/Library/<context>/Places`) with its name (in the language
 of the system if the thing has it), its OpenStreetMap link (and the Wikidata link, if it has one), position, **kind** (`supermarket`, `cafe`, `place of worship`, from the tags `amenity`, `shop`, `tourism`...,
-and the tag as `schema:additionalType`), web site and address; it is not enriched (there can be a hundred: enrich the ones you want with SUESS, which also finds their picture and outline). Two things of one name
+and the tag as `schema:additionalType`), web site and address; the first twelve of them that have a Wikidata item are enriched in the background by SUESS, which finds their **picture** (the photo, the coat of arms) and outline; for the others, enrich the ones you want (OpenStreetMap has no picture of its own). Two things of one name
 (a supermarket chain) are told apart by the number at OpenStreetMap in the name of the file. The source of the relation (`prov:wasAttributedTo`) is the Overpass API.
 
 **What a relation says about itself.** A place that the shapes were compared for has the property **Kind** (`SEN:REL:Kind`), the name of the relation in words (`non-tangential proper part`, `tangential proper part`, `externally connected`,

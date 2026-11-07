@@ -5,6 +5,8 @@
 
 #include "SpatialSettings.h"
 
+#include <cstdlib>
+
 #include "../../../common/SettingsText.h"
 
 namespace spatial {
@@ -39,6 +41,19 @@ IsMirrorId(const std::string& id)
 	return false;
 }
 
+/** a whole number in a range (as the settings window sends it: digits) */
+bool
+ParseNumber(const std::string& v, int low, int high, int* number)
+{
+	if (v.empty() || v.size() > 6 || v.find_first_not_of("0123456789") != std::string::npos)
+		return false;
+	const int value = std::atoi(v.c_str());
+	if (value < low || value > high)
+		return false;
+	*number = value;
+	return true;
+}
+
 /** `https://host/path` or `http://host/path`, with no blank */
 bool
 IsAddress(const std::string& v)
@@ -66,6 +81,10 @@ ParseSettings(const std::string& text, Settings* settings)
 		} else if (key == "overpass_url") {
 			if (value.empty() || IsAddress(value))
 				settings->overpassUrl = value;
+		} else if (key == "poi_radius") {
+			ParseNumber(value, kMinRadius, kMaxRadius, &settings->poiRadius);
+		} else if (key == "poi_limit") {
+			ParseNumber(value, kMinLimit, kMaxLimit, &settings->poiLimit);
 		} else if (key == "overpass_custom_key") {
 			settings->customRequiresKey = st::ParseBool(value, settings->customRequiresKey);
 		} else if (key == "overpass_key") {
@@ -91,6 +110,11 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return IsMirrorId(v) ? true : fail("one of the mirrors of the list");
 	if (key == "overpass_url")
 		return v.empty() || IsAddress(v) ? true : fail("an address like https://example.org/api/interpreter");
+	int number = 0;
+	if (key == "poi_radius")
+		return ParseNumber(v, kMinRadius, kMaxRadius, &number) ? true : fail("a number of metres from 50 to 1500");
+	if (key == "poi_limit")
+		return ParseNumber(v, kMinLimit, kMaxLimit, &number) ? true : fail("a number from 5 to 200");
 	if (key == "overpass_custom_key")
 		return st::IsBool(v) ? true : fail("yes or no");
 	if (key == "overpass_key")

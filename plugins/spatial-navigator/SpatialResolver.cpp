@@ -40,8 +40,8 @@ const char* const kUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-lab
 const long kCacheSeconds = 30L * 24 * 3600;
 // what is around a place changes now and then (a shop closes): kept for a day
 const long kPoiCacheSeconds = 24L * 3600;
-// as many as people can read in a menu: the nearest
-const size_t kMaxPois = 100;
+// the places that are made for points of interest and are enriched (their picture, from Wikidata) at once: only those with a Wikidata item, and not more than this per question
+const size_t kMaxPoiPictures = 12;
 // all of the time that Overpass has for one question, in microseconds
 const bigtime_t kPoiLimit = 80 * 1000000LL;
 
@@ -288,6 +288,11 @@ Resolver::_MakePoi(const entry_ref& beside, const Poi& poi, entry_ref* made)
 		PutDouble(node, attr::kLongitude, poi.longitude);
 		PutString(node, sen::attr::kType, sen::onto::spatial::mime::kPlace);
 		fMadePois++;
+		// a thing with a Wikidata item can have a picture (a photo, the coat of arms): SUESS finds it in the background, for the first few
+		if (!poi.wikidataId.empty() && fMadePictures < kMaxPoiPictures) {
+			fMade.push_back(*made);
+			fMadePictures++;
+		}
 	}
 	return B_OK;
 }
@@ -344,28 +349,26 @@ Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 }
 
 
-void
+status_t
 Resolver::_AddPointsOfInterest(const PlaceData& place, const std::map<std::string, entry_ref>& byOsm, std::vector<Target>* targets)
 {
-	const Box area = PoiBox(place.box);
+	const Box area = PoiBox(place.box, 2.0 * fSettings.poiRadius / 1000.0);
 	if (!area.valid) {
 		printf("%s: %s\n", place.name.c_str(), place.box.valid ? "too large for the points of interest (more than 3 km across)" : "no position");
-		return;
+		return B_OK;
 	}
-	std::vector<Poi> pois;
-	if (!_Pois(area, &pois))
-		return;
-	// the nearest first, from the middle of the place
+	std::vector<Poi> found;
+	if (!_Pois(area, &found))
+		return B_ERROR;		// (Overpass could not be asked: the user is told, an empty list would say that there is nothing)
+	// the notable ones and the nearest first, from the middle of the place, as many as the settings say
 	const double middleLatitude = (place.box.south + place.box.north) / 2;
 	const double middleLongitude = (place.box.west + place.box.east) / 2;
-	std::stable_sort(pois.begin(), pois.end(), [&](const Poi& a, const Poi& b) {
-		return DistanceKm(middleLatitude, middleLongitude, a.latitude, a.longitude) < DistanceKm(middleLatitude, middleLongitude, b.latitude, b.longitude);
-	});
+	const std::vector<Poi> pois = Rank(found, middleLatitude, middleLongitude, (size_t)fSettings.poiLimit + 1);
 
 	const std::string own = OsmKeyFrom(place.sameAs);
 	size_t added = 0;
 	for (const Poi& poi : pois) {
-		if (added >= kMaxPois)
+		if (added >= (size_t)fSettings.poiLimit)
 			break;
 		if (OsmKey(poi) == own)
 			continue;
@@ -386,7 +389,8 @@ Resolver::_AddPointsOfInterest(const PlaceData& place, const std::map<std::strin
 		added++;
 	}
 	if (fDebug)
-		printf("%s: %zu of %zu named things in the area, %d made\n", place.name.c_str(), added, pois.size(), fMadePois);
+		printf("%s: %zu of %zu named things in the area, %d made\n", place.name.c_str(), added, found.size(), fMadePois);
+	return B_OK;
 }
 
 
@@ -445,7 +449,7 @@ Resolver::Resolve(const entry_ref& file, const std::string& relationType, std::v
 	if (relationType == TypeOf(Relation::kWithin))
 		_AddAncestors(place, byWikidata, targets);
 	else if (pointsOfInterest)
-		_AddPointsOfInterest(place, byOsm, targets);
+		return _AddPointsOfInterest(place, byOsm, targets);
 	return B_OK;
 }
 

@@ -32,6 +32,10 @@ struct Settings {
 	std::string	overpassUrl;
 	/** the custom mirror requires a key (the field of the key is enabled only for a server that requires one) */
 	bool		customRequiresKey = false;
+	/** how far around a place the points of interest are looked for, in metres (the area is at least twice this across; a larger place is asked for with its own box) */
+	int			poiRadius = 250;
+	/** how many points of interest at most: the nearest, the notable ones (a sight) before the shops */
+	int			poiLimit = 40;
 	/** the key of a server that requires one. Put in place of `{key}` in the address, else sent as `Authorization: Bearer <key>` (only over https). */
 	std::string	overpassKey;
 };
@@ -56,6 +60,9 @@ std::string OverpassKey(const Settings& settings);
  * (`overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true`; `|` is or, `&` is and).
  */
 std::string KeyEnabledWhen();
+
+/** The ranges of the numbers of the settings. */
+const int kMinRadius = 50, kMaxRadius = 1500, kMinLimit = 5, kMaxLimit = 200;
 
 /** The address of the default server. */
 extern const char* const kDefaultOverpassUrl;

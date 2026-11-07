@@ -240,6 +240,25 @@ TestOverpass()
 	CHECK(spatial::OsmKeyFrom("https://www.openstreetmap.org/relation/9, https://www.openstreetmap.org/node/1") == "relation/9");
 	CHECK(spatial::OsmKeyFrom("https://www.openstreetmap.org/user/7").empty() && spatial::OsmKeyFrom("https://www.openstreetmap.org/node/").empty());
 	CHECK(std::abs(spatial::DistanceKm(48.2085, 16.3731, 48.2085, 16.3731)) < 1e-9);
+	// the order of interest: a sight counts as three times nearer than a shop; at most the limit
+	{
+		auto make = [](const char* name, double latitude, bool notable) {
+			spatial::Poi poi;
+			poi.name = name; poi.latitude = latitude; poi.longitude = 16.3; poi.notable = notable;
+			return poi;
+		};
+		std::vector<spatial::Poi> all = {make("shop-near", 48.2001, false), make("church-farther", 48.2020, true), make("cafe", 48.2008, false), make("museum-far", 48.2100, true)};
+		std::vector<spatial::Poi> ranked = spatial::Rank(all, 48.2, 16.3, 3);
+		CHECK(ranked.size() == 3 && ranked[0].name == "shop-near" && ranked[1].name == "church-farther" && ranked[2].name == "cafe");		// (the church, 222 m, counts as 74 m: before the café at 89 m)
+		CHECK(spatial::Rank(all, 48.2, 16.3, 10).size() == 4 && spatial::Rank(all, 48.2, 16.3, 10)[3].name == "museum-far");
+		CHECK(spatial::Rank(all, 48.2, 16.3, 0).empty());
+	}
+	// the area follows the radius: 1 km across for a radius of 500 m
+	{
+		spatial::Box pointBox = spatial::PointBox(48.2, 16.3);
+		spatial::Box wide = spatial::PoiBox(pointBox, 1.0);
+		CHECK(wide.valid && std::abs(spatial::DistanceKm(wide.south, 16.3, wide.north, 16.3) - 1.0) < 0.01);
+	}
 	CHECK(std::abs(spatial::DistanceKm(48.2085, 16.3731, 47.0707, 15.4395) - 144.6) < 0.5);		// (Vienna - Graz)
 }
 
@@ -264,6 +283,14 @@ TestSettings()
 	CHECK(OverpassEndpoint(settings) == "https://overpass.example.org/api/interpreter");
 	ParseSettings("overpass_mirror = vk-maps", &settings);
 	CHECK(OverpassKey(settings).empty());
+	// the numbers: radius and the most points of interest, in their ranges
+	Settings numbers;
+	CHECK(numbers.poiRadius == 250 && numbers.poiLimit == 40);
+	ParseSettings("poi_radius = 600\npoi_limit = 25", &numbers);
+	CHECK(numbers.poiRadius == 600 && numbers.poiLimit == 25);
+	ParseSettings("poi_radius = 5\npoi_limit = lots", &numbers);
+	CHECK(numbers.poiRadius == 600 && numbers.poiLimit == 25);		// (out of range, not a number: what was there stays)
+	CHECK(ValidateSetting("poi_radius", "1500") && !ValidateSetting("poi_radius", "1501") && !ValidateSetting("poi_limit", "4") && ValidateSetting("poi_limit", "200"));
 	// what is not valid is ignored: an unknown mirror, an address that is none
 	ParseSettings("overpass_mirror = nowhere\noverpass_url = ftp://x\n", &settings);
 	CHECK(settings.overpassMirror == "vk-maps" && settings.overpassUrl == "https://overpass.example.org/api/interpreter");

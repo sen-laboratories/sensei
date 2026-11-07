@@ -136,13 +136,18 @@ int main(int argc, char** argv)
 	CHECK(strcmp(defaults.GetString("overpass_mirror", ""), "default") == 0);
 
 	// the mirror is a menu of the servers with the custom mirror as the last choice; the address and the key are enabled for that choice only, the key is a secret
+	BMessage radius, limit;
+	CHECK(schema.FindMessage("poi_radius", &radius) == B_OK && radius.GetDouble(form::kAttrMin, 0) == 50 && radius.GetDouble(form::kAttrMax, 0) == 1500);
+	CHECK(schema.FindMessage("poi_limit", &limit) == B_OK && limit.GetDouble(form::kAttrMin, 0) == 5 && limit.GetDouble(form::kAttrMax, 0) == 200);
+	CHECK(settings.GetInt32("poi_radius", 0) == 250 && settings.GetInt32("poi_limit", 0) == 40);
 	BMessage mirror, url, key;
 	CHECK(schema.FindMessage("overpass_mirror", &mirror) == B_OK && strcmp(mirror.GetString(form::kAttrKind, ""), form::kKindChoice) == 0);
 	CHECK(mirror.CountNames(B_STRING_TYPE) > 0 && strcmp(mirror.GetString(form::kAttrChoices, 0, ""), "default") == 0);
 	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 1, ""), "private-coffee") == 0 && strcmp(mirror.GetString(form::kAttrChoices, 2, ""), "vk-maps") == 0);
 	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 3, ""), "nextgis") == 0 && strcmp(mirror.GetString(form::kAttrChoices, 4, ""), "overpass-ch") == 0);
-	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 5, ""), "custom") == 0 && strcmp(mirror.GetString(form::kAttrChoiceLabels, 5, ""), "Custom mirror") == 0);
-	CHECK(!mirror.HasString(form::kAttrChoices, 6));
+	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 5, ""), form::kChoiceSeparator) == 0);			// (a line between the servers and the custom mirror)
+	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 6, ""), "custom") == 0 && strcmp(mirror.GetString(form::kAttrChoiceLabels, 6, ""), "Custom mirror") == 0);
+	CHECK(!mirror.HasString(form::kAttrChoices, 7));
 	CHECK(schema.FindMessage("overpass_url", &url) == B_OK && strcmp(url.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=custom") == 0);
 	CHECK(schema.FindMessage("overpass_key", &key) == B_OK && strcmp(key.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true") == 0
 		&& strcmp(key.GetString(form::kAttrKind, ""), form::kKindSecret) == 0);
@@ -153,6 +158,7 @@ int main(int argc, char** argv)
 	BMessage change;
 	change.AddString("overpass_mirror", "custom");
 	change.AddString("overpass_url", "https://overpass.example.org/api/interpreter");
+	change.AddInt32("poi_radius", 400);
 	change.AddBool("overpass_custom_key", true);
 	change.AddString("overpass_key", "k3y");
 	BMessage set(sensei::cmd::kSettingsSet), answer;
@@ -162,6 +168,7 @@ int main(int argc, char** argv)
 	std::string file = ReadFile(path);
 	CHECK(file.find("# my settings\n") != std::string::npos && file.find("unknown = kept\n") != std::string::npos);
 	CHECK(file.find("overpass_mirror = custom\n") != std::string::npos && file.find("overpass_url = https://overpass.example.org/api/interpreter\n") != std::string::npos);
+	CHECK(file.find("poi_radius = 400\n") != std::string::npos);
 	CHECK(file.find("overpass_key = k3y\n") != std::string::npos && file.find("overpass_custom_key = yes\n") != std::string::npos);
 
 	BMessage bad;

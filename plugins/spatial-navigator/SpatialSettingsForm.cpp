@@ -32,6 +32,10 @@ struct Field {
 };
 
 const Field kFields[] = {
+	{"poi_radius", "Search radius (m)",
+		"How far around a place or location the points of interest are looked for, in metres. The area is at least twice this across; a place that is larger is searched in its own box (up to 3 km across)."},
+	{"poi_limit", "Most points of interest",
+		"How many points of interest at most. The notable ones (sights with a Wikidata item or a Wikipedia article) come before shops of the same distance, then the nearest."},
 	{"overpass_mirror", "Overpass server",
 		"The server that is asked for the points of interest of a place (OpenStreetMap, Overpass API). The public server is often busy; the mirrors give the same data and have other limits. "
 		"The question and the box of the place go to the server that is chosen."},
@@ -69,6 +73,8 @@ void
 ToMessage(const Settings& s, BMessage* message)
 {
 	message->MakeEmpty();
+	message->AddInt32("poi_radius", s.poiRadius);
+	message->AddInt32("poi_limit", s.poiLimit);
 	message->AddString("overpass_mirror", s.overpassMirror.c_str());
 	message->AddString("overpass_url", s.overpassUrl.c_str());
 	message->AddBool("overpass_custom_key", s.customRequiresKey);
@@ -102,9 +108,20 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		attributes.AddString(form::kAttrHelp, field.help);
 		attributes.AddInt32(form::kAttrOrder, order++);
 		const std::string key = field.key;
-		if (key == "overpass_mirror") {
+		if (key == "poi_radius" || key == "poi_limit") {
+			const bool radius = key == "poi_radius";
+			attributes.AddString(form::kAttrKind, form::kKindSpinner);
+			attributes.AddDouble(form::kAttrMin, radius ? kMinRadius : kMinLimit);
+			attributes.AddDouble(form::kAttrMax, radius ? kMaxRadius : kMaxLimit);
+			attributes.AddDouble(form::kAttrStep, radius ? 50 : 5);
+		} else if (key == "overpass_mirror") {
 			attributes.AddString(form::kAttrKind, form::kKindChoice);
 			for (const Mirror& mirror : Mirrors()) {
+				// (the servers of the list, then a line, then the choice of one's own)
+				if (std::string(mirror.id) == "custom") {
+					attributes.AddString(form::kAttrChoices, form::kChoiceSeparator);
+					attributes.AddString(form::kAttrChoiceLabels, "");
+				}
 				attributes.AddString(form::kAttrChoices, mirror.id);
 				attributes.AddString(form::kAttrChoiceLabels, mirror.label);
 			}
