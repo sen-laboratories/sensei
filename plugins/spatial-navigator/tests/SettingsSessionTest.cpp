@@ -140,15 +140,20 @@ int main(int argc, char** argv)
 	CHECK(schema.FindMessage("overpass_mirror", &mirror) == B_OK && strcmp(mirror.GetString(form::kAttrKind, ""), form::kKindChoice) == 0);
 	CHECK(mirror.CountNames(B_STRING_TYPE) > 0 && strcmp(mirror.GetString(form::kAttrChoices, 0, ""), "default") == 0);
 	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 1, ""), "private-coffee") == 0 && strcmp(mirror.GetString(form::kAttrChoices, 2, ""), "vk-maps") == 0);
-	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 3, ""), "custom") == 0 && strcmp(mirror.GetString(form::kAttrChoiceLabels, 3, ""), "Custom mirror") == 0);
-	CHECK(!mirror.HasString(form::kAttrChoices, 4));
+	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 3, ""), "nextgis") == 0 && strcmp(mirror.GetString(form::kAttrChoices, 4, ""), "overpass-ch") == 0);
+	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 5, ""), "custom") == 0 && strcmp(mirror.GetString(form::kAttrChoiceLabels, 5, ""), "Custom mirror") == 0);
+	CHECK(!mirror.HasString(form::kAttrChoices, 6));
 	CHECK(schema.FindMessage("overpass_url", &url) == B_OK && strcmp(url.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=custom") == 0);
-	CHECK(schema.FindMessage("overpass_key", &key) == B_OK && strcmp(key.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=custom") == 0
+	CHECK(schema.FindMessage("overpass_key", &key) == B_OK && strcmp(key.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true") == 0
 		&& strcmp(key.GetString(form::kAttrKind, ""), form::kKindSecret) == 0);
+	BMessage flag;
+	CHECK(schema.FindMessage("overpass_custom_key", &flag) == B_OK && strcmp(flag.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=custom") == 0);
+	CHECK(settings.HasBool("overpass_custom_key") && !settings.GetBool("overpass_custom_key", true));
 
 	BMessage change;
 	change.AddString("overpass_mirror", "custom");
 	change.AddString("overpass_url", "https://overpass.example.org/api/interpreter");
+	change.AddBool("overpass_custom_key", true);
 	change.AddString("overpass_key", "k3y");
 	BMessage set(sensei::cmd::kSettingsSet), answer;
 	set.AddMessage(form::kFieldSettings, &change);
@@ -157,7 +162,7 @@ int main(int argc, char** argv)
 	std::string file = ReadFile(path);
 	CHECK(file.find("# my settings\n") != std::string::npos && file.find("unknown = kept\n") != std::string::npos);
 	CHECK(file.find("overpass_mirror = custom\n") != std::string::npos && file.find("overpass_url = https://overpass.example.org/api/interpreter\n") != std::string::npos);
-	CHECK(file.find("overpass_key = k3y\n") != std::string::npos);
+	CHECK(file.find("overpass_key = k3y\n") != std::string::npos && file.find("overpass_custom_key = yes\n") != std::string::npos);
 
 	BMessage bad;
 	bad.AddString("overpass_mirror", "nowhere");

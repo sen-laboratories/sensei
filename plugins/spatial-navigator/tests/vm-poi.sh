@@ -94,7 +94,9 @@ printf 'overpass_mirror = vk-maps\n' > "$SETTINGS"
 touch There
 addattr -t mime BEOS:TYPE entity/x-vnd.sen-labs.entity.location There
 addattr -t string dc:title There There
-addattr -t double schema:latitude -- 48.2088 There; addattr -t double schema:longitude -- 16.3125 There
+# (a different position each run: an answer that is kept would not be asked for again)
+shift=$(( $(date +%s) % 90 ))
+addattr -t double schema:latitude -- 48.2$(printf "%03d" $((shift + 10)))0 There; addattr -t double schema:longitude -- 16.3125 There
 $NAV $POI "$T/There" > there.txt 2>&1
 grep -q '^asking https://maps.mail.ru/osm/tools/overpass/api/interpreter' there.txt && check ok "the mirror of the settings (VK Maps) is the one that is asked" || check FAIL "the mirror was not asked"
 [ "$(grep -c '^  point of interest ' there.txt)" -ge 10 ] && check ok "the mirror answers: $(grep -c '^  point of interest ' there.txt) points of interest" || { check FAIL "the mirror gave no points of interest"; cat there.txt; }

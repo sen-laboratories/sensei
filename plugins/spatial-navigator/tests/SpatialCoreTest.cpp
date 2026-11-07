@@ -257,7 +257,9 @@ TestSettings()
 	CHECK(OverpassEndpoint(settings) == "https://overpass.private.coffee/api/interpreter");
 	// the last choice is the custom one; with no address it is the default; the key belongs to it alone
 	ParseSettings("overpass_mirror = custom\noverpass_key = secret123", &settings);
-	CHECK(OverpassEndpoint(settings) == kDefaultOverpassUrl && OverpassKey(settings) == "secret123");
+	CHECK(OverpassEndpoint(settings) == kDefaultOverpassUrl && OverpassKey(settings).empty());		// (the key is for a server that requires one: the flag is not set)
+	ParseSettings("overpass_custom_key = yes", &settings);
+	CHECK(OverpassKey(settings) == "secret123");
 	ParseSettings("overpass_url = https://overpass.example.org/api/interpreter", &settings);
 	CHECK(OverpassEndpoint(settings) == "https://overpass.example.org/api/interpreter");
 	ParseSettings("overpass_mirror = vk-maps", &settings);
@@ -266,7 +268,29 @@ TestSettings()
 	ParseSettings("overpass_mirror = nowhere\noverpass_url = ftp://x\n", &settings);
 	CHECK(settings.overpassMirror == "vk-maps" && settings.overpassUrl == "https://overpass.example.org/api/interpreter");
 	const std::vector<Mirror>& mirrors = Mirrors();
-	CHECK(mirrors.size() == 4 && std::string(mirrors.back().id) == "custom");		// (the last choice is the custom mirror)
+	CHECK(mirrors.size() == 6 && std::string(mirrors.back().id) == "custom");		// (the last choice is the custom mirror)
+	CHECK(KeyEnabledWhen() == "overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true");
+
+	// the servers with a key in the path: the address has {key}; without a key the public server answers
+	Settings keyed;
+	ParseSettings("overpass_mirror = overpass-ch", &keyed);
+	CHECK(OverpassEndpoint(keyed) == kDefaultOverpassUrl && OverpassKey(keyed).empty());
+	ParseSettings("overpass_key = abc", &keyed);
+	CHECK(OverpassEndpoint(keyed) == "https://api.overpass.ch/v1/{key}/interpreter" && OverpassKey(keyed) == "abc");
+	CHECK(WithKey(OverpassEndpoint(keyed), OverpassKey(keyed)) == "https://api.overpass.ch/v1/abc/interpreter");
+	ParseSettings("overpass_mirror = nextgis", &keyed);
+	CHECK(WithKey(OverpassEndpoint(keyed), OverpassKey(keyed)) == "https://overpass.nextgis.com/abc/api/interpreter");
+	// (a custom address with {key} and no key is the public server as well; one without a place for the key does not need it)
+	Settings custom;
+	ParseSettings("overpass_mirror = custom\noverpass_url = https://overpass.geofabrik.de/{key}/api/interpreter", &custom);
+	CHECK(OverpassEndpoint(custom) == kDefaultOverpassUrl);
+	ParseSettings("overpass_custom_key = yes\noverpass_key = g3o", &custom);
+	CHECK(WithKey(OverpassEndpoint(custom), OverpassKey(custom)) == "https://overpass.geofabrik.de/g3o/api/interpreter");
+	ParseSettings("overpass_custom_key = no", &custom);
+	CHECK(OverpassKey(custom).empty() && OverpassEndpoint(custom) == kDefaultOverpassUrl);
+	CHECK(ValidateSetting("overpass_custom_key", "yes") && !ValidateSetting("overpass_custom_key", "maybe"));
+	ParseSettings("overpass_url = http://localhost:12345/api/interpreter", &custom);
+	CHECK(OverpassEndpoint(custom) == "http://localhost:12345/api/interpreter");
 
 	std::string why;
 	CHECK(ValidateSetting("overpass_mirror", "custom") && ValidateSetting("overpass_mirror", "default"));

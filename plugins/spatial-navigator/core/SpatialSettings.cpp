@@ -17,10 +17,12 @@ const std::vector<Mirror>&
 Mirrors()
 {
 	static const std::vector<Mirror> mirrors = {
-		{"default", "overpass-api.de (default)", kDefaultOverpassUrl},
-		{"private-coffee", "Private.coffee (no limit, no registration)", "https://overpass.private.coffee/api/interpreter"},
-		{"vk-maps", "VK Maps (no limit, no registration)", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"},
-		{"custom", "Custom mirror", ""},
+		{"default", "overpass-api.de (default)", kDefaultOverpassUrl, false},
+		{"private-coffee", "Private.coffee (no limit, no registration)", "https://overpass.private.coffee/api/interpreter", false},
+		{"vk-maps", "VK Maps (no limit, no registration)", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", false},
+		{"nextgis", "NextGIS (free, API key)", "https://overpass.nextgis.com/{key}/api/interpreter", true},
+		{"overpass-ch", "Overpass.ch (free tier, API key)", "https://api.overpass.ch/v1/{key}/interpreter", true},
+		{"custom", "Custom mirror", "", false},
 	};
 	return mirrors;
 }
@@ -64,6 +66,8 @@ ParseSettings(const std::string& text, Settings* settings)
 		} else if (key == "overpass_url") {
 			if (value.empty() || IsAddress(value))
 				settings->overpassUrl = value;
+		} else if (key == "overpass_custom_key") {
+			settings->customRequiresKey = st::ParseBool(value, settings->customRequiresKey);
 		} else if (key == "overpass_key") {
 			settings->overpassKey = value;
 		}
@@ -87,6 +91,8 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return IsMirrorId(v) ? true : fail("one of the mirrors of the list");
 	if (key == "overpass_url")
 		return v.empty() || IsAddress(v) ? true : fail("an address like https://example.org/api/interpreter");
+	if (key == "overpass_custom_key")
+		return st::IsBool(v) ? true : fail("yes or no");
 	if (key == "overpass_key")
 		return v.find_first_of(" \t") == std::string::npos ? true : fail("a key has no blank");
 	return fail("no such setting");
@@ -94,22 +100,47 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 
 
 std::string
-OverpassEndpoint(const Settings& settings)
+OverpassKey(const Settings& settings)
 {
-	if (settings.overpassMirror == "custom")
-		return settings.overpassUrl.empty() ? std::string(kDefaultOverpassUrl) : settings.overpassUrl;
 	for (const Mirror& mirror : Mirrors()) {
-		if (settings.overpassMirror == mirror.id && mirror.url[0] != '\0')
-			return mirror.url;
+		if (settings.overpassMirror == mirror.id) {
+			const bool required = mirror.requiresKey || (settings.overpassMirror == "custom" && settings.customRequiresKey);
+			return required ? settings.overpassKey : std::string();
+		}
 	}
-	return kDefaultOverpassUrl;
+	return std::string();
 }
 
 
 std::string
-OverpassKey(const Settings& settings)
+OverpassEndpoint(const Settings& settings)
 {
-	return settings.overpassMirror == "custom" ? settings.overpassKey : std::string();
+	std::string url = kDefaultOverpassUrl;
+	if (settings.overpassMirror == "custom") {
+		if (!settings.overpassUrl.empty())
+			url = settings.overpassUrl;
+	} else {
+		for (const Mirror& mirror : Mirrors()) {
+			if (settings.overpassMirror == mirror.id && mirror.url[0] != '\0')
+				url = mirror.url;
+		}
+	}
+	// (an address with a place for the key, and no key: the public server answers)
+	if (url.find("{key}") != std::string::npos && OverpassKey(settings).empty())
+		return kDefaultOverpassUrl;
+	return url;
+}
+
+
+std::string
+KeyEnabledWhen()
+{
+	std::string when;
+	for (const Mirror& mirror : Mirrors()) {
+		if (mirror.requiresKey)
+			when += (when.empty() ? "" : "|") + std::string("overpass_mirror=") + mirror.id;
+	}
+	return when + (when.empty() ? "" : "|") + "overpass_mirror=custom&overpass_custom_key=true";
 }
 
 }	// namespace spatial

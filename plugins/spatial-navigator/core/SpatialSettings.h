@@ -18,10 +18,11 @@ namespace spatial {
 struct Mirror {
 	const char*	id;			///< the value of the setting `overpass_mirror`
 	const char*	label;		///< what the settings window shows
-	const char*	url;		///< the address of the interpreter; empty for the custom one
+	const char*	url;		///< the address of the interpreter; empty for the custom one. A `{key}` in it is where the key of the user goes
+	bool		requiresKey;	///< the server requires a key (the settings window enables the field for the key only then); for the custom mirror the setting `overpass_custom_key` says
 };
 
-/** The choices of the settings window, in this order: the default, the mirrors, and `custom` (the last). */
+/** The choices of the settings window, in this order: the default, the mirrors (those without a key first), and `custom` (the last). The list is that of the OpenStreetMap wiki, Overpass API, public instances. */
 const std::vector<Mirror>& Mirrors();
 
 struct Settings {
@@ -29,7 +30,9 @@ struct Settings {
 	std::string	overpassMirror = "default";
 	/** the address of the interpreter of a custom mirror (`https://example.org/api/interpreter`). A `{key}` in it is replaced by the key (for servers that take it in the path). */
 	std::string	overpassUrl;
-	/** the key of a custom mirror that wants one (optional). Sent as `Authorization: Bearer <key>` (only over https), or in place of `{key}` in the address. */
+	/** the custom mirror requires a key (the field of the key is enabled only for a server that requires one) */
+	bool		customRequiresKey = false;
+	/** the key of a server that requires one. Put in place of `{key}` in the address, else sent as `Authorization: Bearer <key>` (only over https). */
 	std::string	overpassKey;
 };
 
@@ -39,11 +42,20 @@ void ParseSettings(const std::string& text, Settings* settings);
 /** Whether a value can be the value of a setting, so that the settings window can say what is wrong; `reason` gets it. */
 bool ValidateSetting(const std::string& key, const std::string& value, std::string* reason = nullptr);
 
-/** The address of the interpreter that is asked: the mirror that is chosen, else the default (a custom mirror with no address is the default, too). */
+/**
+ * The address of the interpreter that is asked (with `{key}` still in it): the mirror that is chosen, else the default: a custom mirror with no address is the default, and so is any
+ * address that wants a key (`{key}`) while there is none.
+ */
 std::string OverpassEndpoint(const Settings& settings);
 
-/** The key that goes with that address: only a custom mirror has one; empty if there is none. */
+/** The key that goes with that address: that of a server that requires one (a custom one if the flag says so); empty if there is none. */
 std::string OverpassKey(const Settings& settings);
+
+/**
+ * When the field of the key is enabled, as the `enabled_when` of the schema: the servers that require a key, or the custom mirror with the flag
+ * (`overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true`; `|` is or, `&` is and).
+ */
+std::string KeyEnabledWhen();
 
 /** The address of the default server. */
 extern const char* const kDefaultOverpassUrl;

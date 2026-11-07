@@ -37,8 +37,10 @@ const Field kFields[] = {
 		"The question and the box of the place go to the server that is chosen."},
 	{"overpass_url", "Custom mirror URL",
 		"The address of the interpreter of the mirror, like https://overpass.example.org/api/interpreter. For a server that takes the key in the path, put {key} where it goes. Enabled for the custom mirror."},
+	{"overpass_custom_key", "The custom mirror requires an API key",
+		"Tick this if the custom mirror wants a key. The field of the key is enabled only for a server that requires one. Enabled for the custom mirror."},
 	{"overpass_key", "API key",
-		"The key of a mirror that wants one (optional). It is sent as Authorization: Bearer <key> over https, or put in place of {key} in the address. It is kept in the settings file as it is typed. Enabled for the custom mirror."},
+		"The key of a server that requires one (NextGIS, Overpass.ch: sign up there for it; or a custom mirror that you ticked). It is put in the address of the server in place of {key}, else sent as Authorization: Bearer <key> over https. It is kept in the settings file as it is typed."},
 };
 
 bool
@@ -69,6 +71,7 @@ ToMessage(const Settings& s, BMessage* message)
 	message->MakeEmpty();
 	message->AddString("overpass_mirror", s.overpassMirror.c_str());
 	message->AddString("overpass_url", s.overpassUrl.c_str());
+	message->AddBool("overpass_custom_key", s.customRequiresKey);
 	message->AddString("overpass_key", s.overpassKey.c_str());
 }
 
@@ -107,7 +110,9 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 			}
 		} else {
 			// (the address and the key belong to the custom mirror: the fields can be edited while it is chosen)
-			attributes.AddString(form::kAttrEnabledWhen, "overpass_mirror=custom");
+			// the address belongs to the custom mirror alone; the key to it and to the servers that want one
+			// the address and the flag belong to the custom mirror alone; the key is for a server that requires one
+			attributes.AddString(form::kAttrEnabledWhen, key == "overpass_key" ? KeyEnabledWhen().c_str() : "overpass_mirror=custom");
 			if (key == "overpass_key")
 				attributes.AddString(form::kAttrKind, form::kKindSecret);
 		}
@@ -137,6 +142,8 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 				first = field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE;
 			continue;
 		}
+		if (key == "overpass_custom_key")
+			text = st::ParseBool(text, false) ? "yes" : "no";
 		valid.push_back({key, st::Trim(text)});
 	}
 	if (valid.empty())
