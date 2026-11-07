@@ -232,6 +232,28 @@ TestOverpass()
 	}
 	CHECK(spatial::ParsePois(text, "en", &pois) && pois[0].name == "Church");
 
+	// what the label says: what it is, never the name; the tags that add to it
+	{
+		const std::string tagged = "{\"elements\":["
+			"{\"type\":\"node\",\"id\":21,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Da Luigi\",\"amenity\":\"restaurant\",\"cuisine\":\"italian;pizza\",\"description\":\"Since 1950\"}},"
+			"{\"type\":\"node\",\"id\":22,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Dr. Weiss\",\"amenity\":\"doctors\",\"healthcare:speciality\":\"gynaecology\"}},"
+			"{\"type\":\"node\",\"id\":23,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Karlskirche\",\"amenity\":\"place_of_worship\",\"religion\":\"christian\",\"denomination\":\"roman_catholic\",\"alt_name\":\"St. Charles;Karls\",\"short_name\":\"Karls\",\"official_name\":\"Karlskirche\"}},"
+			"{\"type\":\"node\",\"id\":24,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Leyserstra\\u00dfe\",\"railway\":\"tram_stop\",\"operator\":\"Wiener Linien\"}},"
+			"{\"type\":\"node\",\"id\":25,\"lat\":48.2,\"lon\":16.3,\"tags\":{\"name\":\"Haus Eins\",\"addr:street\":\"Gasse\",\"addr:housenumber\":\"1\"}}]}";
+		std::vector<spatial::Poi> labelled;
+		CHECK(spatial::ParsePois(tagged, "de", &labelled) && labelled.size() == 5);
+		if (labelled.size() == 5) {
+			CHECK(spatial::LabelFor(labelled[0]) == "restaurant (italian, pizza)" && labelled[0].description == "Since 1950");
+			CHECK(spatial::LabelFor(labelled[1]) == "doctors (gynaecology)");
+			CHECK(spatial::LabelFor(labelled[2]) == "place of worship (roman catholic)");
+			CHECK(labelled[2].alternateNames.size() == 2 && labelled[2].alternateNames[0] == "St. Charles" && labelled[2].alternateNames[1] == "Karls");		// (not the name itself, each once)
+			CHECK(spatial::LabelFor(labelled[3]) == "tram stop (Wiener Linien)");
+			CHECK(spatial::LabelFor(labelled[4]) == "Gasse 1");			// (no kind: what more is known, never the name)
+			for (const spatial::Poi& poi : labelled)
+				CHECK(spatial::LabelFor(poi) != poi.name);
+		}
+	}
+
 	CHECK(spatial::ParsePois("{\"elements\":[]}", "de", &pois) && pois.empty());			// (nothing there is an answer)
 	CHECK(!spatial::ParsePois("{\"remark\":\"runtime error: Query timed out\"}", "de", &pois));
 	CHECK(!spatial::ParsePois("not json", "de", &pois));

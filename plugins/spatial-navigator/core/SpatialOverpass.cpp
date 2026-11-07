@@ -87,6 +87,46 @@ KindOf(const Json& tags, Poi* poi)
 	}
 }
 
+/** a value of a tag for people: underscores are blanks, a list (`kebab;pizza`) is read with commas */
+std::string
+ForPeople(std::string value)
+{
+	std::replace(value.begin(), value.end(), '_', ' ');
+	std::string result;
+	for (size_t from = 0; from <= value.size(); ) {
+		size_t end = value.find(';', from);
+		if (end == std::string::npos)
+			end = value.size();
+		std::string part = value.substr(from, end - from);
+		from = end + 1;
+		while (!part.empty() && part.front() == ' ')
+			part.erase(0, 1);
+		if (!part.empty())
+			result += (result.empty() ? "" : ", ") + part;
+	}
+	return result;
+}
+
+/** what more the tags say of what the thing is */
+std::string
+DetailOf(const Json& tags, const std::string& kind)
+{
+	for (const char* key : {"cuisine", "healthcare:speciality"}) {
+		const std::string value = ForPeople(Tag(tags, key));
+		if (!value.empty())
+			return value;
+	}
+	if (kind == "place of worship") {
+		const std::string value = ForPeople(Tag(tags, "denomination").empty() ? Tag(tags, "religion") : Tag(tags, "denomination"));
+		if (!value.empty())
+			return value;
+	}
+	// a stop is of a line company: Wiener Linien
+	if (kind == "bus stop" || kind == "tram stop" || kind == "station" || kind == "stop area" || kind == "halt")
+		return Tag(tags, "operator");
+	return std::string();
+}
+
 std::string
 WikidataOf(const Json& tags)
 {
@@ -221,6 +261,27 @@ ParsePois(const std::string& text, const std::string& language, std::vector<Poi>
 		const std::string street = Tag(tags, "addr:street");
 		if (poi.kind.empty() && street.empty() && Tag(tags, "website").empty() && WikidataOf(tags).empty())
 			continue;
+		poi.detail = DetailOf(tags, poi.kind);
+		poi.description = Tag(tags, "description:" + BaseLanguage(language));
+		if (poi.description.empty())
+			poi.description = Tag(tags, "description");
+		if (poi.description.size() > 300)
+			poi.description.resize(300);
+		for (const char* key : {"alt_name", "short_name", "official_name", "old_name"}) {
+			const std::string value = Tag(tags, key);
+			for (size_t from = 0; from <= value.size() && !value.empty(); ) {
+				size_t end = value.find(';', from);
+				if (end == std::string::npos)
+					end = value.size();
+				std::string other = value.substr(from, end - from);
+				from = end + 1;
+				while (!other.empty() && other.front() == ' ')
+					other.erase(0, 1);
+				if (!other.empty() && other != poi.name && std::find(poi.alternateNames.begin(), poi.alternateNames.end(), other) == poi.alternateNames.end()
+						&& poi.alternateNames.size() < 5)
+					poi.alternateNames.push_back(other);
+			}
+		}
 		poi.wikidataId = WikidataOf(tags);
 		poi.notable = !poi.wikidataId.empty() || !Tag(tags, "wikipedia").empty();
 		poi.website = Tag(tags, "website");
@@ -236,6 +297,17 @@ ParsePois(const std::string& text, const std::string& language, std::vector<Poi>
 	}
 	*pois = found;
 	return true;
+}
+
+
+std::string
+LabelFor(const Poi& poi)
+{
+	if (!poi.kind.empty())
+		return poi.detail.empty() ? poi.kind : poi.kind + " (" + poi.detail + ")";
+	if (!poi.detail.empty())
+		return poi.detail;
+	return poi.address.empty() ? std::string("place") : poi.address;
 }
 
 

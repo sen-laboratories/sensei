@@ -22,11 +22,13 @@ Region Connection Calculus (RCC-8) in the words of everyday use:
 
 Disjoint (DC) is not a relation: nearly every two places are disjoint.
 
-**Points of interest** (`point of interest`, seen from the other one: `in the area of`) are the named things that OpenStreetMap knows in the area of a place: shops, cafés, sights, stops, parks, buildings
-with a name; not the roads (a street comes in dozens of pieces that all have its name) and not the borders. The area is the bounding box of the place, at least 500 m across around its centre (a Location
-or a building is a point: what is around it is meant), and **at most 3 km across**: a district has thousands of named things, a city hundreds of thousands, which no one can read, so a larger place has
-none. The answer is the nearest to the middle of the place, at most **40** (setting *Most points of interest*, 5 to 200), where a notable one (a Wikidata item or Wikipedia article: a church, a museum) counts as three
-times nearer than a shop, so that the sights of a square come before its shops. The area is set by the *Search radius* (50 m to 1.5 km, 250 m by default; the area is twice that across). The relation is *remote*: the views of relation folders (*All related*) do not ask for it, only opening it does.
+**Nearby** (`nearby`, the same seen from the other place) are the named things that OpenStreetMap knows around a place: shops, cafés, sights, stops, parks, buildings with a name; not the roads (a
+street comes in dozens of pieces that all have its name) and not the borders. Each has the **label** of what it is (`supermarket`, `cafe`, `place of worship`; the name if the tags say nothing) and
+its **Distance (m)** from the centre of the place you opened the relation at (`SEN:REL:Distance`, a number, so a view of the relation sorts by it). The area is the bounding box of the place, at least
+twice the *Search radius* across (a Location or a building is a point: what is around it is meant), and **at most 3 km across**: a district has thousands of named things, a city hundreds of thousands,
+which no one can read, so a larger place has none. The answer is the nearest to the middle of the place, at most **40** (setting *Most things nearby*, 5 to 200), where a notable one (a Wikidata item or
+Wikipedia article: a church, a museum) counts as three times nearer than a shop, so that the sights of a square come before its shops. The *Search radius* is 50 m to 1.5 km, 250 m by default. The relation
+is *remote*: the views of relation folders (*All related*) do not ask for it until you enter its folder, only opening it does.
 
 A thing that has a file of the type Place (by its OpenStreetMap link, `schema:sameAs`) is that file. One that has not is **made in the Library** (`~/Library/<context>/Places`) with its name (in the language
 of the system if the thing has it), its OpenStreetMap link (and the Wikidata link, if it has one), position, **kind** (`supermarket`, `cafe`, `place of worship`, from the tags `amenity`, `shop`, `tourism`...,
@@ -55,13 +57,13 @@ city cross a little because they are simplified, and the shapes would say *overl
   (`~/Library/<context>/Places`) with its name, link, position, short description and **type** (`country`, `city`, `district`...; the kinds that are told are a short list, in this order of preference:
   country, city, state, county, municipality, district, town, village, region, continent), so that it can be opened; it can be enriched with SUESS like any place. The answer is kept for a month.
 
-* **OpenStreetMap through the Overpass API**, for *point of interest* (the server is chosen in the settings, see below): one request for the box (`nwr[name](south,west,north,east); out center;`; note that Overpass takes south, west, north, east, and
+* **OpenStreetMap through the Overpass API**, for *nearby* (the server is chosen in the settings, see below): one request for the box (`nwr[name](south,west,north,east); out center;`; note that Overpass takes south, west, north, east, and
   Nominatim south, north, west, east), kept for a day. The public server works out an answer for half a minute when it is busy, so the first time takes long; the SEN server waits 90 seconds for a
   navigator. The data are by OpenStreetMap contributors (ODbL).
 
 ## Settings
 
-In the settings window of SEN, under the spatial navigator: **Overpass server**, the server that is asked for the points of interest. The public server (`overpass-api.de`, the default) is often busy
+In the settings window of SEN, under the spatial navigator: **Overpass server**, the server that is asked for what is nearby. The public server (`overpass-api.de`, the default) is often busy
 (half a minute for an answer is common), so there are mirrors that give the same data with other limits:
 
 | Choice | Address | Key |
@@ -91,7 +93,7 @@ is sent as `Authorization: Bearer <key>`, and only over https. A server that req
 SenSpatialNavigator <relation type> <place file>      e.g. relation/x-vnd.sen-labs.relation.spatial.within
 ```
 
-prints what it finds (and makes the parents and points of interest that are missing).
+prints what it finds (and makes the parents and nearby places that are missing).
 
 ## Tests
 
@@ -100,4 +102,4 @@ labels, the answer of Wikidata and an answer of Overpass (recorded in `tests/fix
 
 ## Credits
 
-The points of interest are by [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL), asked through the [Overpass API](https://overpass-api.de). The icon is "GCompris" by 3dEyes ([HVIF Store](https://hvif-store.art/)), MIT license. Wikidata is in the public domain (CC0).
+What is nearby is by [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL), asked through the [Overpass API](https://overpass-api.de). The icon is "GCompris" by 3dEyes ([HVIF Store](https://hvif-store.art/)), MIT license. Wikidata is in the public domain (CC0).

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 #
-# The points of interest of the spatial navigator on Haiku, against the public Overpass API (needs the network): a Location in the 14th district of Vienna is asked for what is around it; the
+# The things nearby of the spatial navigator on Haiku, against the public Overpass API (needs the network): a Location in the 14th district of Vienna is asked for what is around it; the
 # places that are made get a name, a kind, a position and the link to OpenStreetMap; a second ask finds the same files (nothing is made twice); the place itself is not one of them, a place
 # that has the link of a thing is that thing; a place with no position and one that is a whole city have none. Run it in the Haiku VM after building the plugin:
 #   NAV=<path of SenSpatialNavigator> sh vm-poi.sh
@@ -10,7 +10,7 @@
 # file) are found by their time and removed at the end.
 NAV=${NAV:-$(dirname "$0")/../bin/SenSpatialNavigator}
 T=${TEST_DIR:-/Develop/test}/_spatial-poi
-POI=relation/x-vnd.sen-labs.relation.spatial.point-of-interest
+POI=relation/x-vnd.sen-labs.relation.spatial.nearby
 rm -rf "$T"; mkdir -p "$T"; cd "$T" || exit 1
 failed=0
 touch -d "1 second ago" stamp 2>/dev/null || touch stamp
@@ -30,8 +30,8 @@ addattr -t string dc:title Here Here
 addattr -t double schema:latitude -- 48.1985 Here; addattr -t double schema:longitude -- 16.3010 Here
 
 $NAV $POI "$T/Here" > first.txt 2>&1
-count=$(grep -c '^  point of interest ' first.txt)
-[ "$count" -ge 10 ] && check ok "Here: $count points of interest" || { check FAIL "Here: only $count points of interest"; cat first.txt; }
+count=$(grep -c '^  nearby ' first.txt)
+[ "$count" -ge 10 ] && check ok "Here: $count things nearby" || { check FAIL "Here: only $count things nearby"; cat first.txt; }
 [ "$count" -le 100 ] && check ok "at most 100" || check FAIL "more than 100: $count"
 
 # the ones that were made: a Place with a link to OpenStreetMap, a position and (mostly) a kind
@@ -57,7 +57,17 @@ before=$(made_places | wc -l)
 $NAV $POI "$T/Here" > second.txt 2>&1
 after=$(made_places | wc -l)
 [ "$before" = "$after" ] && check ok "second ask makes nothing" || check FAIL "second ask made $((after-before)) more"
-[ "$(grep -c '^  point of interest ' second.txt)" = "$count" ] && check ok "second ask: the same $count" || check FAIL "second ask found another number"
+[ "$(grep -c '^  nearby ' second.txt)" = "$count" ] && check ok "second ask: the same $count" || check FAIL "second ask found another number"
+
+# each comes with its distance (the nearest ones first, as the metres say: the notable ones may come before nearer shops) and what it is
+bad=$(grep '^  nearby ' first.txt | awk '{ if ($2 !~ /^[0-9]+$/ || $3 != "m") print }' | wc -l | tr -d ' ')
+[ "$bad" = 0 ] && check ok "every one has a distance in metres" || check FAIL "$bad lines without a distance"
+labelled=$(grep '^  nearby ' first.txt | grep -c '  (.*)$')
+[ "$labelled" -ge 5 ] && check ok "$labelled say what they are (the label is the kind)" || check FAIL "only $labelled have a kind as the label"
+same=$(grep '^  nearby ' first.txt | sed 's/^.* m  //' | awk -F'  [(]' '{ name = $1; label = $2; sub(/[)]$/, "", label); if (name == label) n++ } END { print n + 0 }')
+[ "$same" = 0 ] && check ok "no label repeats the name" || check FAIL "$same labels are the name"
+far=$(grep '^  nearby ' first.txt | awk '$2 > 400 { n++ } END { print n+0 }')
+[ "$far" = 0 ] && check ok "none is farther than the box (250 m radius)" || check FAIL "$far are farther than 400 m"
 
 # a place with the link of a thing is that thing, and not its own point of interest
 firstfile=$(made_places | head -n1)
@@ -70,7 +80,7 @@ addattr -t string dc:title Self Self
 addattr -t string schema:sameAs "$link" Self
 addattr -t double schema:latitude -- "$lat" Self; addattr -t double schema:longitude -- "$lon" Self
 $NAV $POI "$T/Self" > self.txt 2>&1
-grep -q "^  point of interest $first\$" self.txt && check FAIL "Self is its own point of interest" || check ok "a place is not its own point of interest"
+grep -q "^  nearby .* $first  (" self.txt && check FAIL "Self is its own nearby thing" || check ok "a place is not nearby itself"
 
 # no position: none. A whole city: none (more than 3 km across)
 touch Nowhere
@@ -99,7 +109,7 @@ shift=$(( $(date +%s) % 90 ))
 addattr -t double schema:latitude -- 48.2$(printf "%03d" $((shift + 10)))0 There; addattr -t double schema:longitude -- 16.3125 There
 $NAV $POI "$T/There" > there.txt 2>&1
 grep -q '^asking https://maps.mail.ru/osm/tools/overpass/api/interpreter' there.txt && check ok "the mirror of the settings (VK Maps) is the one that is asked" || check FAIL "the mirror was not asked"
-[ "$(grep -c '^  point of interest ' there.txt)" -ge 10 ] && check ok "the mirror answers: $(grep -c '^  point of interest ' there.txt) points of interest" || { check FAIL "the mirror gave no points of interest"; cat there.txt; }
+[ "$(grep -c '^  nearby ' there.txt)" -ge 10 ] && check ok "the mirror answers: $(grep -c '^  nearby ' there.txt) things nearby" || { check FAIL "the mirror gave no things nearby"; cat there.txt; }
 if [ -f "$T/settings.saved" ]; then cp "$T/settings.saved" "$SETTINGS"; else rm -f "$SETTINGS"; fi
 
 # remove what was made (not in the folder of the test, which is removed as a whole)

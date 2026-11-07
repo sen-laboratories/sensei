@@ -33,11 +33,11 @@ struct Field {
 
 const Field kFields[] = {
 	{"poi_radius", "Search radius (m)",
-		"How far around a place or location the points of interest are looked for, in metres. The area is at least twice this across; a place that is larger is searched in its own box (up to 3 km across)."},
-	{"poi_limit", "Most points of interest",
-		"How many points of interest at most. The notable ones (sights with a Wikidata item or a Wikipedia article) come before shops of the same distance, then the nearest."},
+		"How far around a place or location what is nearby is looked for, in metres. The area is at least twice this across; a place that is larger is searched in its own box (up to 3 km across)."},
+	{"poi_limit", "Most things nearby",
+		"How many things nearby at most. The notable ones (sights with a Wikidata item or a Wikipedia article) come before shops of the same distance, then the nearest."},
 	{"overpass_mirror", "Overpass server",
-		"The server that is asked for the points of interest of a place (OpenStreetMap, Overpass API). The public server is often busy; the mirrors give the same data and have other limits. "
+		"The server that is asked for what is nearby a place (OpenStreetMap, Overpass API). The public server is often busy; the mirrors give the same data and have other limits. "
 		"The question and the box of the place go to the server that is chosen."},
 	{"overpass_url", "Custom mirror URL",
 		"The address of the interpreter of the mirror, like https://overpass.example.org/api/interpreter. For a server that takes the key in the path, put {key} where it goes. Enabled for the custom mirror."},

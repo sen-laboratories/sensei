@@ -34,7 +34,16 @@ struct Poi {
 	std::string	postcode;
 	std::string	locality;
 	bool		notable = false;	///< has a Wikidata item or a Wikipedia article: known beyond the map (the sights come first)
+	std::string	detail;			///< what more the tags say of what it is: the cuisine of a restaurant (`italian`), the speciality of a doctor (`gynaecology`), the denomination of a church, the operator of a stop
+	std::string	description;	///< the description that a mapper wrote (in the language that was asked for, else the one that is there)
+	std::vector<std::string> alternateNames;	///< the other names: alt_name, short_name, official_name, old_name, other than the name
 };
+
+/**
+ * The label of the relation for the thing: what it is, which the name does not say (`supermarket`, `doctors (gynaecology)`, `restaurant (italian)`). Never the name itself: the name is the file
+ * that the relation points at. Without a kind: what more is known (the detail, else the address, else `place`).
+ */
+std::string LabelFor(const Poi& poi);
 
 /** The smallest side of the area that is asked for, in kilometres: a building or a location is a point, and what is around it is what people mean (twice the radius: 250 m on each side by default). */
 const double kPoiMinKm = 0.5;

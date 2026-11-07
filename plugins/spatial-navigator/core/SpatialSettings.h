@@ -11,7 +11,7 @@ namespace spatial {
 
 /**
  * The settings of the spatial navigator: lines of `key = value` in `~/config/settings/sen/spatial-navigator.settings` (`#` starts a comment), changed in the settings window of SEN.
- * They say which server answers the questions for the points of interest: the public Overpass API is often busy, and there are mirrors with other limits. Plain C++.
+ * They say which server answers the questions for what is nearby: the public Overpass API is often busy, and there are mirrors with other limits. Plain C++.
  */
 
 /** A server that answers the Overpass API (the same data, other limits). */
@@ -32,9 +32,9 @@ struct Settings {
 	std::string	overpassUrl;
 	/** the custom mirror requires a key (the field of the key is enabled only for a server that requires one) */
 	bool		customRequiresKey = false;
-	/** how far around a place the points of interest are looked for, in metres (the area is at least twice this across; a larger place is asked for with its own box) */
+	/** how far around a place what is nearby is looked for, in metres (the area is at least twice this across; a larger place is asked for with its own box) */
 	int			poiRadius = 250;
-	/** how many points of interest at most: the nearest, the notable ones (a sight) before the shops */
+	/** how many things nearby at most: the nearest, the notable ones (a sight) before the shops */
 	int			poiLimit = 40;
 	/** the key of a server that requires one. Put in place of `{key}` in the address, else sent as `Authorization: Bearer <key>` (only over https). */
 	std::string	overpassKey;

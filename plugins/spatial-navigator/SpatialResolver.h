@@ -25,7 +25,9 @@ struct Target {
 	entry_ref	ref;
 	Relation	relation = Relation::kNone;		///< the relation of the place of the file to this one (within: the file's place is in it)
 	bool		fromWikidata = false;			///< found in the chain "located in" of Wikidata, not from the outlines
-	bool		pointOfInterest = false;		///< a named thing of OpenStreetMap in the area of the place (Overpass), the relation type is the point of interest
+	bool		nearby = false;					///< a named thing of OpenStreetMap near the place (Overpass): the relation type is nearby
+	std::string	label;							///< what it is, for people (`supermarket`, `cafe`), instead of the label of the direction; for a nearby thing
+	int			distanceMetres = -1;			///< how far from the centre of the place, for a nearby thing
 };
 
 /**
@@ -36,7 +38,7 @@ struct Target {
  * - for `within`, from Wikidata: the places that contain the place ("located in", all of the chain: Stephansdom is in Innere Stadt, Vienna and Austria) from its Wikidata link, one request.
  *   A place of that chain that exists as a file (by its Wikidata link) is a target; one that does not is made in the Library (name, link, position, short description) so that it can be opened.
  *   The files that this makes can be enriched with SUESS like any place.
- * - for `point-of-interest`, from OpenStreetMap (Overpass API): the named things in the area of the place (its box, at least 500 m across, at most 3 km), the nearest 100. A thing that exists
+ * - for `nearby`, from OpenStreetMap (Overpass API): the named things in the area of the place (its box, at least 500 m across, at most 3 km), the nearest 100. A thing that exists
  *   as a file (by its OpenStreetMap link) is a target; one that does not is made in the Library with its name, link, position, kind and address. The notable ones come first, then the nearest, as
  *   many as the settings say. Of the places that are made the first twelve that have a Wikidata item are enriched in the background (their picture).
  */
