@@ -78,6 +78,10 @@ TestRelations()
 	CHECK(spatial::CodeOf(Relation::kWithin) == "NTPP" && spatial::CodeOf(Relation::kContains) == "NTPPi" && spatial::CodeOf(Relation::kCoveredBy) == "TPP" && spatial::CodeOf(Relation::kCovers) == "TPPi");
 	CHECK(spatial::CodeOf(Relation::kTouch) == "EC" && spatial::CodeOf(Relation::kOverlap) == "PO" && spatial::CodeOf(Relation::kEqual) == "EQ" && spatial::CodeOf(Relation::kDisjoint) == "DC");
 	CHECK(spatial::CodeOf(Relation::kNone).empty());
+	CHECK(spatial::KindOf(Relation::kWithin) == "non-tangential proper part" && spatial::KindOf(Relation::kContains) == "non-tangential proper part (inverse)");
+	CHECK(spatial::KindOf(Relation::kCoveredBy) == "tangential proper part" && spatial::KindOf(Relation::kCovers) == "tangential proper part (inverse)");
+	CHECK(spatial::KindOf(Relation::kTouch) == "externally connected" && spatial::KindOf(Relation::kOverlap) == "partially overlapping" && spatial::KindOf(Relation::kEqual) == "equal");
+	CHECK(spatial::KindOf(Relation::kNone).empty());
 
 	// the boxes: only places whose boxes meet can be related
 	spatial::Box vienna;

@@ -16,6 +16,8 @@ public:
 					App();
 	virtual void	AboutRequested();
 	virtual void	MessageReceived(BMessage* message);
+	/** the file of a spatial relation (double-clicked in a relation folder): the place that it stands for is opened with the application of its type (Shoji) */
+	virtual void	RefsReceived(BMessage* message);
 	virtual void	ArgvReceived(int32 argc, char** argv);
 	int32			ExitCode() const { return fExitCode; }
 

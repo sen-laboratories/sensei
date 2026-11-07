@@ -33,7 +33,7 @@ APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.movie-enricher
 #	same name (source.c or source.cpp) are included from different directories.
 #	Also note that spaces in folder names do not work well with this Makefile.
 SRCS =  App.cpp MovieSettingsForm.cpp MovieWriter.cpp MoviePeople.cpp core/MovieName.cpp core/MovieTmdb.cpp core/MovieSettings.cpp \
-	../../common/BaseEnricher.cpp ../../common/SocketHttp.cpp ../../common/MappingUtil.cpp ../../common/ThumbnailUtil.cpp
+	../../common/BaseEnricher.cpp ../../common/MappingUtil.cpp ../../common/ThumbnailUtil.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be
 #	used.

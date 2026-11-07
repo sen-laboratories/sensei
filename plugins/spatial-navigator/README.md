@@ -21,6 +21,12 @@ Region Connection Calculus (RCC-8) in the words of everyday use:
 
 Disjoint (DC) is not a relation: nearly every two places are disjoint.
 
+**What a relation says about itself.** Each place of the answer has the property **Kind** (`SEN:REL:Kind`), the name of the relation in words (`non-tangential proper part`, `tangential proper part`, `externally connected`,
+`partially overlapping`, `equal`; the opposite directions of the first two say `(inverse)`), and the hidden property **RCC-8** (`SEN:REL:Rcc8`), the code that the comparison of the shapes gave (`NTPP`, `NTPPi`, `TPP`, `TPPi`, `EC`,
+`PO`, `EQ`), which is what a program asks for. A place that Wikidata says is a parent ("located in") has the Kind `located in (Wikidata)` and no code: no shapes were compared.
+
+**Opening the file of a relation** (a double click in the folder of the relation) opens the place that it stands for, with the application of its type (Shoji).
+
 ## Where the answer comes from
 
 * **The outlines and positions of the places that exist** (the files of the type Place and Location, on every volume with queries): of every place whose bounding box meets the one of this place the geometry

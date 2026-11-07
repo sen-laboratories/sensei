@@ -9,6 +9,9 @@
 #include <LocaleRoster.h>
 #include <Message.h>
 #include <Messenger.h>
+#include <Node.h>
+#include <Roster.h>
+#include <fs_attr.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +21,7 @@
 
 #include <sen/Sen.h>
 #include <sen/SenAbout.h>
+#include <sen/SenAttributes.h>
 #include <sen/Sensei.h>
 
 #include "SpatialRelations.h"
@@ -79,7 +83,13 @@ App::_Resolve(BMessage* message)
 			item.AddRef(sen::key::kTargetRef, &target.ref);
 			// the label of the direction: the relation seen from the file that was opened ("within" for the place that it is in, "contains" for a place in it)
 			item.AddString(sen::attr::kRelationLabel, spatial::LabelOf(target.relation).c_str());
-			item.AddString(sen::attr::kRelationKind, target.fromWikidata ? "P131" : spatial::CodeOf(target.relation).c_str());
+			// what it is: in words for people, and the code of the Region Connection Calculus that the shapes gave (a place that Wikidata says it is located in has no shapes compared, so no code)
+			if (target.fromWikidata) {
+				item.AddString(sen::attr::kRelationKind, "located in (Wikidata)");
+			} else {
+				item.AddString(sen::attr::kRelationKind, spatial::KindOf(target.relation).c_str());
+				item.AddString(sen::attr::kRelationRcc8, spatial::CodeOf(target.relation).c_str());
+			}
 			reply.AddMessage(sensei::key::kTargets, &item);
 		}
 		printf("%s: %zu place(s) %s\n", file.name, targets.size(), type);
@@ -100,6 +110,48 @@ App::_Resolve(BMessage* message)
 	}
 	reply.AddInt32(sensei::key::kResult, result);
 	message->SendReply(&reply, this);
+}
+
+
+/** the place that the file of a relation stands for (SEN:REL:TRG, a ref as a message holds it); false if the file is not one or the place is gone */
+static bool
+PlaceOf(const entry_ref& file, entry_ref* place)
+{
+	BNode node(&file);
+	attr_info info;
+	if (node.InitCheck() != B_OK || node.GetAttrInfo(sen::attr::kRelationTargetRef, &info) != B_OK || info.type != B_REF_TYPE || info.size <= 0)
+		return false;
+	bool found = false;
+	char* buffer = new char[info.size];
+	if (node.ReadAttr(sen::attr::kRelationTargetRef, B_REF_TYPE, 0, buffer, info.size) == info.size) {
+		BMessage holder;
+		entry_ref stored;
+		if (holder.AddData("ref", B_REF_TYPE, buffer, info.size, false) == B_OK && holder.FindRef("ref", &stored) == B_OK && BEntry(&stored).Exists()) {
+			*place = stored;
+			found = true;
+		}
+	}
+	delete[] buffer;
+	return found;
+}
+
+
+void
+App::RefsReceived(BMessage* message)
+{
+	// this plugin is the application of the spatial relation types (the server finds it by that), so a double click on the file of a relation comes here. It has nothing of its own to show:
+	// the relation stands for the place at its other end, which is opened with the application of its type (Shoji), as a double click on the place would
+	entry_ref file, place;
+	for (int32 index = 0; message->FindRef("refs", index, &file) == B_OK; index++) {
+		if (!PlaceOf(file, &place)) {
+			fprintf(stderr, "%s: no place to open (the file of the relation is gone or is none).\n", file.name);
+			continue;
+		}
+		status_t result = be_roster->Launch(&place);
+		if (result != B_OK && result != B_ALREADY_RUNNING)
+			fprintf(stderr, "could not open %s: %s\n", place.name, strerror(result));
+	}
+	Quit();
 }
 
 

@@ -42,8 +42,15 @@ std::string TypeOf(Relation relation);
 /** The label that the relation has seen from A, the file that the relation is opened at: `within`, `contains`, `covered by`, `covers`, `touches`, `overlaps`, `equal to`. Empty for kNone and kDisjoint. */
 std::string LabelOf(Relation relation);
 
-/** The name of the relation in the Region Connection Calculus, for the property `SEN:REL:Kind` of the relation: `NTPP`, `NTPPi`, `TPP`, `TPPi`, `EC`, `PO`, `EQ` (`DC` for disjoint). Empty for kNone. */
+/** The name of the relation in the Region Connection Calculus, for the property `SEN:REL:Rcc8` of the relation: `NTPP`, `NTPPi`, `TPP`, `TPPi`, `EC`, `PO`, `EQ` (`DC` for disjoint). Empty for kNone. */
 std::string CodeOf(Relation relation);
+
+/**
+ * What the code says, in words, for the property `SEN:REL:Kind` of the relation (what people read): `non-tangential proper part` (NTPP: inside, not touching the border),
+ * `tangential proper part` (TPP: inside, touching the border), `externally connected` (EC: the borders meet), `partially overlapping` (PO), `equal` (EQ), `disconnected` (DC); the opposite
+ * directions of the first two are `non-tangential proper part (inverse)` and `tangential proper part (inverse)`. Empty for kNone.
+ */
+std::string KindOf(Relation relation);
 
 /** The coordinates of a place that cover it: its bounding box, or a point (south = north, west = east). */
 struct Box {

@@ -117,6 +117,23 @@ CodeOf(Relation relation)
 }
 
 
+std::string
+KindOf(Relation relation)
+{
+	switch (relation) {
+		case Relation::kDisjoint:	return "disconnected";
+		case Relation::kTouch:		return "externally connected";
+		case Relation::kOverlap:	return "partially overlapping";
+		case Relation::kEqual:		return "equal";
+		case Relation::kWithin:		return "non-tangential proper part";
+		case Relation::kCoveredBy:	return "tangential proper part";
+		case Relation::kContains:	return "non-tangential proper part (inverse)";
+		case Relation::kCovers:		return "tangential proper part (inverse)";
+		default:					return std::string();
+	}
+}
+
+
 bool
 BoxesMeet(const Box& a, const Box& b, double degrees)
 {
