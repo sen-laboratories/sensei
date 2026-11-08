@@ -67,6 +67,11 @@ private:
 	 */
 	/** the place at a position (reverse geocoding): the position is sent to OpenStreetMap */
 	status_t		FindByPosition(const place::Position& position, place::Hit* hit);
+	/**
+	 * Where the file says that it is (its city, region and country): placed by OpenStreetMap, so that the search for its name stays in that country (a station that is called Westbahnhof
+	 * in Wien is not the one in Budapest, which has the name in German, too). False if the file says nothing of where it is, or nothing was found: the search then has no area.
+	 */
+	bool			FindArea(BNode& node, const std::string& language, place::Area* area);
 	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen);
 	/**
 	 * What a Location, a photo or another file that is no Place is "located near": the Place that Nominatim found for it, and the Places on this computer that are near its position (within 250 metres,

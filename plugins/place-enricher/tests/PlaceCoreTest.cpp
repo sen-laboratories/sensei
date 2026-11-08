@@ -497,9 +497,63 @@ TestSettings()
 }
 
 
+// A file that says where it is (its city, region, country) is searched for in that country: "Westbahnhof" in Wien is not the station in Budapest, which has the name in German, too.
+static void
+TestArea()
+{
+	// the search that places the city: the city (with the region and the country if it is named), else the region, else the country; a country as a code only restricts
+	const std::string wienUrl = place::AreaUrl("Wien", "", "", "");
+	CHECK(Contains(wienUrl, "/search?q=Wien&limit=1&featureType=settlement"));
+	CHECK(!Contains(wienUrl, "countrycodes"));
+	CHECK(Contains(place::AreaUrl("Wien", "", "AT", ""), "&countrycodes=at"));
+	CHECK(Contains(place::AreaUrl("Wien", "", "AT", ""), "q=Wien&"));
+	CHECK(Contains(place::AreaUrl("Wien", "", "Austria", ""), "q=Wien%2C%20Austria&limit=1&featureType=settlement"));
+	CHECK(Contains(place::AreaUrl("Springfield", "Illinois", "United States", "en"), "q=Springfield%2C%20Illinois%2C%20United%20States"));
+	CHECK(Contains(place::AreaUrl("", "Tirol", "", ""), "featureType=state"));
+	CHECK(Contains(place::AreaUrl("", "", "Austria", ""), "q=Austria&limit=1&featureType=country"));
+	CHECK(place::AreaUrl("", "", "AT", "").empty());			// (a code is no name to look up: it is the country)
+	CHECK(place::AreaUrl("", "", "", "").empty());
+	CHECK(place::AreaUrl("  ", " ", "", "").empty());
+
+	// what the answer says: the country and the box of the city
+	std::vector<place::Hit> wien;
+	CHECK(place::ParseHits(Fixture("nominatim-search-wien.json"), &wien));
+	place::Area area;
+	CHECK(place::AreaFrom(wien, "", &area));
+	CHECK(area.countryCode == "AT" && area.hasBox);
+	CHECK(area.south < 48.2 && area.north > 48.2 && area.west < 16.37 && area.east > 16.37);
+	// a country that is a code is the country, found or not; nothing known is nothing
+	place::Area bare;
+	CHECK(place::AreaFrom(std::vector<place::Hit>(), "at", &bare) && bare.countryCode == "AT" && !bare.hasBox);
+	place::Area none;
+	CHECK(!place::AreaFrom(std::vector<place::Hit>(), "", &none));
+	CHECK(!place::AreaFrom(std::vector<place::Hit>(), "Austria", &none));
+
+	// the search for the name in the area: only the country, and the box ranks (it does not limit)
+	const std::string search = place::SearchUrl("Westbahnhof", "", false, 8, place::kBoundaryTolerance, area);
+	CHECK(Contains(search, "/search?q=Westbahnhof&limit=8&countrycodes=at&viewbox=16.1818310,48.3226679,16.5775132,48.1179069"));
+	CHECK(!Contains(search, "bounded"));
+	CHECK(!Contains(place::SearchUrl("Westbahnhof", "", false, 8, place::kBoundaryTolerance, bare), "viewbox"));
+	CHECK(Contains(place::SearchUrl("Westbahnhof", "", false, 8, place::kBoundaryTolerance, bare), "&countrycodes=at"));
+
+	// the answers of another country go; one that says nothing of its country stays
+	place::Hit budapest, vienna, unknown;
+	budapest.name = "Nyugati pályaudvar"; budapest.countryCode = "HU";
+	vienna.name = "Westbahnhof"; vienna.countryCode = "AT";
+	unknown.name = "Westbahnhof (no country)";
+	std::vector<place::Hit> hits{budapest, vienna, unknown};
+	place::KeepInArea(&hits, area);
+	CHECK(hits.size() == 2 && hits[0].name == "Westbahnhof" && hits[1].name == "Westbahnhof (no country)");
+	std::vector<place::Hit> all{budapest, vienna};
+	place::KeepInArea(&all, place::Area());			// (an area without a country keeps all)
+	CHECK(all.size() == 2);
+}
+
+
 int
 main()
 {
+	TestArea();
 	TestAddresses();
 	TestParse();
 	TestWhatToMakeOfThem();

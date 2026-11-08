@@ -476,6 +476,31 @@ ReadDouble(BNode& node, const char* attribute, double* value)
 }
 
 
+bool
+App::FindArea(BNode& node, const std::string& language, place::Area* area)
+{
+	namespace attr = sen::onto::spatial::attr;
+	BString locality, region, country;
+	node.ReadAttrString(attr::kLocality, &locality);
+	node.ReadAttrString(attr::kRegion, &region);
+	node.ReadAttrString(attr::kCountry, &country);
+
+	std::vector<place::Hit> hits;
+	const std::string url = place::AreaUrl(locality.String(), region.String(), country.String(), language);
+	if (!url.empty()) {
+		// (kept like every answer; if it fails the search goes on without the area: not knowing where the file is no reason not to look)
+		std::string body;
+		if (Get(url, kNominatim, &body) == B_OK)
+			place::ParseHits(body, &hits);
+	}
+	const bool found = place::AreaFrom(hits, country.String(), area);
+	if (found)
+		printf("the file says that it is in %s%s%s: searching %s.\n", locality.String(), locality.IsEmpty() ? "" : ", ", area->countryCode.empty() ? "?" : area->countryCode.c_str(),
+			area->countryCode.empty() ? "near it" : "in that country");
+	return found;
+}
+
+
 status_t
 App::FindPlace(const entry_ref& file, place::Hit* hit)
 {
@@ -506,17 +531,26 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	const std::string name = NameOf(node, file);
 	fWanted = name;
 
+	// where the file says that it is (its city, region and country): the search stays there. Not asked for a file that is looked up by its position alone.
+	place::Area area;
+	const bool byPositionAlone = hasPosition && !hasTitle && !place::LooksLikeName(name);
+	const bool hasArea = !byPositionAlone && FindArea(node, language, &area);
+
 	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
 	BString address;
 	if (!hasPosition && node.ReadAttrString(sen::onto::spatial::attr::kAddress, &address) == B_OK && !address.IsEmpty()) {
 		fWanted = address.String();
 		std::string addressBody;
-		status_t found = Get(place::SearchUrl(address.String(), language, fSettings.boundary, 3), kNominatim, &addressBody);
+		const std::string addressUrl = hasArea ? place::SearchUrl(address.String(), language, fSettings.boundary, 3, place::kBoundaryTolerance, area)
+			: place::SearchUrl(address.String(), language, fSettings.boundary, 3);
+		status_t found = Get(addressUrl, kNominatim, &addressBody);
 		if (found != B_OK)
 			return found;
 		std::vector<place::Hit> addressHits;
 		if (!place::ParseHits(addressBody, &addressHits))
 			return B_ERROR;
+		if (hasArea)
+			place::KeepInArea(&addressHits, area);
 		if (addressHits.empty())
 			return B_ENTRY_NOT_FOUND;
 		*hit = addressHits[0];
@@ -538,12 +572,20 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	if (name.empty())
 		return B_ENTRY_NOT_FOUND;
 	std::string body;
-	status_t result = Get(place::SearchUrl(name, language, fSettings.boundary), kNominatim, &body);
+	const std::string searchUrl = hasArea ? place::SearchUrl(name, language, fSettings.boundary, 8, place::kBoundaryTolerance, area) : place::SearchUrl(name, language, fSettings.boundary);
+	status_t result = Get(searchUrl, kNominatim, &body);
 	if (result != B_OK)
 		return result;
 	std::vector<place::Hit> hits;
 	if (!place::ParseHits(body, &hits))
 		return B_ERROR;
+	if (hasArea) {
+		// (never a place of another country than the file says: what the search ranks first may be one that has the name in another language)
+		const size_t before = hits.size();
+		place::KeepInArea(&hits, area);
+		if (hits.size() != before)
+			printf("%zu of %zu places are in another country than the file says (%s): left out.\n", before - hits.size(), before, area.countryCode.c_str());
+	}
 
 	// a place that was made from Wikidata (by the spatial navigator, for a place that contains another one) has the link to Wikidata and none to OpenStreetMap: of the answers for its name
 	// the one with that Wikidata item is the place, no question

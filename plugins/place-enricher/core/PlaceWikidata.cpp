@@ -196,7 +196,8 @@ ParseImageInfo(const std::string& text, Image* image)
 	auto pages = query->find("pages");
 	if (pages == query->end() || !pages->is_object() || pages->empty())
 		return false;
-	const Json& page = pages->begin().value();
+	auto first = pages->begin();		// (the iterator is kept: the page is a value of the answer, not of a temporary)
+	const Json& page = first.value();
 	if (!page.is_object() || page.contains("missing"))
 		return false;
 	auto infos = page.find("imageinfo");

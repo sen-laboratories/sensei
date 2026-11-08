@@ -60,6 +60,32 @@ struct Position {
  * (`polygon_text`, simplified: a boundary of 100 metres is accurate enough to tell which places are inside which). Up to @p limit answers.
  */
 std::string SearchUrl(const std::string& query, const std::string& language, bool boundary, int limit = 8, double tolerance = kBoundaryTolerance);
+
+/**
+ * Where a file says that it is: the city, region and country that it names (`schema:addressLocality`, `schema:addressRegion`, `schema:addressCountry`), as OpenStreetMap places them. A
+ * search for a name is restricted to the country (a station called "Westbahnhof" in Wien is not the one in Budapest, which has the name in German, too) and ranked for the area.
+ */
+struct Area {
+	std::string	countryCode;		///< ISO 3166-1 alpha-2, upper case; empty if the file says nothing that tells the country
+	bool		hasBox = false;
+	double		south = 0, north = 0, west = 0, east = 0;	///< the bounding box of the city (else the region or the country)
+};
+
+/**
+ * The search that places what a file says of where it is: the city (else the region, else the country) with the region and country that are named. A country as a code (`AT`) is no name
+ * to search for: it restricts the search. Empty if there is nothing to look up (the file names no city or region, and a country that is a code or none).
+ */
+std::string AreaUrl(const std::string& locality, const std::string& region, const std::string& country, const std::string& language);
+/**
+ * The area from the answers of AreaUrl(): the country and box of the first. @p country is what the file says of the country: a code (`AT`) is the country even if nothing was found.
+ * False if nothing is known of where the file is.
+ */
+bool AreaFrom(const std::vector<Hit>& hits, const std::string& country, Area* area);
+/** SearchUrl() for a search in an area: only the country (`countrycodes`), and ranked for the box (`viewbox`, not a limit: a station just outside the city is still found). */
+std::string SearchUrl(const std::string& query, const std::string& language, bool boundary, int limit, double tolerance, const Area& area);
+/** Takes the answers of another country out of the list (a hit that has no country stays: nothing says that it is elsewhere). Nothing if the area has no country. */
+void KeepInArea(std::vector<Hit>* hits, const Area& area);
+
 /** One object of OpenStreetMap by its type (node, way, relation) and id: the place that was found before. */
 std::string LookupUrl(const std::string& osmType, int64_t osmId, const std::string& language, bool boundary, double tolerance = kBoundaryTolerance);
 /** The place at a position (with an address: a building or an area, not a point of interest such as a defibrillator that is at the same position). */

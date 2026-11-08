@@ -243,6 +243,115 @@ SearchUrl(const std::string& query, const std::string& language, bool boundary, 
 }
 
 
+namespace {
+
+/** a code of a country (`AT`, `de`): two letters */
+bool
+IsCountryCode(const std::string& text)
+{
+	return text.size() == 2 && std::isalpha((unsigned char)text[0]) && std::isalpha((unsigned char)text[1]);
+}
+
+std::string
+Lower(std::string text)
+{
+	for (char& c : text)
+		c = (char)std::tolower((unsigned char)c);
+	return text;
+}
+
+std::string
+Trimmed(const std::string& text)
+{
+	const size_t first = text.find_first_not_of(" \t\r\n");
+	return first == std::string::npos ? std::string() : text.substr(first, text.find_last_not_of(" \t\r\n") - first + 1);
+}
+
+}	// namespace
+
+
+std::string
+AreaUrl(const std::string& localityText, const std::string& regionText, const std::string& countryText, const std::string& language)
+{
+	const std::string locality = Trimmed(localityText), region = Trimmed(regionText), country = Trimmed(countryText);
+	const bool countryName = !country.empty() && !IsCountryCode(country);		// (a code restricts the search below, a name helps to find the city)
+	const char* featureType = NULL;
+	std::string query;
+	if (!locality.empty()) {
+		featureType = "settlement";
+		query = locality;
+		if (!region.empty())
+			query += ", " + region;
+		if (countryName)
+			query += ", " + country;
+	} else if (!region.empty()) {
+		featureType = "state";
+		query = region;
+		if (countryName)
+			query += ", " + country;
+	} else if (countryName) {
+		featureType = "country";
+		query = country;
+	} else {
+		return std::string();
+	}
+
+	std::string url = std::string(kApi) + "/search?q=" + PercentEncode(query) + "&limit=1&featureType=" + featureType;
+	if (IsCountryCode(country))
+		url += "&countrycodes=" + Lower(country);
+	return url + Common(language, false, 0);
+}
+
+
+bool
+AreaFrom(const std::vector<Hit>& hits, const std::string& countryText, Area* area)
+{
+	const std::string country = Trimmed(countryText);
+	Area found;
+	if (IsCountryCode(country)) {
+		found.countryCode = country;
+		for (char& c : found.countryCode)
+			c = (char)std::toupper((unsigned char)c);
+	}
+	if (!hits.empty()) {
+		if (found.countryCode.empty())
+			found.countryCode = hits[0].countryCode;
+		if (hits[0].hasBox) {
+			found.hasBox = true;
+			found.south = hits[0].south;
+			found.north = hits[0].north;
+			found.west = hits[0].west;
+			found.east = hits[0].east;
+		}
+	}
+	if (found.countryCode.empty() && !found.hasBox)
+		return false;
+	*area = found;
+	return true;
+}
+
+
+std::string
+SearchUrl(const std::string& query, const std::string& language, bool boundary, int limit, double tolerance, const Area& area)
+{
+	std::string url = std::string(kApi) + "/search?q=" + PercentEncode(query) + "&limit=" + std::to_string(limit);
+	if (!area.countryCode.empty())
+		url += "&countrycodes=" + Lower(area.countryCode);
+	if (area.hasBox)
+		url += "&viewbox=" + Coordinate(area.west) + "," + Coordinate(area.north) + "," + Coordinate(area.east) + "," + Coordinate(area.south);
+	return url + Common(language, boundary, tolerance);
+}
+
+
+void
+KeepInArea(std::vector<Hit>* hits, const Area& area)
+{
+	if (area.countryCode.empty())
+		return;
+	hits->erase(std::remove_if(hits->begin(), hits->end(), [&area](const Hit& hit) { return !hit.countryCode.empty() && hit.countryCode != area.countryCode; }), hits->end());
+}
+
+
 std::string
 LookupUrl(const std::string& osmType, int64_t osmId, const std::string& language, bool boundary, double tolerance)
 {
