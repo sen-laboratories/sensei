@@ -330,6 +330,21 @@ TestSettings()
 	ParseSettings("poi_radius = 5\npoi_limit = lots", &numbers);
 	CHECK(numbers.poiRadius == 600 && numbers.poiLimit == 25);		// (out of range, not a number: what was there stays)
 	CHECK(ValidateSetting("poi_radius", "1500") && !ValidateSetting("poi_radius", "1501") && !ValidateSetting("poi_limit", "4") && ValidateSetting("poi_limit", "200"));
+	// how long the answers are kept: a day, 1 to 168 hours
+	CHECK(numbers.poiCacheHours == 24);
+	ParseSettings("poi_cache_hours = 48", &numbers);
+	CHECK(numbers.poiCacheHours == 48);
+	ParseSettings("poi_cache_hours = 0", &numbers);
+	ParseSettings("poi_cache_hours = soon", &numbers);
+	CHECK(numbers.poiCacheHours == 48);		// (out of range, not a number: what was there stays)
+	CHECK(ValidateSetting("poi_cache_hours", "1") && ValidateSetting("poi_cache_hours", "168") && !ValidateSetting("poi_cache_hours", "169") && !ValidateSetting("poi_cache_hours", "0"));
+	// the default style of the map: one of the styles of the list
+	CHECK(numbers.mapStyle == "topo");
+	ParseSettings("map_style = hot", &numbers);
+	CHECK(numbers.mapStyle == "hot");
+	ParseSettings("map_style = voyager", &numbers);
+	CHECK(numbers.mapStyle == "hot");		// (a style that is not offered: what was there stays)
+	CHECK(ValidateSetting("map_style", "cyclosm") && !ValidateSetting("map_style", "voyager"));
 	// what is not valid is ignored: an unknown mirror, an address that is none
 	ParseSettings("overpass_mirror = nowhere\noverpass_url = ftp://x\n", &settings);
 	CHECK(settings.overpassMirror == "vk-maps" && settings.overpassUrl == "https://overpass.example.org/api/interpreter");

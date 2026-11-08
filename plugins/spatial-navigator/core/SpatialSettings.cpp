@@ -85,6 +85,11 @@ ParseSettings(const std::string& text, Settings* settings)
 			ParseNumber(value, kMinRadius, kMaxRadius, &settings->poiRadius);
 		} else if (key == "poi_limit") {
 			ParseNumber(value, kMinLimit, kMaxLimit, &settings->poiLimit);
+		} else if (key == "map_style") {
+			if (sen::mapstyles::Find(value) != nullptr)
+				settings->mapStyle = value;
+		} else if (key == "poi_cache_hours") {
+			ParseNumber(value, kMinCacheHours, kMaxCacheHours, &settings->poiCacheHours);
 		} else if (key == "overpass_custom_key") {
 			settings->customRequiresKey = st::ParseBool(value, settings->customRequiresKey);
 		} else if (key == "overpass_key") {
@@ -115,6 +120,10 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return ParseNumber(v, kMinRadius, kMaxRadius, &number) ? true : fail("a number of metres from 50 to 1500");
 	if (key == "poi_limit")
 		return ParseNumber(v, kMinLimit, kMaxLimit, &number) ? true : fail("a number from 5 to 200");
+	if (key == "map_style")
+		return sen::mapstyles::Find(v) != nullptr ? true : fail("one of the styles of the list");
+	if (key == "poi_cache_hours")
+		return ParseNumber(v, kMinCacheHours, kMaxCacheHours, &number) ? true : fail("a number of hours from 1 to 168");
 	if (key == "overpass_custom_key")
 		return st::IsBool(v) ? true : fail("yes or no");
 	if (key == "overpass_key")

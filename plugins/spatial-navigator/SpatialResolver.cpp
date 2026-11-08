@@ -38,8 +38,7 @@ namespace {
 const char* const kUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
 // the chain of parents of a place changes rarely: kept for a month
 const long kCacheSeconds = 30L * 24 * 3600;
-// what is around a place changes now and then (a shop closes): kept for a day
-const long kPoiCacheSeconds = 24L * 3600;
+// what is around a place changes now and then (a shop closes), but the map is not remapped that often: kept for a day (setting poi_cache_hours)
 // the places that are made for the things nearby and are enriched (their picture, from Wikidata) at once: only those with a Wikidata item, and not more than this per question
 const size_t kMaxPoiPictures = 12;
 // all of the time that Overpass has for one question, in microseconds
@@ -327,7 +326,7 @@ Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 	}
 	const std::string request = PoisUrl(area, endpoint);
 	std::string body;
-	if (fCache == NULL || !fCache->Get(url, &body, kPoiCacheSeconds)) {
+	if (fCache == NULL || !fCache->Get(url, &body, (long) fSettings.poiCacheHours * 3600L)) {
 		if (fDebug)
 			printf("asking %s\n", OverpassEndpoint(fSettings).c_str());		// (not the address with the key)
 		// (the public Overpass server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. One that fails at once - 429, 502 when

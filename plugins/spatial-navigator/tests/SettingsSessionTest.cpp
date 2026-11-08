@@ -140,6 +140,13 @@ int main(int argc, char** argv)
 	CHECK(schema.FindMessage("poi_radius", &radius) == B_OK && radius.GetDouble(form::kAttrMin, 0) == 50 && radius.GetDouble(form::kAttrMax, 0) == 1500);
 	CHECK(schema.FindMessage("poi_limit", &limit) == B_OK && limit.GetDouble(form::kAttrMin, 0) == 5 && limit.GetDouble(form::kAttrMax, 0) == 200);
 	CHECK(settings.GetInt32("poi_radius", 0) == 250 && settings.GetInt32("poi_limit", 0) == 40);
+	BMessage cacheHours;
+	CHECK(schema.FindMessage("poi_cache_hours", &cacheHours) == B_OK && cacheHours.GetDouble(form::kAttrMin, 0) == 1 && cacheHours.GetDouble(form::kAttrMax, 0) == 168);
+	CHECK(settings.GetInt32("poi_cache_hours", 0) == 24);
+	BMessage mapStyle;
+	CHECK(schema.FindMessage("map_style", &mapStyle) == B_OK && strcmp(mapStyle.GetString(form::kAttrKind, ""), form::kKindChoice) == 0);
+	CHECK(strcmp(mapStyle.GetString(form::kAttrChoices, 0, ""), "topo") == 0 && mapStyle.HasString(form::kAttrChoices, 3) && !mapStyle.HasString(form::kAttrChoices, 4));
+	CHECK(strcmp(settings.GetString("map_style", ""), "topo") == 0);
 	BMessage mirror, url, key;
 	CHECK(schema.FindMessage("overpass_mirror", &mirror) == B_OK && strcmp(mirror.GetString(form::kAttrKind, ""), form::kKindChoice) == 0);
 	CHECK(mirror.CountNames(B_STRING_TYPE) > 0 && strcmp(mirror.GetString(form::kAttrChoices, 0, ""), "default") == 0);

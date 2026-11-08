@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <sen/SenMapStyles.h>
+
 namespace spatial {
 
 /**
@@ -36,6 +38,10 @@ struct Settings {
 	int			poiRadius = 250;
 	/** how many things nearby at most: the nearest, the notable ones (a sight) before the shops */
 	int			poiLimit = 40;
+	/** how long what OpenStreetMap said about a place is kept, in hours: the map is changed all the time, but a place is not remapped that often. It is asked again when the relation is opened later. */
+	int			poiCacheHours = 24;
+	/** the default style of the map of a place (an id of sen::mapstyles, SenMapStyles.h): the views of the map (Shoji) show it until a style is chosen in the view itself */
+	std::string	mapStyle = sen::mapstyles::DefaultId();
 	/** the key of a server that requires one. Put in place of `{key}` in the address, else sent as `Authorization: Bearer <key>` (only over https). */
 	std::string	overpassKey;
 };
@@ -62,7 +68,7 @@ std::string OverpassKey(const Settings& settings);
 std::string KeyEnabledWhen();
 
 /** The ranges of the numbers of the settings. */
-const int kMinRadius = 50, kMaxRadius = 1500, kMinLimit = 5, kMaxLimit = 200;
+const int kMinRadius = 50, kMaxRadius = 1500, kMinLimit = 5, kMaxLimit = 200, kMinCacheHours = 1, kMaxCacheHours = 168;
 
 /** The address of the default server. */
 extern const char* const kDefaultOverpassUrl;

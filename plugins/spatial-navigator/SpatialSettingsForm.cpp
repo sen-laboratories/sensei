@@ -36,6 +36,11 @@ const Field kFields[] = {
 		"How far around a place or location what is nearby is looked for, in metres. The area is at least twice this across; a place that is larger is searched in its own box (up to 3 km across)."},
 	{"poi_limit", "Most things nearby",
 		"How many things nearby at most. The notable ones (sights with a Wikidata item or a Wikipedia article) come before shops of the same distance, then the nearest."},
+	{"poi_cache_hours", "Keep answers for (hours)",
+		"How long what OpenStreetMap said about the surroundings of a place is kept. A place is not remapped that often, so a day is enough: a folder of what is nearby that is opened later asks again. 1 to 168 hours."},
+	{"map_style", "Map style",
+		"The default style of the map of a place (Shoji): the tiles of OpenStreetMap data from public servers, without a key. The map says whose it is. A view of the map can choose another style "
+		"with the secondary mouse button, and go back to this one."},
 	{"overpass_mirror", "Overpass server",
 		"The server that is asked for what is nearby a place (OpenStreetMap, Overpass API). The public server is often busy; the mirrors give the same data and have other limits. "
 		"The question and the box of the place go to the server that is chosen."},
@@ -75,6 +80,8 @@ ToMessage(const Settings& s, BMessage* message)
 	message->MakeEmpty();
 	message->AddInt32("poi_radius", s.poiRadius);
 	message->AddInt32("poi_limit", s.poiLimit);
+	message->AddInt32("poi_cache_hours", s.poiCacheHours);
+	message->AddString("map_style", s.mapStyle.c_str());
 	message->AddString("overpass_mirror", s.overpassMirror.c_str());
 	message->AddString("overpass_url", s.overpassUrl.c_str());
 	message->AddBool("overpass_custom_key", s.customRequiresKey);
@@ -108,12 +115,18 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		attributes.AddString(form::kAttrHelp, field.help);
 		attributes.AddInt32(form::kAttrOrder, order++);
 		const std::string key = field.key;
-		if (key == "poi_radius" || key == "poi_limit") {
-			const bool radius = key == "poi_radius";
+		if (key == "poi_radius" || key == "poi_limit" || key == "poi_cache_hours") {
+			const bool radius = key == "poi_radius", hours = key == "poi_cache_hours";
 			attributes.AddString(form::kAttrKind, form::kKindSpinner);
-			attributes.AddDouble(form::kAttrMin, radius ? kMinRadius : kMinLimit);
-			attributes.AddDouble(form::kAttrMax, radius ? kMaxRadius : kMaxLimit);
-			attributes.AddDouble(form::kAttrStep, radius ? 50 : 5);
+			attributes.AddDouble(form::kAttrMin, radius ? kMinRadius : hours ? kMinCacheHours : kMinLimit);
+			attributes.AddDouble(form::kAttrMax, radius ? kMaxRadius : hours ? kMaxCacheHours : kMaxLimit);
+			attributes.AddDouble(form::kAttrStep, radius ? 50 : hours ? 1 : 5);
+		} else if (key == "map_style") {
+			attributes.AddString(form::kAttrKind, form::kKindChoice);
+			for (const sen::mapstyles::Style& style : sen::mapstyles::All()) {
+				attributes.AddString(form::kAttrChoices, style.id);
+				attributes.AddString(form::kAttrChoiceLabels, style.label);
+			}
 		} else if (key == "overpass_mirror") {
 			attributes.AddString(form::kAttrKind, form::kKindChoice);
 			for (const Mirror& mirror : Mirrors()) {
