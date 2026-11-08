@@ -550,9 +550,53 @@ TestArea()
 }
 
 
+// Places of one name that are told apart by what runs there: the metro station and the train station called Westbahnhof are both a "station" in the tags (as the answers of Nominatim have them).
+static void
+TestTransport()
+{
+	const char* json = R"json([
+	  {"osm_type":"node","osm_id":4281897753,"lat":"48.1957","lon":"16.3383","category":"railway","type":"station","addresstype":"railway","place_rank":30,"importance":0.3,
+	   "display_name":"Westbahnhof, Neubaugürtel, Wien","name":"Westbahnhof",
+	   "extratags":{"train":"yes","subway":"yes","station":"subway","operator":"Wiener Linien","uic_name":"Wien Westbahnhof (U6)","wikidata":"Q17100214"}},
+	  {"osm_type":"node","osm_id":4161756600,"lat":"48.1956","lon":"16.3384","category":"railway","type":"station","addresstype":"railway","place_rank":30,"importance":0.3,
+	   "display_name":"Westbahnhof, Mariahilfer Straße, Wien","name":"Westbahnhof",
+	   "extratags":{"subway":"yes","station":"subway","operator":"Wiener Linien","uic_name":"Wien Westbahnhof (U3)","wikidata":"Q17100214"}},
+	  {"osm_type":"way","osm_id":9881798,"lat":"48.1961","lon":"16.3379","category":"building","type":"train_station","addresstype":"building","place_rank":30,"importance":0.3,
+	   "display_name":"Westbahnhof, 2, Europaplatz, Wien","name":"Westbahnhof","extratags":{"wikidata":"Q106835935"}},
+	  {"osm_type":"node","osm_id":1,"lat":"47.0","lon":"15.0","category":"railway","type":"station","addresstype":"railway","place_rank":30,"importance":0.2,
+	   "display_name":"Graz Hauptbahnhof","name":"Graz Hauptbahnhof","extratags":{"station":"train","operator":"ÖBB"}},
+	  {"osm_type":"relation","osm_id":5505423,"lat":"48.1","lon":"16.3","category":"railway","type":"platform","addresstype":"railway","place_rank":30,"importance":0.1,
+	   "display_name":"Westbahnhof, Neubaugürtel, Wien","name":"Westbahnhof","extratags":{"subway":"yes","public_transport":"platform"}},
+	  {"osm_type":"node","osm_id":2,"lat":"48.2","lon":"16.3","category":"railway","type":"tram_stop","addresstype":"railway","place_rank":30,"importance":0.1,
+	   "display_name":"Stop","name":"Stop","extratags":{"tram":"yes"}},
+	  {"osm_type":"node","osm_id":3,"lat":"48.2","lon":"16.3","category":"railway","type":"station","addresstype":"railway","place_rank":30,"importance":0.1,
+	   "display_name":"Somewhere","name":"Somewhere","extratags":{"station":"light_rail","train":"yes"}}
+	])json";
+	std::vector<place::Hit> hits;
+	CHECK(place::ParseHits(json, &hits) && hits.size() == 7);
+	if (hits.size() != 7)
+		return;
+	CHECK(hits[0].transportMode == "metro" && hits[0].operatorName == "Wiener Linien" && hits[0].lineName == "U6");		// (a metro station that is flagged as a train station, too)
+	CHECK(place::PlaceTypeName(hits[0]) == "metro station");
+	CHECK(place::PlaceTypeNote(hits[0]) == "U6, Wiener Linien");
+	CHECK(place::PlaceTypeName(hits[1]) == "metro station" && place::PlaceTypeNote(hits[1]) == "U3, Wiener Linien");
+	CHECK(place::PlaceTypeName(hits[2]) == "train station");			// (the building of the station: its type says it)
+	CHECK(place::PlaceTypeNote(hits[2]).empty());
+	CHECK(place::PlaceTypeName(hits[3]) == "train station" && place::PlaceTypeNote(hits[3]) == "ÖBB");
+	CHECK(place::PlaceTypeName(hits[4]) == "metro platform");
+	CHECK(place::PlaceTypeName(hits[5]) == "tram stop");
+	CHECK(place::PlaceTypeName(hits[6]) == "light rail station");		// (`station=light_rail` wins over the flag of a train)
+	// nothing changes for what is not a stop or a station
+	std::vector<place::Hit> church;
+	CHECK(place::ParseHits(Fixture("nominatim-search-stephansdom.json"), &church) && !church.empty());
+	CHECK(place::PlaceTypeName(church[0]) == "place of worship" && place::PlaceTypeNote(church[0]).empty() && church[0].transportMode.empty());
+}
+
+
 int
 main()
 {
+	TestTransport();
 	TestArea();
 	TestAddresses();
 	TestParse();

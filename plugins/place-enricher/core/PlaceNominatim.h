@@ -42,6 +42,9 @@ struct Hit {
 	std::string	countryCode;		///< ISO 3166-1 alpha-2, upper case: `AT`
 	std::string	country;
 	std::string	wkt;				///< the boundary as Well-Known Text, only if it was asked for
+	std::string	transportMode;		///< what runs there, from the tags `station`, `subway`, `light_rail`, `train`, `tram`: `metro`, `light rail`, `train`, `tram`; empty if the tags say nothing
+	std::string	operatorName;		///< who runs it (`operator`: Wiener Linien)
+	std::string	lineName;			///< the line, if the name that the railway gives it ends with one (`uic_name`: "Wien Westbahnhof (U6)" is U6)
 };
 
 /** How far the outline may differ from the real one, in degrees: about 11 metres. Enough for a building, and a city is 17 KB. */
@@ -138,6 +141,11 @@ std::string PlaceTypeIri(const Hit& hit);
  * Nominatim does not say the kind). The IRI of the type is PlaceTypeIri(). Empty if Nominatim says nothing.
  */
 std::string PlaceTypeName(const Hit& hit);
+/**
+ * What tells apart places of one name and one kind, for a list that a person chooses from: the line and who runs it for a stop or a station (`U6, Wiener Linien`): the metro station
+ * and the train station of one name are both a "station" in the tags, but not in what runs there. Empty if there is nothing to tell.
+ */
+std::string PlaceTypeNote(const Hit& hit);
 /** The postal address in one line (`Stephansplatz 3, 1010 Wien, Österreich`); empty for a place that has no street and no postcode (a city has no postal address). */
 std::string AddressLine(const Hit& hit);
 /** The names in other languages (from `namedetails`): each once, without the name of the place itself, at most @p limit. */

@@ -321,6 +321,10 @@ Describe(const place::Hit& hit, float score, const std::string& distance)
 	sen::Candidate candidate;
 	candidate.title = hit.name.c_str();
 	candidate.subtitle << KindOf(hit).c_str();
+	// (what tells a metro station from the train station of the same name: the line and who runs it)
+	const std::string note = place::PlaceTypeNote(hit);
+	if (!note.empty())
+		candidate.subtitle << " (" << note.c_str() << ")";
 	BString where;
 	if (!hit.locality.empty() && hit.locality != hit.name)
 		where << hit.locality.c_str();

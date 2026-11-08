@@ -52,6 +52,21 @@ check "AT: the country is Austria" test "$(attr schema:addressCountry in-austria
 # the log says where the search was (Nominatim is asked for that country only, so that nothing of another country comes back; KeepInArea() is the net below that)
 check "Wien: the log says that the search was in the country of the city" grep -q "searching in that country" in-wien.log
 
+# the metro station and the train station of one name are told apart by their kind (a Place that has the link to the object of OpenStreetMap is read again, no search)
+place() { # place <file> <link to OpenStreetMap>
+	touch "$1"
+	addattr -t mime BEOS:TYPE entity/x-vnd.sen-labs.entity.place "$1"
+	addattr -t string META:TYPE entity/x-vnd.sen-labs.entity.place "$1"
+	addattr -t string dc:title Westbahnhof "$1"
+	addattr -t string schema:sameAs "$2" "$1"
+}
+place metro https://www.openstreetmap.org/node/4161756600
+place train https://www.openstreetmap.org/way/9881798
+run metro
+run train
+check "the metro station is a metro station" test "$(attr SEN:placeType metro)" = "metro station"
+check "the building of the train station is a train station" test "$(attr SEN:placeType train)" = "train station"
+
 # the places that the runs made are removed again (the server enriches them in the background: waited for, else it would find them gone)
 sleep 25
 for log in in-wien.log in-vienna.log in-budapest.log in-austria.log; do

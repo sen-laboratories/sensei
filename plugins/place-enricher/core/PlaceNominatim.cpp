@@ -154,6 +154,25 @@ ToHit(const Json& json, Hit* hit)
 		h.website = Str(*extra, "website");
 		if (h.website.empty())
 			h.website = Str(*extra, "contact:website");
+
+		// what runs there: the tag `station` says it (subway, light_rail, train), else what is flagged; a station of several (a metro station that is flagged as a train station, too, for the
+		// station building above it) is the one that the tag `station` names
+		const std::string station = Str(*extra, "station");
+		auto yes = [&extra](const char* key) { return Str(*extra, key) == "yes"; };
+		if (station == "subway" || (station.empty() && yes("subway")))
+			h.transportMode = "metro";
+		else if (station == "light_rail" || (station.empty() && yes("light_rail") && !yes("train")))
+			h.transportMode = "light rail";
+		else if (station == "train" || (station.empty() && yes("train")))
+			h.transportMode = "train";
+		else if (station.empty() && yes("tram"))
+			h.transportMode = "tram";
+		h.operatorName = Str(*extra, "operator");
+		// ("Wien Westbahnhof (U6)": the line is what is in the last brackets)
+		const std::string uic = Str(*extra, "uic_name");
+		const size_t open = uic.rfind('('), close = uic.rfind(')');
+		if (open != std::string::npos && close != std::string::npos && close > open + 1 && close + 1 == uic.size())
+			h.lineName = uic.substr(open + 1, close - open - 1);
 	}
 
 	// the other names: the English one and the alternative names first (the ones that a reader knows), then the other languages by their code. The name in the language of the place
@@ -548,7 +567,23 @@ PlaceTypeName(const Hit& hit)
 	else
 		name = hit.category;	// (`building=yes` is a building)
 	std::replace(name.begin(), name.end(), '_', ' ');
+	// a stop or a station of a kind of railway: "metro station", not "station" (the tags of a metro station and of a train station are the same but for what runs there)
+	if (!hit.transportMode.empty() && (hit.category == "railway" || hit.category == "public_transport")
+			&& (name == "station" || name == "halt" || name == "stop" || name == "stop position" || name == "platform"))
+		name = hit.transportMode + " " + name;
 	return name;
+}
+
+
+std::string
+PlaceTypeNote(const Hit& hit)
+{
+	if (hit.transportMode.empty())
+		return std::string();
+	std::string note = hit.lineName;
+	if (!hit.operatorName.empty())
+		note += (note.empty() ? "" : ", ") + hit.operatorName;
+	return note;
 }
 
 
