@@ -1,0 +1,1064 @@
+{
+"version": 0.6,
+"generator": "Overpass API 0.7.62.11 87bfad18",
+"osm3s": {
+"timestamp_osm_base": "2026-11-07T09:17:50Z",
+"copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+},
+"elements": [
+{
+"type": "node",
+"id": 15080180,
+"lat": 48.1977628,
+"lon": 16.2989066,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "130B",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"brand": "Billa Plus",
+"brand:wikidata": "Q115431077",
+"name": "Billa Plus",
+"old_name": "Merkur",
+"opening_hours": "Mo-Fr 07:40-20:00; Sa 07:40-18:00",
+"shop": "supermarket",
+"website": "https://www.billa.at",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 324641273,
+"lat": 48.1978034,
+"lon": 16.3010764,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "175",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"amenity": "pharmacy",
+"check_date": "2024-04-11",
+"dispensing": "yes",
+"email": "info@flora-apotheke.wien",
+"name": "Flora-Apotheke",
+"opening_hours": "Mo-Fr 08:00-18:00; Sa 08:00-12:00",
+"phone": "+43 1 9145207",
+"website": "https://www.flora-apotheke.wien/",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 430801154,
+"lat": 48.198105,
+"lon": 16.3031699,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "161",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"amenity": "bank",
+"atm": "yes",
+"brand": "Bank Austria",
+"brand:wikidata": "Q697619",
+"brand:wikipedia": "en:Bank Austria",
+"check_date": "2026-07-28",
+"name": "Bank Austria",
+"opening_hours": "Mo-Fr 08:00-16:00",
+"operator": "Bank Austria",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 459248537,
+"lat": 48.1979452,
+"lon": 16.3021864,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "167",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"brand": "Der Mann",
+"brand:wikidata": "Q74356398",
+"check_date:opening_hours": "2025-10-24",
+"name": "Der Mann",
+"opening_hours": "Mo-Fr 06:00-18:30; Su 07:00-17:00; Sa 06:00-17:00",
+"phone": "+43 1 86699-9118",
+"shop": "bakery",
+"website": "https://www.dermann.at/",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 890037960,
+"lat": 48.1975926,
+"lon": 16.2998282,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "183",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"name": "Edi Bäckerei",
+"shop": "bakery"
+}
+},
+{
+"type": "node",
+"id": 1033377455,
+"lat": 48.1983198,
+"lon": 16.3018001,
+"tags": {
+"check_date": "2026-08-26",
+"name": "Schlosserei Osman Cömlek",
+"shop": "hardware",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 1033377457,
+"lat": 48.1982997,
+"lon": 16.302275,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "1",
+"addr:postcode": "1140",
+"addr:street": "Leyserstraße",
+"amenity": "restaurant",
+"check_date": "2025-01-15",
+"cuisine": "mediterranean",
+"name": "Pizzeria La Strada",
+"opening_hours": "Tu-Su,PH 11:30-22:00",
+"phone": "+43 1 9143180",
+"smoking": "isolated",
+"website": "https://www.la14strada.com/",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 1681809929,
+"lat": 48.1980316,
+"lon": 16.3003707,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "130A",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"check_date": "2024-04-11",
+"leisure": "sports_centre",
+"name": "Holmes Place",
+"opening_hours": "Mo-Th 06:30-23:00; Fr 06:30-22:00; Sa 08:00-21:00; Su 09:00-22:00; PH 09:00-22:00",
+"phone": "+43 1 41588-0",
+"sport": "gymnastics",
+"website": "https://www.holmesplace.at/"
+}
+},
+{
+"type": "node",
+"id": 1681884438,
+"lat": 48.1980433,
+"lon": 16.3026679,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "163-165",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"check_date": "2023-08-20",
+"name": "Egger Mode",
+"opening_hours": "Mo-We 08:30-19:00; Th,Fr 08:30-20:00; Sa 08:30-18:00",
+"shop": "clothes",
+"website": "https://www.eggermode.com/",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 1681886806,
+"lat": 48.1983302,
+"lon": 16.3015603,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "2",
+"addr:postcode": "1140",
+"addr:street": "Tiefendorfergasse",
+"male": "yes",
+"name": "Dejan Simic",
+"shop": "hairdresser",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 1681959408,
+"lat": 48.1984849,
+"lon": 16.3007489,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:door": "1",
+"addr:housenumber": "8-14",
+"addr:postcode": "1140",
+"addr:street": "Heinrich-Collin-Straße",
+"addr:unit": "11",
+"amenity": "doctors",
+"description": "Allgemeinmedizin",
+"healthcare": "doctor",
+"healthcare:speciality": "general",
+"name": "Dr. Gabriele Medl",
+"opening_hours": "Mo 08:00-12:00; Tu 13:00-17:00; We 08:00-12:00; Th 14:00-18:00; Fr 13:00-16:00",
+"phone": "+43 1 9113370",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 1737487162,
+"lat": 48.1979172,
+"lon": 16.3017957,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "169",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"brand": "Ströck",
+"brand:wikidata": "Q2357607",
+"brand:wikipedia": "de:Ströck-Brot",
+"check_date:opening_hours": "2024-09-07",
+"name": "Ströck",
+"opening_hours": "Mo-Fr 06:00-18:00; Sa 06:00-12:00",
+"phone": "+43 1 9143186",
+"shop": "bakery",
+"website": "https://www.stroeck.at/",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 2509620147,
+"lat": 48.1980591,
+"lon": 16.3020016,
+"tags": {
+"name": "Leyserstraße",
+"network": "VOR",
+"network:wikidata": "Q2516485",
+"operator": "Wiener Linien",
+"operator:short": "WL",
+"operator:wikidata": "Q668849",
+"public_transport": "stop_position",
+"railway": "tram_stop",
+"ref": "1470",
+"tram": "yes",
+"wikidata": "Q132177159"
+}
+},
+{
+"type": "node",
+"id": 2510471103,
+"lat": 48.1982081,
+"lon": 16.3027823,
+"tags": {
+"name": "Leyserstraße",
+"network": "VOR",
+"network:wikidata": "Q2516485",
+"operator": "Wiener Linien",
+"operator:short": "WL",
+"operator:wikidata": "Q668849",
+"public_transport": "stop_position",
+"railway": "tram_stop",
+"ref": "1453",
+"tram": "yes",
+"wikidata": "Q132177159"
+}
+},
+{
+"type": "node",
+"id": 2824147686,
+"lat": 48.1966375,
+"lon": 16.3017838,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "42",
+"addr:postcode": "1140",
+"addr:street": "Ameisgasse",
+"brand": "PENNY",
+"brand:wikidata": "Q284688",
+"brand:wikipedia": "en:Penny (supermarket)",
+"name": "PENNY",
+"opening_hours": "Mo-Fr 07:15-19:30; Sa 07:15-18:00",
+"shop": "supermarket",
+"website": "https://www.penny.at/",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 2882276102,
+"lat": 48.196279,
+"lon": 16.3039496,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "26",
+"addr:postcode": "1140",
+"addr:street": "Matznergasse",
+"contact:facebook": "https://www.facebook.com/radstefan.wien",
+"contact:phone": "+43 650 510 57 58",
+"contact:website": "https://radstefan.at/",
+"name": "RadStefan",
+"opening_hours": "Tu-Fr 09:00-12:00, 15:00-18:00",
+"service:bicycle:repair": "yes",
+"service:bicycle:sales": "yes",
+"shop": "bicycle"
+}
+},
+{
+"type": "node",
+"id": 3280700262,
+"lat": 48.1981959,
+"lon": 16.3036577,
+"tags": {
+"amenity": "ice_cream",
+"indoor_seating": "yes",
+"name": "Gelateria Fronza Italia",
+"outdoor_seating": "yes",
+"payment:account_cards": "no",
+"payment:alipay": "no",
+"payment:american_express": "no",
+"payment:app": "no",
+"payment:apple_pay": "no",
+"payment:bancomat": "no",
+"payment:blik": "no",
+"payment:cards": "no",
+"payment:cash": "yes",
+"payment:cheque": "no",
+"payment:clipper": "no",
+"payment:contactless": "no",
+"payment:credit_cards": "no",
+"payment:cryptocurrencies": "no",
+"payment:debit_cards": "no",
+"payment:diners_club": "no",
+"payment:discover_card": "no",
+"payment:dkv": "no",
+"payment:electronic_purses": "no",
+"payment:ep_easycard": "no",
+"payment:ep_geldkarte": "no",
+"payment:ep_ipass": "no",
+"payment:girocard": "no",
+"payment:google_pay": "no",
+"payment:jcb": "no",
+"payment:maestro": "no",
+"payment:mastercard": "no",
+"payment:mastercard_contactless": "no",
+"payment:notes": "no",
+"payment:paypal": "no",
+"payment:prepaid_ticket": "no",
+"payment:telephone_cards": "no",
+"payment:unionpay": "no",
+"payment:uta": "no",
+"payment:v_pay": "no",
+"payment:visa": "no",
+"payment:visa_debit": "no",
+"payment:visa_electron": "no",
+"payment:wechat": "no"
+}
+},
+{
+"type": "node",
+"id": 3280700263,
+"lat": 48.1983389,
+"lon": 16.3012483,
+"tags": {
+"addr:housenumber": "1",
+"addr:street": "Tiefendorfergasse",
+"amenity": "restaurant",
+"description": "Restaurant & Bar Brunch: Samstag & Sonntag",
+"name": "Kenks",
+"opening_hours": "Tu-Fr 11:30-23:00; Sa 09:00-23:00; Su 09:00-22:00",
+"outdoor_seating": "yes",
+"phone": "+43 1 9420592",
+"website": "https://www.kenks.at",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 3405665911,
+"lat": 48.1973982,
+"lon": 16.3023031,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "48",
+"addr:postcode": "1140",
+"addr:street": "Ameisgasse",
+"contact:email": "office@iwka-kungfu.at",
+"contact:phone": "+43 650 3035744",
+"name": "IWKA Kung Fu",
+"sport": "kung_fu",
+"website": "https://www.iwka-kungfu.at/"
+}
+},
+{
+"type": "node",
+"id": 3582495606,
+"lat": 48.197865,
+"lon": 16.3023023,
+"tags": {
+"bus": "yes",
+"highway": "bus_stop",
+"name": "Leyserstraße",
+"network": "VOR",
+"network:wikidata": "Q2516485",
+"operator": "Wiener Linien",
+"operator:wikidata": "Q668849",
+"public_transport": "stop_position"
+}
+},
+{
+"type": "node",
+"id": 3582495607,
+"lat": 48.1984437,
+"lon": 16.3024331,
+"tags": {
+"bus": "yes",
+"highway": "bus_stop",
+"name": "Leyserstraße",
+"network": "VOR",
+"network:wikidata": "Q2516485",
+"operator": "Wiener Linien",
+"operator:wikidata": "Q668849",
+"public_transport": "stop_position"
+}
+},
+{
+"type": "node",
+"id": 3631232712,
+"lat": 48.198145,
+"lon": 16.3034203,
+"tags": {
+"name": "Burger Augenoptik Kontaktlinsen",
+"opening_hours": "Tu-Fr 09:00-18:00; Sa 10:00-17:00",
+"shop": "optician",
+"website": "https://optikburger.at/",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 3650796805,
+"lat": 48.1975321,
+"lon": 16.2992023,
+"tags": {
+"brand": "Bipa",
+"brand:wikidata": "Q864933",
+"brand:wikipedia": "de:Bipa",
+"check_date:opening_hours": "2024-09-07",
+"name": "Bipa",
+"opening_hours": "Mo-Fr 08:00-19:00; Sa 08:00-18:00",
+"phone": "+43 1 4164238",
+"shop": "chemist",
+"website": "https://www.bipa.at/",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 3650798633,
+"lat": 48.1977381,
+"lon": 16.3006738,
+"tags": {
+"amenity": "fast_food",
+"check_date": "2026-08-26",
+"cuisine": "chicken;seafood;fried_food",
+"name": "Hütteldorfer Geflügel & Fisch",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 3650798634,
+"lat": 48.197695,
+"lon": 16.3003805,
+"tags": {
+"addr:housenumber": "181",
+"addr:street": "Hütteldorfer Straße",
+"name": "Melis Bäckerei",
+"opening_hours": "Mo-Su 06:00-22:00",
+"shop": "bakery",
+"website": "https://www.instagram.com/melisbackerei/",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 4246128178,
+"lat": 48.1980692,
+"lon": 16.3019739,
+"tags": {
+"bus": "yes",
+"highway": "bus_stop",
+"name": "Leyserstraße",
+"network": "VOR",
+"network:wikidata": "Q2516485",
+"operator": "Wiener Linien",
+"operator:wikidata": "Q668849",
+"public_transport": "stop_position"
+}
+},
+{
+"type": "node",
+"id": 4246128179,
+"lat": 48.1981958,
+"lon": 16.3028042,
+"tags": {
+"bus": "yes",
+"highway": "bus_stop",
+"name": "Leyserstraße",
+"network": "VOR",
+"network:wikidata": "Q2516485",
+"public_transport": "stop_position"
+}
+},
+{
+"type": "node",
+"id": 4790373329,
+"lat": 48.1977215,
+"lon": 16.3005729,
+"tags": {
+"brand": "ETSAN",
+"brand:wikidata": "Q25916921",
+"diet:halal": "only",
+"name": "ETSAN",
+"opening_hours": "Sa 08:00-18:00; Mo-Fr 08:00-19:00",
+"shop": "supermarket",
+"website": "https://www.etsan.at/",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 5336479379,
+"lat": 48.1978312,
+"lon": 16.3012493,
+"tags": {
+"check_date": "2026-08-26",
+"name": "Blumen Salon Dody",
+"shop": "florist",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 5336479380,
+"lat": 48.1978767,
+"lon": 16.3015103,
+"tags": {
+"amenity": "restaurant",
+"name": "Luis Wok & Co."
+}
+},
+{
+"type": "node",
+"id": 5336479381,
+"lat": 48.1978971,
+"lon": 16.3016675,
+"tags": {
+"amenity": "fast_food",
+"check_date": "2026-08-26",
+"cuisine": "kebab;pizza",
+"name": "VIP Imbiss",
+"takeaway": "yes",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 5336479382,
+"lat": 48.1979248,
+"lon": 16.301879,
+"tags": {
+"name": "Mode Markt",
+"opening_hours": "Mo-Fr 09:00-17:00",
+"shop": "clothes",
+"wheelchair": "no"
+}
+},
+{
+"type": "node",
+"id": 5336479385,
+"lat": 48.1979643,
+"lon": 16.3021242,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "167/6a",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"contact:facebook": "https://www.facebook.com/backstagefriseur",
+"currency:EUR": "yes",
+"description": "Friseursalon mit Haarschnitten, Haarfärben, Haarverlängerungen und Styling für Anlässe. Professionelles Team, hochwertige Produkte und entspannte Atmosphäre. / Hair salon with cuts, coloring, extensions & styling. Pro staff, quality products, relaxing.",
+"email": "backstagefriseur@gmail.com",
+"female": "yes",
+"internet_access": "wlan",
+"level": "0",
+"male": "yes",
+"name": "BACKSTAGE FRISEUR",
+"opening_hours": "Mo-Sa 09:00-18:00",
+"phone": "+43 677 64746874",
+"shop": "hairdresser",
+"stroller": "yes",
+"toilets": "yes",
+"website": "https://linktr.ee/backstagefriseur",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 5336479386,
+"lat": 48.1983241,
+"lon": 16.3016615,
+"tags": {
+"beauty": "nails",
+"check_date": "2026-01-03",
+"check_date:opening_hours": "2026-01-03",
+"name": "Micky's Nailstudio",
+"opening_hours": "Tu-Fr 09:00-18:00",
+"shop": "beauty"
+}
+},
+{
+"type": "node",
+"id": 5336479387,
+"lat": 48.1983116,
+"lon": 16.3019571,
+"tags": {
+"name": "Peter's Hausbetreuung",
+"office": "company",
+"website": "https://www.peters-hausbetreuer.com/"
+}
+},
+{
+"type": "node",
+"id": 5624228659,
+"lat": 48.1976218,
+"lon": 16.3023819,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "48",
+"addr:postcode": "1140",
+"addr:street": "Ameisgasse",
+"amenity": "cafe",
+"name": "Café Cindy"
+}
+},
+{
+"type": "node",
+"id": 6455694981,
+"lat": 48.1986673,
+"lon": 16.3027537,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "2",
+"addr:postcode": "1140",
+"addr:street": "Leyserstraße",
+"amenity": "doctors",
+"healthcare": "doctor",
+"healthcare:speciality": "general",
+"name": "Dr. Maria Weiß-Grein",
+"opening_hours": "Mo 14:00-19:00; Tu 12:00-16:00; We 08:00-11:00; Th 12:00-16:00; Fr 08:00-11:00"
+}
+},
+{
+"type": "node",
+"id": 6481658911,
+"lat": 48.1984959,
+"lon": 16.3027329,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "2",
+"addr:postcode": "1140",
+"addr:street": "Leyserstraße",
+"amenity": "police",
+"check_date": "2024-04-29",
+"contact:email": "PI-W-14-Leyserstrasse@polizei.gv.at",
+"contact:fax": "+43 1 31 310 47339",
+"contact:phone": "+43 1 31 310 47330",
+"name": "Polizeiinspektion Leyserstraße"
+}
+},
+{
+"type": "node",
+"id": 7515542484,
+"lat": 48.1963948,
+"lon": 16.2983541,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "3/2/1/4",
+"addr:postcode": "1140",
+"addr:street": "Rottstraße",
+"amenity": "doctors",
+"healthcare": "doctor",
+"healthcare:speciality": "general",
+"name": "Michael Barfuß"
+}
+},
+{
+"type": "node",
+"id": 7533145729,
+"lat": 48.1961119,
+"lon": 16.3004331,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "65",
+"addr:postcode": "1140",
+"addr:street": "Ameisgasse",
+"laundry_service": "yes",
+"name": "Gans Waschcenter",
+"opening_hours": "Mo-Fr 09:00-14:00",
+"self_service": "no",
+"shop": "laundry",
+"website": "https://www.gans.at/"
+}
+},
+{
+"type": "node",
+"id": 7558841275,
+"lat": 48.1976757,
+"lon": 16.2982005,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "130C",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"brand": "Pagro",
+"brand:wikidata": "Q57550022",
+"check_date": "2026-08-26",
+"name": "Pagro",
+"shop": "stationery"
+}
+},
+{
+"type": "node",
+"id": 7558841276,
+"lat": 48.197712,
+"lon": 16.298461,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "130C",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"brand": "KiK",
+"brand:wikidata": "Q883965",
+"brand:wikipedia": "en:KiK",
+"check_date": "2026-08-26",
+"name": "KiK",
+"shop": "clothes"
+}
+},
+{
+"type": "node",
+"id": 7559150202,
+"lat": 48.1971771,
+"lon": 16.3022042,
+"tags": {
+"name": "Baustoffzentrale",
+"opening_hours": "Mo-Fr 09:00-12:00,14:00-17:00",
+"shop": "trade"
+}
+},
+{
+"type": "node",
+"id": 9288080406,
+"lat": 48.1974448,
+"lon": 16.3001751,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "4",
+"addr:postcode": "1140",
+"addr:street": "Straßgschwandtnerstraße",
+"amenity": "doctors",
+"healthcare": "doctor",
+"healthcare:speciality": "psychiatry",
+"name": "Angela Waldmann"
+}
+},
+{
+"type": "node",
+"id": 9288080413,
+"lat": 48.198471,
+"lon": 16.3007348,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "8-14",
+"addr:postcode": "1140",
+"addr:street": "Heinrich-Collin-Straße",
+"amenity": "doctors",
+"healthcare": "doctor",
+"healthcare:speciality": "gynaecology",
+"name": "Michael Medl"
+}
+},
+{
+"type": "node",
+"id": 9697145863,
+"lat": 48.2006303,
+"lon": 16.3028325,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "29",
+"addr:postcode": "1140",
+"addr:street": "Spallartgasse",
+"brand": "Billa",
+"brand:wikidata": "Q537781",
+"brand:wikipedia": "en:Billa (supermarket)",
+"check_date:opening_hours": "2025-08-26",
+"contact:phone": "+43 59 91 50 14 83",
+"name": "Billa",
+"opening_hours": "Mo-Fr 07:15-19:30; Sa 07:15-18:00; Su off",
+"operator": "Billa",
+"shop": "supermarket",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 9934153043,
+"lat": 48.1977978,
+"lon": 16.302102,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "167/2",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"name": "Tauchertreff",
+"opening_hours": "Mo-Fr 15:00-18:00",
+"shop": "scuba_diving",
+"website": "https://www.tauchen.at/"
+}
+},
+{
+"type": "node",
+"id": 10252856465,
+"lat": 48.1998955,
+"lon": 16.3027266,
+"tags": {
+"artist_name": "Oktavia Schreiner",
+"artwork_type": "sculpture",
+"name": "Der größere Wald",
+"tourism": "artwork",
+"wikimedia_commons": "File:1140 Wien, Keramik-Skulptur 'Der größere Wald' 02 2022-11-11.jpg"
+}
+},
+{
+"type": "node",
+"id": 10911268501,
+"lat": 48.2000084,
+"lon": 16.3039621,
+"tags": {
+"addr:housenumber": "25/27",
+"addr:street": "Spallartgasse",
+"amenity": "cafe",
+"diet:vegan": "yes",
+"diet:vegetarian": "yes",
+"indoor_seating": "yes",
+"name": "Café Demi",
+"opening_hours": "Tu-Su 08:00-22:00",
+"outdoor_seating": "yes",
+"toilets:wheelchair": "yes",
+"website": "https://demi.cafe/",
+"wheelchair": "yes"
+}
+},
+{
+"type": "node",
+"id": 11071786810,
+"lat": 48.197475,
+"lon": 16.2987616,
+"tags": {
+"addr:city": "Vienna",
+"addr:housenumber": "191",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"amenity": "cafe",
+"check_date": "2023-07-27",
+"cuisine": "crepe",
+"name": "Crepeteria Crepes & Coffee",
+"website": "https://crepeteria.at"
+}
+},
+{
+"type": "node",
+"id": 11071786811,
+"lat": 48.1975034,
+"lon": 16.298957,
+"tags": {
+"check_date": "2023-07-27",
+"name": "Schuhservice & Schlüsseldienst",
+"shop": "shoe_repair"
+}
+},
+{
+"type": "node",
+"id": 11071786812,
+"lat": 48.1975118,
+"lon": 16.2990108,
+"tags": {
+"check_date": "2023-07-27",
+"healthcare": "podiatrist",
+"name": "Ilse's Fußpflege"
+}
+},
+{
+"type": "node",
+"id": 11071786813,
+"lat": 48.1975413,
+"lon": 16.2993743,
+"tags": {
+"amenity": "cafe",
+"check_date": "2023-07-27",
+"name": "Colorado"
+}
+},
+{
+"type": "node",
+"id": 11071786835,
+"lat": 48.1975835,
+"lon": 16.299614,
+"tags": {
+"amenity": "cafe",
+"check_date": "2023-07-27",
+"name": "Café-Pub Holzi"
+}
+},
+{
+"type": "node",
+"id": 11133546005,
+"lat": 48.1973385,
+"lon": 16.3036788,
+"tags": {
+"addr:city": "Wien",
+"addr:country": "AT",
+"addr:housenumber": "17/6-9",
+"addr:postcode": "1140",
+"addr:street": "Dreyhausenstraße",
+"amenity": "restaurant",
+"contact:facebook": "Origami-Sushi-House",
+"contact:instagram": "origami_sushi_house",
+"cuisine": "asian;sushi",
+"diet:vegan": "yes",
+"diet:vegetarian": "yes",
+"email": "origamisushi.wien@gmail.com",
+"indoor_seating": "yes",
+"name": "Origami sushi house",
+"opening_hours": "Tu-Su 11:00-22:00",
+"outdoor_seating": "yes",
+"phone": "+43 1 8777276",
+"website": "https://www.origami-sushi-house.at/",
+"website:menu": "https://origami-sushi-house.at/gustieren-sie-in-unserer-speisekarte-fuer-den-14-bezirk/"
+}
+},
+{
+"type": "node",
+"id": 11734531085,
+"lat": 48.1982353,
+"lon": 16.3039118,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "155",
+"addr:postcode": "1140",
+"addr:street": "Hütteldorfer Straße",
+"clothes": "women",
+"name": "Magnolia",
+"opening_hours": "Mo-We 09:00-19:00; Th-Fr 09:00-20:00; Sa 09:00-18:00; PH off",
+"phone": "+43 1 7866979",
+"shop": "clothes"
+}
+},
+{
+"type": "node",
+"id": 11737044451,
+"lat": 48.1969378,
+"lon": 16.3039039,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "32",
+"addr:postcode": "1140",
+"addr:street": "Matznergasse",
+"email": "korbwaren@aon.at",
+"name": "Korbwaren Oberegger",
+"opening_hours": "Mo-Fr 14:00-18:00; Tu,Th 09:00-13:00",
+"phone": "+43 1 914 51 83",
+"shop": "basket",
+"website": "https://korbwaren-oberegger.at/"
+}
+},
+{
+"type": "node",
+"id": 11765819469,
+"lat": 48.1966676,
+"lon": 16.2984806,
+"tags": {
+"addr:housenumber": "7/4",
+"addr:postcode": "1140",
+"addr:street": "Rottstraße",
+"email": "office@wienyl.at",
+"name": "Wienyl",
+"phone": "+436505604854",
+"shop": "music",
+"website": "https://www.wienyl.at/"
+}
+},
+{
+"type": "node",
+"id": 11795499695,
+"lat": 48.1965137,
+"lon": 16.3039305,
+"tags": {
+"addr:city": "Wien",
+"addr:housenumber": "28",
+"addr:postcode": "1140",
+"addr:street": "Matznergasse",
+"brand": "Mrs. Sporty",
+"brand:wikidata": "Q100718953",
+"leisure": "fitness_centre",
+"name": "Mrs. Sporty",
+"opening_hours": "Mo,We 09:00-13:00,16:00-20:00; Tu,Th 09:00-13:00,16:00-19:00; Fr 08:00-13:00,15:00-18:00; Sa 09:00-12:00",
+"phone": "+43 660 37 37 245",
+"sport": "fitness",
+"website": "https://www.mrssporty.at/club/wien-penzing/"
+}
+},
+{
+"type": "node",
+"id": 12810296076,
+"lat": 48.1984783,
+"lon": 16.3007486,
+"tags": {
+"addr:housenumber": "8-14",
+"addr:street": "Heinrich-Collin-Straße",
+"amenity": "doctors",
+"description": "Praktische Ärztin",
+"healthcare": "doctor",
+"healthcare:speciality": "general",
+"name": "Dr. Münevver Geyik",
+"opening_hours": "Mo 08:00-13:00; Tu 13:00-19:00; We 08:00-13:00; Th 13:00-18:00; Fr 08:00-12:00",
+"phone": "+43 1 911 33 70"
+}
+}
+]
+}

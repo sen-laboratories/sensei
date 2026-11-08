@@ -36,15 +36,13 @@ public:
 
 private:
 	/**
-	 * The same request over a plain socket (BSecureSocket for https), HTTP/1.1 with the answer read to the end of the connection. Haiku's own client refuses an
-	 * answer that has a header with an empty value (Wikimedia sends `x-analytics:` with all of them: a bug of the client, RFC 9110 allows it), so the services of
-	 * Wikimedia (Wikidata, Commons and their pictures) are read this way. It reads the headers it needs (the status, `Content-Length`, `Transfer-Encoding`,
-	 * `Location`) and no more.
+	 * The same request over a plain socket (BSecureSocket for https; common/SocketHttp.h). Haiku's own client cannot read an answer that has a header with an empty value (Wikimedia sends
+	 * `x-analytics:` with all of them): RFC 9110 allows that, so it is a bug of Haiku's client, and the services of Wikimedia (Wikidata, Commons and their pictures) are read this way.
 	 */
-	status_t					_GetTolerant(const std::string& url, std::string* body, const HttpOptions& options, int redirects = 0);
+	status_t					_GetOverSocket(const std::string& url, std::string* body, const HttpOptions& options, int redirects = 0);
 
 	BPrivate::Network::BHttpSession*	fSession;
 	std::string					fUserAgent;
 	bigtime_t					fLastRequest;
-	std::set<std::string>		fTolerantHosts;		///< the hosts whose answers Haiku's client refuses: they are asked over a socket from the start
+	std::set<std::string>		fSocketHosts;		///< the hosts that Haiku's client cannot read: they are asked over a socket from the start
 };

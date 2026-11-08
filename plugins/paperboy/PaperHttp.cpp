@@ -5,6 +5,7 @@
 
 #include "PaperHttp.h"
 #include "../../common/SharedHttpSession.h"
+#include "../../common/SocketHttp.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -60,12 +61,12 @@ HttpClient::Get(const std::string& url, std::string* body, const HttpOptions& op
 {
 	// (a host that the client of Haiku could not read before is not asked twice)
 	BUrl target(url.c_str(), true);
-	if (target.HasHost() && fTolerantHosts.count(target.Host().String()) > 0) {
+	if (target.HasHost() && fSocketHosts.count(target.Host().String()) > 0) {
 		bigtime_t wait = fLastRequest + options.minInterval - system_time();
 		if (wait > 0)
 			snooze(wait);
 		fLastRequest = system_time();
-		return _GetTolerant(url, body, options);
+		return _GetOverSocket(url, body, options);
 	}
 
 	// made on the first request: a run that needs no network (identify) never starts the thread of the session
@@ -114,11 +115,11 @@ HttpClient::Get(const std::string& url, std::string* body, const HttpOptions& op
 			spdlog::warn("request to {} failed: {}", url, error.Message());
 			return error.ErrorCode();
 		} catch (const BError& error) {
-			// (the answer could not be read: the client is strict about the format of the headers)
-			spdlog::info("request to {} failed in the client of Haiku ({}), trying a socket", url, error.Message());
+			// (the answer could not be read by Haiku's client, e.g. a header with an empty value, which it wrongly refuses)
+			spdlog::info("request to {} failed in Haiku's client ({}), trying a socket", url, error.Message());
 			if (target.HasHost())
-				fTolerantHosts.insert(target.Host().String());
-			return _GetTolerant(url, body, options);
+				fSocketHosts.insert(target.Host().String());
+			return _GetOverSocket(url, body, options);
 		}
 
 		if (status.code >= 200 && status.code < 300) {
@@ -153,155 +154,13 @@ HttpClient::Get(const std::string& url, std::string* body, const HttpOptions& op
 }
 
 
-namespace {
-
-std::string
-Lower(std::string text)
-{
-	for (char& c : text)
-		c = (char) std::tolower((unsigned char) c);
-	return text;
-}
-
-/** the value of a header of a block of headers ("name: value" lines), "" if it is not there (the empty value is no reason to stop: that is what this is for) */
-std::string
-HeaderValue(const std::string& headers, const std::string& name)
-{
-	const std::string wanted = Lower(name) + ":";
-	size_t from = 0;
-	while (from < headers.size()) {
-		size_t end = headers.find("\r\n", from);
-		if (end == std::string::npos)
-			end = headers.size();
-		const std::string line = headers.substr(from, end - from);
-		if (Lower(line.substr(0, wanted.size())) == wanted) {
-			size_t start = wanted.size();
-			while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
-				start++;
-			return line.substr(start);
-		}
-		from = end + 2;
-	}
-	return "";
-}
-
-/** the body of a chunked answer (size in hex, line break, data, line break... and a chunk of size 0); false if it is cut off */
-bool
-Dechunk(const std::string& raw, std::string* body)
-{
-	size_t at = 0;
-	body->clear();
-	while (at < raw.size()) {
-		size_t lineEnd = raw.find("\r\n", at);
-		if (lineEnd == std::string::npos)
-			return false;
-		const size_t size = std::strtoul(raw.substr(at, lineEnd - at).c_str(), nullptr, 16);
-		at = lineEnd + 2;
-		if (size == 0)
-			return true;
-		if (at + size > raw.size())
-			return false;
-		body->append(raw, at, size);
-		at += size + 2;
-	}
-	return false;
-}
-
-}	// namespace
-
-
 status_t
-HttpClient::_GetTolerant(const std::string& url, std::string* body, const HttpOptions& options, int redirects)
+HttpClient::_GetOverSocket(const std::string& url, std::string* body, const HttpOptions& options, int)
 {
-	BUrl address(url.c_str(), true);
-	if (!address.IsValid() || !address.HasHost())
-		return B_BAD_VALUE;
-	const bool secure = address.Protocol() == "https";
-	if (!secure && address.Protocol() != "http")
-		return B_BAD_VALUE;
-	const int port = address.HasPort() ? address.Port() : (secure ? 443 : 80);
-
-	BString target(address.HasPath() ? address.Path() : BString("/"));
-	if (address.HasRequest()) {
-		BString query(address.Request());
-		if (query.ByteAt(0) == '?')
-			query.Remove(0, 1);
-		target << "?" << query;
-	}
-
-	BNetworkAddress peer(address.Host().String(), (uint16) port);
-	BSecureSocket secureSocket;
-	BSocket plainSocket;
-	BSocket* socket = secure ? &secureSocket : &plainSocket;
-	status_t status = socket->Connect(peer, kTimeout);
-	if (status != B_OK) {
-		spdlog::warn("could not connect to {}: {}", address.Host().String(), strerror(status));
-		return status;
-	}
-	socket->SetTimeout(kTimeout);
-
-	std::string request = std::string("GET ") + target.String() + " HTTP/1.1\r\nHost: " + address.Host().String()
-		+ (address.HasPort() ? ":" + std::to_string(port) : "") + "\r\nUser-Agent: " + fUserAgent + "\r\nAccept: " + options.accept
-		+ "\r\nConnection: close\r\n\r\n";
-	for (size_t sent = 0; sent < request.size();) {
-		ssize_t count = socket->Write(request.data() + sent, request.size() - sent);
-		if (count <= 0)
-			return count < 0 ? (status_t) count : B_IO_ERROR;
-		sent += (size_t) count;
-	}
-
-	// the whole answer: it ends when the server closes the connection
-	std::string raw;
-	char buffer[16384];
-	for (;;) {
-		ssize_t count = socket->Read(buffer, sizeof(buffer));
-		if (count == 0)
-			break;
-		if (count < 0) {
-			if (raw.empty())
-				return (status_t) count;
-			break;		// (a secure connection that is closed without the notice: what was read is what there is)
-		}
-		raw.append(buffer, (size_t) count);
-		if (raw.size() > kMaxAnswer)
-			return B_NO_MEMORY;
-	}
-	socket->Disconnect();
-
-	const size_t headEnd = raw.find("\r\n\r\n");
-	if (headEnd == std::string::npos || raw.compare(0, 5, "HTTP/") != 0)
-		return B_BAD_DATA;
-	const std::string head = raw.substr(0, headEnd);
-	const size_t statusLineEnd = head.find("\r\n");
-	const std::string statusLine = head.substr(0, statusLineEnd);
-	const std::string headers = statusLineEnd == std::string::npos ? "" : head.substr(statusLineEnd + 2);
-	const size_t space = statusLine.find(' ');
-	const int code = space == std::string::npos ? 0 : std::atoi(statusLine.c_str() + space + 1);
-
-	if (code >= 300 && code < 400 && !HeaderValue(headers, "Location").empty()) {
-		if (redirects >= kMaxRedirections)
-			return B_ERROR;
-		BUrl next(address, BString(HeaderValue(headers, "Location").c_str()));
-		return _GetTolerant(next.UrlString().String(), body, options, redirects + 1);
-	}
-	if (code == 404)
-		return B_ENTRY_NOT_FOUND;
-	if (code == 401 || code == 403)
-		return B_NOT_ALLOWED;
-	if (code == 429 || code == 503)
-		return B_BUSY;
-	if (code < 200 || code >= 300) {
-		spdlog::warn("HTTP {} from {}", code, url);
-		return B_ERROR;
-	}
-
-	const std::string content = raw.substr(headEnd + 4);
-	if (Lower(HeaderValue(headers, "Transfer-Encoding")).find("chunked") != std::string::npos)
-		return Dechunk(content, body) ? B_OK : B_BAD_DATA;
-	const std::string length = HeaderValue(headers, "Content-Length");
-	if (!length.empty() && std::strtoul(length.c_str(), nullptr, 10) < content.size())
-		body->assign(content, 0, std::strtoul(length.c_str(), nullptr, 10));
-	else
-		*body = content;
-	return B_OK;
+	// (the request over a socket is shared by the plugins: common/SocketHttp.h)
+	int httpStatus = 0;
+	status_t result = sensei::SocketGet(url, fUserAgent, options.accept, body, &httpStatus);
+	if (result == B_ERROR)
+		spdlog::warn("HTTP {} from {}", httpStatus, url);
+	return result;
 }
