@@ -6,6 +6,7 @@
 #include "PersonEnricher.h"
 
 #include <algorithm>
+#include <iterator>
 
 #include "FeedResolver.h"
 #include "GitHubResolver.h"
@@ -55,7 +56,7 @@ PersonEnricher::PersonEnricher(HttpGetFunc httpGet, const Settings& settings)
 std::string
 PersonEnricher::GitHubUser(const PersonProfile& profile)
 {
-	for (const auto& link : profile.sameAs) {
+	for (const auto& link : Links(profile)) {
 		if (link.find("github.com/") == std::string::npos)
 			continue;
 		const std::string user = GitHubResolver::ExtractUsername(link);
@@ -74,7 +75,7 @@ PersonEnricher::FediverseHandle(const PersonProfile& profile)
 	if (StartsWith(profile.nick, '@') && profile.nick.find('@', 1) != std::string::npos)
 		return profile.nick.substr(1);
 
-	for (const auto& link : profile.sameAs) {
+	for (const auto& link : Links(profile)) {
 		const size_t at = link.find("/@");
 		const size_t hostStart = link.find("://");
 		if (at == std::string::npos || hostStart == std::string::npos || at < hostStart)
@@ -96,11 +97,100 @@ PersonEnricher::FediverseHandle(const PersonProfile& profile)
 std::string
 PersonEnricher::BlueskyLink(const PersonProfile& profile)
 {
-	for (const auto& link : profile.sameAs) {
+	for (const auto& link : Links(profile)) {
 		if (link.find("bsky.app/profile/") != std::string::npos)
 			return link;
 	}
+	// a handle of Bluesky as nickname: `@name.bsky.social` (a handle on a domain of one's own cannot be told from a name, it is a link then)
+	std::string nick = profile.nick;
+	if (StartsWith(nick, '@'))
+		nick = nick.substr(1);
+	const std::string suffix = ".bsky.social";
+	if (nick.size() > suffix.size() && nick.compare(nick.size() - suffix.size(), suffix.size(), suffix) == 0 && nick.find('@') == std::string::npos
+			&& nick.find_first_of(" /:") == std::string::npos)
+		return "https://bsky.app/profile/" + nick;
 	return "";
+}
+
+
+std::vector<std::string>
+PersonEnricher::Links(const PersonProfile& profile)
+{
+	std::vector<std::string> links = profile.sameAs;
+	if (!profile.homepage.empty() && std::find(links.begin(), links.end(), profile.homepage) == links.end())
+		links.push_back(profile.homepage);
+	return links;
+}
+
+
+std::string
+PersonEnricher::GravatarId(const PersonProfile& profile)
+{
+	for (const auto& link : Links(profile)) {
+		const size_t scheme = link.find("://");
+		if (scheme == std::string::npos)
+			continue;
+		const size_t hostEnd = link.find('/', scheme + 3);
+		if (hostEnd == std::string::npos)
+			continue;
+		const std::string host = link.substr(scheme + 3, hostEnd - scheme - 3);
+		const bool isGravatar = host == "gravatar.com" || (host.size() > 13 && host.compare(host.size() - 13, 13, ".gravatar.com") == 0);
+		if (!isGravatar)
+			continue;
+		std::string path = link.substr(hostEnd + 1);
+		path = path.substr(0, path.find_first_of("?#"));
+		const size_t slash = path.find('/');
+		const std::string first = path.substr(0, slash);
+		std::string second = slash == std::string::npos ? std::string() : path.substr(slash + 1);
+		second = second.substr(0, second.find('/'));
+		auto strip = [](std::string name) {
+			for (const char* extension : {".json", ".xml", ".png", ".jpg", ".jpeg"}) {
+				const std::string ext = extension;
+				if (name.size() > ext.size() && name.compare(name.size() - ext.size(), ext.size(), ext) == 0)
+					return name.substr(0, name.size() - ext.size());
+			}
+			return name;
+		};
+		if (first == "avatar") {
+			const std::string hash = strip(second);
+			if ((hash.size() == 32 || hash.size() == 64) && hash.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos)
+				return hash;
+			continue;
+		}
+		static const char* notProfiles[] = {"profiles", "js", "embed", "site", "connect", "emails", "about", "docs", "avatar", "profile", "login", "signup", "support"};
+		const std::string slug = strip(first);
+		if (slug.empty() || std::find(std::begin(notProfiles), std::end(notProfiles), slug) != std::end(notProfiles))
+			continue;
+		return slug;
+	}
+	return "";
+}
+
+
+std::string
+PersonEnricher::Explain(const PersonProfile& profile, const Settings& settings)
+{
+	std::vector<std::string> looked;
+	if (!profile.mbox.empty() && settings.emailServices)
+		looked.push_back("Gravatar for the e-mail address");
+	if (!GravatarId(profile).empty() && settings.emailServices)
+		looked.push_back("the Gravatar profile");
+	if (!GitHubUser(profile).empty() && settings.github)
+		looked.push_back("GitHub (" + GitHubUser(profile) + ")");
+	if (!FediverseHandle(profile).empty() && settings.fediverse)
+		looked.push_back("the Fediverse (" + FediverseHandle(profile) + ")");
+	if (!BlueskyLink(profile).empty() && settings.bluesky)
+		looked.push_back("Bluesky");
+	if (!profile.homepage.empty() && settings.feeds)
+		looked.push_back("the homepage");
+	if (looked.empty()) {
+		return "There is nothing to look up. Add an e-mail address or a link to a profile (GitHub, Mastodon, Bluesky, Gravatar) or a homepage to the person; "
+			"a service that is switched off in the settings of Robin is not asked.";
+	}
+	std::string text = "Looked at ";
+	for (size_t i = 0; i < looked.size(); i++)
+		text += (i == 0 ? "" : (i + 1 == looked.size() ? " and " : ", ")) + looked[i];
+	return text + ": nothing public was found there.";
 }
 
 
@@ -131,6 +221,12 @@ PersonEnricher::Enrich(PersonProfile* profile, bool forceWipe)
 	// 1. Email-based enrichment (Libravatar -> Gravatar)
 	if (!profile->mbox.empty() && fSettings.emailServices)
 		_EnrichFromEmail(profile);
+	else if (fSettings.emailServices) {
+		// no e-mail address, but a link to a Gravatar profile or avatar
+		const std::string gravatar = GravatarId(*profile);
+		if (!gravatar.empty())
+			_EnrichFromGravatar(profile, gravatar, gravatar.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos && (gravatar.size() == 32 || gravatar.size() == 64));
+	}
 
 	// 2. The accounts that the profile links to (GitHub, Fediverse, Bluesky)
 	_EnrichFromHandles(profile);
@@ -191,6 +287,27 @@ PersonEnricher::_EnrichFromEmail(PersonProfile* profile)
 	std::string jsonBody;
 	if (_Get(GravatarResolver::GravatarProfileUrl(hash), kAcceptJson, kProfileCacheSeconds, &jsonBody))
 		GravatarResolver::ParseProfileJson(jsonBody, profile);
+}
+
+
+void
+PersonEnricher::_EnrichFromGravatar(PersonProfile* profile, const std::string& id, bool isHash)
+{
+	if (isHash && profile->avatarData.empty() && fSettings.photo) {
+		std::string imgData;
+		const std::string gravatarUrl = GravatarResolver::GravatarAvatarUrl(id, 256);
+		if (_Get(gravatarUrl, kAcceptImage, kProfileCacheSeconds, &imgData)) {
+			profile->avatarData = std::move(imgData);
+			profile->avatarUrl = gravatarUrl;
+			profile->avatarCredit = "Gravatar";
+		}
+	}
+	std::string jsonBody;
+	if (_Get(GravatarResolver::GravatarProfileUrl(id), kAcceptJson, kProfileCacheSeconds, &jsonBody))
+		GravatarResolver::ParseProfileJson(jsonBody, profile);
+	// (the photo that the profile names: for a profile by its name there is no hash of the e-mail address)
+	if (profile->avatarData.empty() && !profile->avatarUrl.empty())
+		_FetchAvatar(profile, "Gravatar");
 }
 
 

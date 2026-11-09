@@ -47,11 +47,19 @@ public:
 	static std::string GitHubUser(const PersonProfile& profile);
 	/** `user@host` from a Fediverse handle (`@user@host` as nickname) or a profile link of a Fediverse server (`https://host/@user`); empty if there is none. */
 	static std::string FediverseHandle(const PersonProfile& profile);
-	/** The link of a profile of Bluesky (`https://bsky.app/profile/<handle>`); empty if there is none. */
+	/** The link of a profile of Bluesky (`https://bsky.app/profile/<handle>`), or a handle of Bluesky (`@name.bsky.social`) as nickname; empty if there is none. */
 	static std::string BlueskyLink(const PersonProfile& profile);
+	/** The links that say who a person is, wherever the person has them: `schema:sameAs` and the homepage (the URL field of a contact of the People application is the only place that it has). */
+	static std::vector<std::string> Links(const PersonProfile& profile);
+	/** What a link of Gravatar names: the hash of an avatar (`gravatar.com/avatar/<hash>`) or the name of a profile (`gravatar.com/<name>`), for the profile of the service; empty if there is none. */
+	static std::string GravatarId(const PersonProfile& profile);
+	/** What the enrichment had to go on, in a sentence for the user who is told that nothing was found: the sources that it looked at, or what the person lacks so that there is nothing to look at. */
+	static std::string Explain(const PersonProfile& profile, const Settings& settings = Settings());
 
 private:
 	void _EnrichFromEmail(PersonProfile* profile);
+	/** the profile of Gravatar for an identifier: the hash of an e-mail address (the photo too, from Libravatar or Gravatar) or the name of a profile (the photo is the one that the profile gives) */
+	void _EnrichFromGravatar(PersonProfile* profile, const std::string& id, bool isHash);
 	void _EnrichFromHandles(PersonProfile* profile);
 	void _EnrichFromFeed(PersonProfile* profile);
 	bool _ResolveActor(PersonProfile* profile, const std::string& handle);

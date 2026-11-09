@@ -194,7 +194,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	bool enriched = enricher.Enrich(&profile, wipe);
 
 	if (!enriched) {
-		sensei::Notify("SEN Robin", "Person not enriched", "No public profile or avatar found.", false);
+		sensei::Notify("SEN Robin", "Person not enriched", PersonEnricher::Explain(profile, fSettings).c_str(), false);
 		return B_ENTRY_NOT_FOUND;
 	}
 

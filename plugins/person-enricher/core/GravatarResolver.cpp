@@ -86,6 +86,14 @@ GravatarResolver::ParseProfileJson(const std::string& jsonString, PersonProfile*
 				profile->name = data["displayName"].get<std::string>();
 		}
 
+		// the photo of the profile (v3 `avatar_url`, v2 `thumbnailUrl`): for a profile that was found by its name the photo is not a hash of the e-mail address away
+		if (profile->avatarUrl.empty()) {
+			if (data.contains("avatar_url") && data["avatar_url"].is_string())
+				profile->avatarUrl = data["avatar_url"].get<std::string>();
+			else if (data.contains("thumbnailUrl") && data["thumbnailUrl"].is_string())
+				profile->avatarUrl = data["thumbnailUrl"].get<std::string>();
+		}
+
 		if (data.contains("job_title") && data["job_title"].is_string() && profile->jobTitle.empty())
 			profile->jobTitle = data["job_title"].get<std::string>();
 		else if (data.contains("jobTitle") && data["jobTitle"].is_string() && profile->jobTitle.empty())

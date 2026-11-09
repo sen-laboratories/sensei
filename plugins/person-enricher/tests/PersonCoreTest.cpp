@@ -389,6 +389,59 @@ main()
 			CHECK(p.recentPosts.size() == 1 && p.recentPosts[0].url == "https://bsky.app/profile/alice.bsky.social/post/3k44aaa");
 		}
 
+		// the links that say who a person is are read from wherever the person has them: the homepage (the only place of a contact of the People application) counts as the links do
+		{
+			robin::PersonProfile p;
+			p.homepage = "https://bsky.app/profile/alice.bsky.social";
+			CHECK(robin::PersonEnricher::BlueskyLink(p) == "https://bsky.app/profile/alice.bsky.social");
+			robin::PersonProfile q;
+			q.homepage = "https://github.com/alice";
+			CHECK(robin::PersonEnricher::GitHubUser(q) == "alice");
+			robin::PersonProfile r;
+			r.nick = "@alice.bsky.social";		// (a handle of Bluesky as nickname)
+			CHECK(robin::PersonEnricher::BlueskyLink(r) == "https://bsky.app/profile/alice.bsky.social");
+			r.nick = "@alice@m.example";
+			CHECK(robin::PersonEnricher::BlueskyLink(r).empty() && robin::PersonEnricher::FediverseHandle(r) == "alice@m.example");
+		}
+
+		// a link of Gravatar: the profile by its name, or the avatar by its hash; the pages of the site that are no profile are not
+		{
+			robin::PersonProfile p;
+			p.sameAs = {"https://gravatar.com/avatar/84059b07d4be67b806386c0aad8070a23f18836bbb743dae0d8a1f2a5bf4b3d4?s=200", "https://example.org/matt"};
+			CHECK(robin::PersonEnricher::GravatarId(p) == "84059b07d4be67b806386c0aad8070a23f18836bbb743dae0d8a1f2a5bf4b3d4");
+			p.sameAs = {"https://en.gravatar.com/matt.json"};
+			CHECK(robin::PersonEnricher::GravatarId(p) == "matt");
+			p.sameAs = {"https://gravatar.com/profiles/x", "https://gravatar.com/", "https://gravatar.com/avatar/notahash"};
+			CHECK(robin::PersonEnricher::GravatarId(p).empty());
+			robin::PersonProfile q;
+			q.homepage = "https://gravatar.com/matt";
+			CHECK(robin::PersonEnricher::GravatarId(q) == "matt");
+
+			// the enrichment asks the profile of the service by the name, and the photo that it names
+			FakeWeb web;
+			web.answers["https://api.gravatar.com/v3/profiles/matt"] = R"({"display_name":"Matt","description":"Hello from Gravatar","avatar_url":"https://0.gravatar.com/avatar/abc"})";
+			web.answers["https://0.gravatar.com/avatar/abc"] = "IMG";
+			robin::PersonEnricher enricher(web.Get());
+			robin::PersonProfile m;
+			m.name = "Matt";
+			m.sameAs = {"https://gravatar.com/matt"};
+			CHECK(enricher.Enrich(&m));
+			CHECK(web.Asked("api.gravatar.com/v3/profiles/matt"));
+		}
+
+		// what the enrichment says when it finds nothing: where it looked, or what the person lacks
+		{
+			robin::PersonProfile p;
+			CHECK(robin::PersonEnricher::Explain(p).find("nothing to look up") != std::string::npos);
+			p.mbox = "a@b.example";
+			p.sameAs = {"https://github.com/alice", "https://bsky.app/profile/alice.bsky.social"};
+			const std::string text = robin::PersonEnricher::Explain(p);
+			CHECK(text.find("Gravatar") != std::string::npos && text.find("GitHub (alice)") != std::string::npos && text.find("Bluesky") != std::string::npos);
+			robin::Settings off;
+			off.github = false;
+			CHECK(robin::PersonEnricher::Explain(p, off).find("GitHub") == std::string::npos);
+		}
+
 		// a homepage with a feed: found in the page, read as RSS
 		{
 			FakeWeb web;
