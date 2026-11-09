@@ -28,6 +28,7 @@
 #include <sen/SenOntoSpatial.h>
 #include <sen/SenPluginSettings.h>
 
+#include "../../common/EnrichOnDemand.h"
 #include "../../common/EntityFile.h"
 #include "../../common/Notice.h"
 #include "../../common/SocketHttp.h"
@@ -426,28 +427,16 @@ Resolver::_NeedsPosition(const entry_ref& file, PlaceData* place)
 		return false;
 	}
 
-	entry_ref plugin;
-	if (be_roster->FindApp(kPlaceEnricherSignature, &plugin) != B_OK) {
-		sensei::Notify("SEN Spatial Navigator", "This place has no position yet",
-			(std::string(place->name.empty() ? file.name : place->name.c_str()) + " has no position, and SUESS, the place enricher, is not installed to look it up.").c_str(), false, &file);
-		return false;
+	// (SUESS is started as the server starts it, with the file; it asks nothing of the user, and it says by a notification what it found)
+	if (!sensei::EnrichNow(kPlaceEnricherSignature, file, kEnrichWait)) {
+		entry_ref plugin;
+		if (be_roster->FindApp(kPlaceEnricherSignature, &plugin) != B_OK) {
+			sensei::Notify("SEN Spatial Navigator", "This place has no position yet",
+				(std::string(place->name.empty() ? file.name : place->name.c_str()) + " has no position, and SUESS, the place enricher, is not installed to look it up.").c_str(), false, &file);
+			return false;
+		}
+		printf("%s: SUESS did not end in time\n", place->name.c_str());
 	}
-
-	// (the plugin is started as the server starts it, with the file; it asks nothing of the user, and it says by a notification what it found)
-	BMessage launch(B_REFS_RECEIVED);
-	launch.AddRef("refs", &file);
-	launch.AddBool("wipe", false);
-	launch.AddBool("auto", true);
-	team_id team = -1;
-	status_t result = be_roster->Launch(&plugin, &launch, &team);
-	if (result != B_OK && result != B_ALREADY_RUNNING) {
-		printf("%s: could not start SUESS: %s\n", place->name.c_str(), strerror(result));
-		return false;
-	}
-	const bigtime_t deadline = system_time() + kEnrichWait;
-	app_info info;
-	while (team >= 0 && be_roster->GetRunningAppInfo(team, &info) == B_OK && system_time() < deadline)
-		snooze(200000);
 
 	if (!ReadPlace(file, place))
 		return false;
