@@ -2,10 +2,10 @@
 SPDX-License-Identifier: MIT
 SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 -->
-# SUESS, the SEN place enricher
+# Spaces, the SEN place enricher
 
-*SUESS* is *Semantic Urban & Environmental Spaces for SEN*, and a bow to Eduard Suess, the Viennese geologist who described the biosphere in *The Face of the Earth*. The folder and the
-signature keep the name of what the plugin does (`place-enricher`) like the other plugins; SUESS is its name for people.
+*SEN Spaces* is the place enricher of SEN. The folder and the signature keep the name of what the plugin does (`place-enricher`) like the other plugins; Spaces is its name for people (it was
+called SUESS before the seventh beta, and reads its settings from the old file `suess.settings` once).
 
 Looks a place up at [OpenStreetMap](https://www.openstreetmap.org) (its search service Nominatim) and writes what it finds to the file: the name and the other names, what kind of place it is,
 the position, the bounding box, the outline, the address, the links where else the place is known, a short description and a **picture** from Wikidata. Choose **Enrich** on a file of the type
@@ -14,7 +14,7 @@ the position, the bounding box, the outline, the address, the links where else t
 > Data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), Open Database License (ODbL). The descriptions come from [Wikidata](https://www.wikidata.org) (CC0), the
 > pictures from [Wikimedia Commons](https://commons.wikimedia.org), each with the license of its author (it is written to the file, see below).
 
-**No key is needed.** The public services of OpenStreetMap and Wikimedia are free; this is how they ask to be used, and the plugin does it: it names itself (`SEN-SUESS/0.1 (Haiku; https://sen-labs.org)`),
+**No key is needed.** The public services of OpenStreetMap and Wikimedia are free; this is how they ask to be used, and the plugin does it: it names itself (`SEN-Spaces/0.1 (Haiku; https://sen-labs.org)`),
 asks Nominatim **at most once a second** (also when several instances run), **keeps every answer for a week** (`~/config/cache/sen/place-enricher`) so that nothing is asked twice, and has no
 autocomplete. It sends the **name of the place** and nothing else that is yours. The one thing that could be yours is the **GPS location of a photo**: that is sent only if you switch on *Use GPS location for lookup* (below), and a location that only ranks the answers is never sent.
 
@@ -68,7 +68,7 @@ author**, and the picture itself. A picture that asks to name its author (CC BY,
 
 ## Settings
 
-The Settings window of SEN shows them (*Plugins*, *Enrich*, *SEN SUESS*); they are kept in `~/config/settings/sen/suess.settings` (lines of `key = value`). Whether to ask which place is meant, is a
+The Settings window of SEN shows them (*Plugins*, *Enrich*, *SEN Spaces*); they are kept in `~/config/settings/sen/spaces.settings` (lines of `key = value`). Whether to ask which place is meant, is a
 setting that all plugins share.
 
 | Key | Default | |
@@ -86,7 +86,7 @@ SenPlaceEnricher [-a|--auto] [-w|--wipe] [-l|--language de] [-p|--position] [--d
 
 ## Where a Location or a photo is located
 
-A file that is **no Place** (a Location, a photo with a position, anything else that SUESS looked up) is *located near* the place that was found. When the lookup has worked, SUESS stores the relation
+A file that is **no Place** (a Location, a photo with a position, anything else that Spaces looked up) is *located near* the place that was found. When the lookup has worked, Spaces stores the relation
 **located near** (`relation/x-vnd.sen-labs.relation.spatial.located-near`) from the file to that place, the same relation that you can make by hand, and to **the places on this computer that are near the position**
 (within 250 metres and no larger than 2 km across: a district or a city that contains the position is reached through the place, as a place is *within* it), so there can be several. The file of the **Place** that was
 found is the one that has the link to OpenStreetMap (or Wikidata) of the place, else it is made in the Library (name, kind, position, outline, address, as for any place) and enriched later in the background (the picture,

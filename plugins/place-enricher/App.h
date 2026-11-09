@@ -19,7 +19,7 @@
 class MappingUtil;
 
 /**
- * SUESS (Semantic Urban & Environmental Spaces for SEN), the place enricher: looks a place up at OpenStreetMap Nominatim (by the name of the file or its title, by the link to OpenStreetMap
+ * Spaces, the place enricher: looks a place up at OpenStreetMap Nominatim (by the name of the file or its title, by the link to OpenStreetMap
  * that an earlier run wrote, or, if the user allows it, by the position of the file), writes its attributes (name, other names, kind of place, position, bounding box, outline, address)
  * to the file, and takes a picture of the place from Wikidata and Wikimedia Commons as its thumbnail.
  *

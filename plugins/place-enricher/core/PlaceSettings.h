@@ -9,7 +9,7 @@
 namespace place {
 
 /**
- * The settings of SUESS, the place enricher: lines of `key = value` in `~/config/settings/sen/suess.settings` (`#` starts a comment), changed in the settings window of SEN. The options of
+ * The settings of Spaces, the place enricher: lines of `key = value` in `~/config/settings/sen/spaces.settings` (`#` starts a comment), changed in the settings window of SEN. The options of
  * the command line win over them for one run. Plain C++.
  */
 struct Settings {

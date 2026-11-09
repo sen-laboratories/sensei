@@ -6,6 +6,7 @@
 #include "PlaceSettingsForm.h"
 
 #include <Directory.h>
+#include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
@@ -22,7 +23,9 @@ namespace place {
 
 namespace {
 
-const char* const kSettingsFile = "sen/suess.settings";
+const char* const kSettingsFile = "sen/spaces.settings";
+// (until beta 6 the plugin was called SUESS: its settings are moved to the new file the first time that they are read or written)
+const char* const kLegacySettingsFile = "sen/suess.settings";
 
 enum FieldType {
 	kBool,
@@ -57,7 +60,22 @@ const struct {
 bool
 SettingsPath(BPath* path)
 {
-	return find_directory(B_USER_SETTINGS_DIRECTORY, path, true) == B_OK && path->Append(kSettingsFile) == B_OK;
+	if (find_directory(B_USER_SETTINGS_DIRECTORY, path, true) != B_OK || path->Append(kSettingsFile) != B_OK)
+		return false;
+	// the file of the settings under its old name is the same file: it is renamed (the comments of the user stay)
+	BEntry current(path->Path());
+	if (!current.Exists()) {
+		BPath legacy;
+		if (find_directory(B_USER_SETTINGS_DIRECTORY, &legacy) == B_OK && legacy.Append(kLegacySettingsFile) == B_OK) {
+			BEntry old(legacy.Path());
+			BPath folder;
+			if (old.Exists() && path->GetParent(&folder) == B_OK) {
+				BDirectory directory(folder.Path());
+				old.MoveTo(&directory, path->Leaf());
+			}
+		}
+	}
+	return true;
 }
 
 

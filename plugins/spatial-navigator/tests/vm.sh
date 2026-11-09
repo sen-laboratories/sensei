@@ -10,7 +10,7 @@ rm -rf "$T"; mkdir -p "$T"; cd "$T" || exit 1
 failed=0
 TYPE=relation/x-vnd.sen-labs.relation.spatial
 
-# a place with an outline: the square (x0,y0)-(x1,y1) in longitude/latitude, as SUESS keeps them
+# a place with an outline: the square (x0,y0)-(x1,y1) in longitude/latitude, as Spaces keeps them
 square() {
 	name=$1; x0=$2; y0=$3; x1=$4; y1=$5
 	touch "$name"

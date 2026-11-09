@@ -109,8 +109,8 @@ App::_Resolve(BMessage* message)
 		}
 		printf("%s: %zu place(s) %s\n", file.name, targets.size(), type);
 
-		// the places that were made (the parents that were missing) have no picture, outline or address: SUESS enriches them in the background, one after the other, as the server queues it.
-		// What they have is kept; the settings of SUESS (picture, outline) decide the rest; nothing is asked of the user (auto)
+		// the places that were made (the parents that were missing) have no picture, outline or address: Spaces enriches them in the background, one after the other, as the server queues it.
+		// What they have is kept; the settings of Spaces (picture, outline) decide the rest; nothing is asked of the user (auto)
 		if (!resolver.Made().empty()) {
 			BMessenger server(sen::kServerSignature);
 			if (server.IsValid()) {

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 #
-# The relation "located near" that SUESS stores for a Location: a Location at the position of the Karlskirche in Vienna is looked up by its position (the position of a Location is its own, so it is sent
+# The relation "located near" that Spaces stores for a Location: a Location at the position of the Karlskirche in Vienna is looked up by its position (the position of a Location is its own, so it is sent
 # to OpenStreetMap without the setting), and is then located at the place that was found: the Place that has its link to OpenStreetMap, else one that is made in the Library. NEEDS THE NETWORK (the public
 # service of Nominatim, one request per second) and the server of SEN. Run it in the Haiku VM after the plugin is installed: sh vm.sh. Prints `ok` or `FAIL` for each check and `FAILED` at the end.
 # The Place that the run makes is removed again, the one that was there before (a Library with the Karlskirche) stays.

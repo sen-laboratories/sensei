@@ -40,7 +40,7 @@
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.place-enricher";
 // what the services are told that we are (Nominatim and Wikimedia want a program that says what it is and where to find it)
-static const char* kUserAgent = "SEN-SUESS/0.1 (Haiku; https://sen-labs.org)";
+static const char* kUserAgent = "SEN-Spaces/0.1 (Haiku; https://sen-labs.org)";
 // the answers are kept for a week; a thumbnail of 256 pixels is enough for the icon sizes of the file manager
 static const long kCacheSeconds = 7 * 24 * 3600;
 static const int kThumbnailWidth = 256;
@@ -156,7 +156,7 @@ App::PrintUsage(const char* error)
 		<< "  -p, --position     look up a file that is no place and has a position and no name by that position (sends the position to OpenStreetMap)\n"
 		<< "  -l, --language <l> the language of the names (de, en, ...); the default is the language of the system\n"
 		<< "      --debug        print what is done\n\n"
-		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/suess.settings.\n";
+		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/spaces.settings.\n";
 }
 
 
@@ -267,7 +267,7 @@ App::Pulse()
 void
 App::ShowError(const char* message)
 {
-	sensei::Notify("SEN SUESS", "Place not enriched", message, false);
+	sensei::Notify("SEN Spaces", "Place not enriched", message, false);
 	printf("%s\n", message);
 }
 
@@ -758,7 +758,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 	fAuto = message->GetBool("auto", !fSettings.choose);
 
 	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
-		sensei::NotifyStarted("SEN SUESS", "Enriching place", ref.name);
+		sensei::NotifyStarted("SEN Spaces", "Enriching place", ref.name);
 
 	delete fHttp;
 	fHttp = new BaseEnricher(&ref, fMapper);
@@ -866,7 +866,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 		summary << " - " << pictured.c_str();
 	printf("%s\n", summary.String());
 	if (!fAuto)
-		sensei::Notify("SEN SUESS", "Place enriched", summary.String(), true, &ref);
+		sensei::Notify("SEN Spaces", "Place enriched", summary.String(), true, &ref);
 	reply->AddString(sen::key::kDetail, summary.String());
 	return B_OK;
 }

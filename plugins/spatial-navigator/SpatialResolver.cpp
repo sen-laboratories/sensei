@@ -303,7 +303,7 @@ Resolver::_MakePoi(const entry_ref& beside, const Poi& poi, entry_ref* made)
 		PutDouble(node, attr::kLongitude, poi.longitude);
 		PutString(node, sen::attr::kType, sen::onto::spatial::mime::kPlace);
 		fMadePois++;
-		// a thing with a Wikidata item can have a picture (a photo, the coat of arms): SUESS finds it in the background, for the first few
+		// a thing with a Wikidata item can have a picture (a photo, the coat of arms): Spaces finds it in the background, for the first few
 		if (!poi.wikidataId.empty() && fMadePictures < kMaxPoiPictures) {
 			fMade.push_back(*made);
 			fMadePictures++;
@@ -411,9 +411,9 @@ Resolver::_AddPointsOfInterest(const PlaceData& place, const std::map<std::strin
 }
 
 
-// SUESS, the place enricher: it finds the position of a place from its name and address
+// Spaces, the place enricher: it finds the position of a place from its name and address
 static const char* const kPlaceEnricherSignature = "application/x-vnd.sen-plugin.sen-labs.place-enricher";
-// the longest that SUESS is waited for (a lookup of an address and of the Wikidata item); the server waits 90 seconds for this plugin altogether
+// the longest that Spaces is waited for (a lookup of an address and of the Wikidata item); the server waits 90 seconds for this plugin altogether
 static const bigtime_t kEnrichWait = 40 * 1000000LL;
 
 bool
@@ -421,29 +421,29 @@ Resolver::_NeedsPosition(const entry_ref& file, PlaceData* place)
 {
 	if (!sen::plugins::EnrichOnDemand()) {
 		sensei::Notify("SEN Spatial Navigator", "This place has no position yet",
-			(std::string(place->name.empty() ? file.name : place->name.c_str()) + " has no position, so there is nothing near it to find. Enrich it first (SUESS looks up its address); "
+			(std::string(place->name.empty() ? file.name : place->name.c_str()) + " has no position, so there is nothing near it to find. Enrich it first (Spaces looks up its address); "
 				"or turn on \"Enrich automatically on demand\" in the settings of SEN, under Plugins > Enrich.").c_str(), false, &file);
 		printf("%s: no position (the setting Enrich automatically on demand is off)\n", place->name.c_str());
 		return false;
 	}
 
-	// (SUESS is started as the server starts it, with the file; it asks nothing of the user, and it says by a notification what it found)
+	// (Spaces is started as the server starts it, with the file; it asks nothing of the user, and it says by a notification what it found)
 	if (!sensei::EnrichNow(kPlaceEnricherSignature, file, kEnrichWait)) {
 		entry_ref plugin;
 		if (be_roster->FindApp(kPlaceEnricherSignature, &plugin) != B_OK) {
 			sensei::Notify("SEN Spatial Navigator", "This place has no position yet",
-				(std::string(place->name.empty() ? file.name : place->name.c_str()) + " has no position, and SUESS, the place enricher, is not installed to look it up.").c_str(), false, &file);
+				(std::string(place->name.empty() ? file.name : place->name.c_str()) + " has no position, and Spaces, the place enricher, is not installed to look it up.").c_str(), false, &file);
 			return false;
 		}
-		printf("%s: SUESS did not end in time\n", place->name.c_str());
+		printf("%s: Spaces did not end in time\n", place->name.c_str());
 	}
 
 	if (!ReadPlace(file, place))
 		return false;
 	if (!place->box.valid) {
-		printf("%s: SUESS found no position\n", place->name.c_str());
+		printf("%s: Spaces found no position\n", place->name.c_str());
 		sensei::Notify("SEN Spatial Navigator", "No position found",
-			(std::string("SUESS found no position for ") + (place->name.empty() ? file.name : place->name.c_str()) + ". Check its name and address.").c_str(), false, &file);
+			(std::string("Spaces found no position for ") + (place->name.empty() ? file.name : place->name.c_str()) + ". Check its name and address.").c_str(), false, &file);
 		return false;
 	}
 	return true;

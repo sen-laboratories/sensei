@@ -44,7 +44,7 @@ public:
     /** A token that is sent with every request as `Authorization: Bearer <token>` (a service that does not take a key in the address); empty: none. It is never logged. */
     void     SetBearerToken(const char* token) { fBearerToken = token != NULL ? token : ""; }
     /** What the requests say they are (the header `User-Agent`). A service that asks for a program that identifies itself (OpenStreetMap, Wikimedia) wants its own name and where to
-     *  find it, e.g. "SEN-SUESS/0.1 (https://sen-labs.org)"; empty or NULL: the one of all plugins before. */
+     *  find it, e.g. "SEN-Spaces/0.1 (https://sen-labs.org)"; empty or NULL: the one of all plugins before. */
     void     SetUserAgent(const char* agent) { fUserAgent = agent != NULL ? agent : ""; }
     /** the HTTP status of the last request that got an answer (0: none), e.g. 401 for a key that the service does not accept */
     int      LastHttpStatus() const { return fLastHttpStatus; }
