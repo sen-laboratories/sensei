@@ -17,7 +17,7 @@ resource app_version {
 	internal = 7,
 
 	short_info = "SEN Robin (Person Enricher)",
-	long_info  = "Robin - Enriching People: Enriches person entities with public photos, profile information, verified links, and live microfeeds from Gravatar, Libravatar, GitHub, Fediverse, and Wikidata."
+	long_info  = "Robin - Enriching People: finds the public photo, the profile, the verified links and the posts of a person from what the file links to: Libravatar and Gravatar (by the hash of the e-mail address), GitHub, the Fediverse, Bluesky and the feed of a homepage. Which services may be asked is set in the settings of SEN."
 };
 
 /* declare as a SEN plugin so it will be detected and used accordingly. */
