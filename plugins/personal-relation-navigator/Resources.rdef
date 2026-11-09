@@ -47,5 +47,6 @@ resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.person.collaborator",
     "types" = "relation/x-vnd.sen-labs.relation.person.client",
     "types" = "relation/x-vnd.sen-labs.relation.person.employment",
-    "types" = "relation/x-vnd.sen-labs.relation.person.membership"
+    "types" = "relation/x-vnd.sen-labs.relation.person.membership",
+    "types" = "relation/x-vnd.sen-labs.relation.person.status"
 };
