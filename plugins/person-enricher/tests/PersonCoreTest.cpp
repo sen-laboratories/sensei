@@ -14,6 +14,8 @@
 #include "GitHubResolver.h"
 #include "FeedResolver.h"
 #include "FeedText.h"
+#include "PersonSettings.h"
+#include "../../../common/BoxScale.h"
 #include "PersonEnricher.h"
 
 static int sFailures = 0;
@@ -399,6 +401,129 @@ main()
 			CHECK(enricher.Enrich(&p));
 			CHECK(p.feedUrl == "https://alice.example/feed.xml" && p.recentPosts.size() == 1 && p.latestStatus == "Post");
 		}
+	}
+
+	// 11. Settings: which services may be asked, what a photo gets
+	{
+		robin::Settings defaults;
+		CHECK(defaults.emailServices && defaults.github && defaults.fediverse && defaults.bluesky && defaults.feeds && defaults.photo && defaults.photoSize == 256);
+
+		robin::Settings s;
+		robin::ParseSettings("# my settings\n email_services = no\ngithub=off\nfediverse = yes\nphoto_size = 128 # smaller\nunknown = kept\nbluesky = maybe\nphoto = 0\n", &s);
+		CHECK(!s.emailServices && !s.github && s.fediverse && s.bluesky && s.feeds && !s.photo && s.photoSize == 128);		// ("maybe" is no answer: what was there stays)
+		robin::Settings bad;
+		robin::ParseSettings("photo_size = 5000\n", &bad);
+		CHECK(bad.photoSize == 256);
+		robin::ParseSettings("photo_size = 12.5\n", &bad);
+		CHECK(bad.photoSize == 256);
+		robin::ParseSettings("photo_size = 64\n", &bad);
+		CHECK(bad.photoSize == 64);
+
+		std::string why;
+		CHECK(robin::ValidateSetting("github", "yes") && robin::ValidateSetting("photo_size", "512"));
+		CHECK(!robin::ValidateSetting("github", "sure", &why) && why == "yes or no");
+		CHECK(!robin::ValidateSetting("photo_size", "63", &why) && !robin::ValidateSetting("photo_size", "513") && !robin::ValidateSetting("photo_size", "x"));
+		CHECK(!robin::ValidateSetting("no_such", "1", &why) && why == "no such setting");
+		CHECK(!robin::ValidateSetting("feeds", "yes # no", &why));
+	}
+
+	// 12. A service that is switched off is never asked
+	{
+		const char* answers[] = {nullptr};
+		(void)answers;
+		auto person = []() {
+			robin::PersonProfile p;
+			p.name = "Alice";
+			p.mbox = "alice@example.com";
+			p.homepage = "https://alice.example/";
+			p.sameAs = {"https://github.com/alice", "https://m.example/@alice", "https://bsky.app/profile/alice.bsky.social"};
+			return p;
+		};
+		FakeWeb web;
+		robin::Settings none;
+		none.emailServices = none.github = none.fediverse = none.bluesky = none.feeds = false;
+		robin::PersonEnricher quiet(web.Get(), none);
+		robin::PersonProfile p = person();
+		quiet.Enrich(&p);
+		quiet.RefreshPosts(&p);
+		CHECK(web.asked.empty());
+
+		// one at a time
+		for (int which = 0; which < 5; which++) {
+			FakeWeb one;
+			robin::Settings only = none;
+			bool* flags[] = {&only.emailServices, &only.github, &only.fediverse, &only.bluesky, &only.feeds};
+			*flags[which] = true;
+			robin::PersonEnricher enricher(one.Get(), only);
+			robin::PersonProfile q = person();
+			enricher.Enrich(&q);
+			const char* hosts[] = {"gravatar", "api.github.com", "m.example", "bsky.app", "alice.example"};
+			for (int host = 0; host < 5; host++) {
+				const bool allowed = host == which || (which == 3 && host == 3);
+				CHECK(one.Asked(hosts[host]) == allowed);
+			}
+		}
+	}
+
+	// 12b. No photo wanted: none is downloaded, the rest is still asked
+	{
+		FakeWeb web;
+		web.answers["https://api.github.com/users/alice"] = R"({"name":"Alice","company":"Haiku","avatar_url":"https://avatars.example/a","html_url":"https://github.com/alice"})";
+		web.answers["https://github.com/alice.png"] = "PNG";
+		robin::Settings noPhoto;
+		noPhoto.photo = false;
+		robin::PersonEnricher enricher(web.Get(), noPhoto);
+		robin::PersonProfile p;
+		p.name = "Alice";
+		p.sameAs = {"https://github.com/alice"};
+		CHECK(enricher.Enrich(&p) && !p.HasAvatar() && p.company == "Haiku");
+		CHECK(web.Asked("api.github.com") && !web.Asked(".png") && !web.Asked("avatars.example"));
+	}
+
+	// 13. Photos are made smaller: the aspect is kept, nothing larger is made, averaging is a box filter
+	{
+		int w = 0, h = 0;
+		sensei::ScaledSize(1000, 500, 256, &w, &h);
+		CHECK(w == 256 && h == 128);
+		sensei::ScaledSize(300, 1200, 256, &w, &h);
+		CHECK(w == 64 && h == 256);
+		sensei::ScaledSize(100, 100, 256, &w, &h);
+		CHECK(w == 100 && h == 100);
+		sensei::ScaledSize(256, 256, 256, &w, &h);
+		CHECK(w == 256 && h == 256);
+		sensei::ScaledSize(2000, 3, 256, &w, &h);
+		CHECK(w == 256 && h == 1);		// (3 / 2000 of 256 is less than a pixel: one)
+		sensei::ScaledSize(5000, 1, 100, &w, &h);
+		CHECK(w == 100 && h == 1);		// (at least one pixel)
+
+		// 4 x 4 to 2 x 2: each pixel is the average of four
+		std::vector<uint8_t> source(4 * 4 * 4, 0);
+		for (int y = 0; y < 4; y++) {
+			for (int x = 0; x < 4; x++) {
+				for (int c = 0; c < 4; c++)
+					source[(y * 4 + x) * 4 + c] = (uint8_t)((x < 2) == (y < 2) ? 200 : 100);
+			}
+		}
+		std::vector<uint8_t> two = sensei::BoxScale(source, 4, 4, 2, 2);
+		CHECK(two.size() == 16 && two[0] == 200 && two[4] == 100 && two[8] == 100 && two[12] == 200);
+		// a checkerboard becomes grey, and a uniform picture stays what it is
+		std::vector<uint8_t> board(4 * 4 * 4);
+		for (int i = 0; i < 16; i++) {
+			for (int c = 0; c < 4; c++)
+				board[i * 4 + c] = ((i % 4 + i / 4) % 2) ? 255 : 0;
+		}
+		const std::vector<uint8_t> grey = sensei::BoxScale(board, 4, 4, 1, 1);
+		CHECK(grey.size() == 4 && (grey[0] == 127 || grey[0] == 128));
+		std::vector<uint8_t> flat(7 * 5 * 4, 77);
+		const std::vector<uint8_t> small = sensei::BoxScale(flat, 7, 5, 3, 2);
+		CHECK(small.size() == 3 * 2 * 4 && small[0] == 77 && small[23] == 77);
+		// (a size that is no whole fraction of the original: the edge pixels count by the part of them that is covered)
+		std::vector<uint8_t> ramp(5 * 1 * 4, 0);
+		for (int x = 0; x < 5; x++)
+			for (int c = 0; c < 4; c++)
+				ramp[x * 4 + c] = (uint8_t)(x * 50);
+		const std::vector<uint8_t> two2 = sensei::BoxScale(ramp, 5, 1, 2, 1);
+		CHECK(two2[0] == 40 && two2[4] == 160);		// ((0 + 50 + half of 100) / 2.5; (half of 100 + 150 + 200) / 2.5)
 	}
 
 	std::printf("Completed %d checks: %d failure(s).\n", sChecks, sFailures);

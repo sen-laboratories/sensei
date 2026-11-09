@@ -29,7 +29,7 @@ resource(2, "SEN:plugin:enrich")   1;
 resource(3, "SEN:plugin:identify") 0;
 resource(4, "SEN:plugin:navigate") 0;
 // whether the settings window of SEN has anything to show for this plugin
-resource(20, "SEN:plugin:hasSettings") false;
+resource(20, "SEN:plugin:hasSettings") true;
 
 /* defines supported file types: a person entity and a Haiku People person */
 resource file_types message {

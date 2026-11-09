@@ -12,7 +12,9 @@
 
 #include <string>
 
+#include "../../common/SettingsSession.h"
 #include "HttpFetcher.h"
+#include "PersonSettingsForm.h"
 #include "core/PersonData.h"
 
 namespace robin {
@@ -24,6 +26,7 @@ public:
 
 	virtual void AboutRequested() override;
 	virtual void MessageReceived(BMessage* message) override;
+	virtual void Pulse() override;
 	virtual void RefsReceived(BMessage* message) override;
 	virtual void ArgvReceived(int32 argc, char** argv) override;
 
@@ -36,6 +39,9 @@ public:
 
 private:
 	HttpFetcher fHttp;
+	Settings fSettings;					///< from the settings file, read for every file (the settings window may have changed it)
+	SettingsProvider fSettingsProvider;
+	sensei::SettingsSession fSession;
 	bool fDebug;
 	int32 fExitCode;
 };

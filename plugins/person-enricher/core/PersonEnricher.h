@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "PersonData.h"
+#include "PersonSettings.h"
 
 namespace robin {
 
@@ -25,7 +26,8 @@ public:
 	 */
 	using HttpGetFunc = std::function<bool(const std::string& url, const char* accept, long maxAgeSeconds, std::string* body, int* httpStatus)>;
 
-	PersonEnricher(HttpGetFunc httpGet);
+	/** @param settings which services may be asked (a service that is switched off is never asked) */
+	PersonEnricher(HttpGetFunc httpGet, const Settings& settings = Settings());
 
 	/**
 	 * Runs the Robin enrichment cascade on the provided profile.
@@ -58,6 +60,7 @@ private:
 	bool _Get(const std::string& url, const char* accept, long maxAgeSeconds, std::string* body);
 
 	HttpGetFunc fHttpGet;
+	Settings fSettings;
 };
 
 } // namespace robin

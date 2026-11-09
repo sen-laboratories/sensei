@@ -23,6 +23,7 @@
 #include <sen/SenList.h>
 #include <sen/SenOntoPeople.h>
 
+#include "../../common/ImageScale.h"
 #include "../../common/ThumbnailUtil.h"
 #include "ListSeparator.h"
 #include "StatusStore.h"
@@ -165,7 +166,7 @@ WriteStatusAttributes(const entry_ref& file, const PersonProfile& profile)
 
 
 status_t
-WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite)
+WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite, const Settings& settings)
 {
 	BNode node(&file);
 	status_t result = node.InitCheck();
@@ -191,11 +192,14 @@ WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite)
 
 	WriteStatusAttributes(file, profile);
 
-	// Write Thumbnail if image data was fetched
-	if (profile.HasAvatar()) {
+	// The photo, as the thumbnail (if the settings want it): made smaller if it is larger than the size that the settings give
+	if (profile.HasAvatar() && settings.photo) {
 		attr_info info;
 		if (overwrite || node.GetAttrInfo(THUMBNAIL_ATTR_NAME, &info) != B_OK || info.size <= 0) {
-			if (WriteThumbnail(&file, profile.avatarData) == B_OK) {
+			std::string image;
+			if (ScaleImage(profile.avatarData, settings.photoSize, &image) != B_OK)
+				image = profile.avatarData;		// (what no translator reads is kept as it is: the thumbnail may still be shown)
+			if (WriteThumbnail(&file, image) == B_OK) {
 				PutString(node, attr::kImage, profile.avatarUrl, true);
 				PutString(node, attr::kPhotoCredit, profile.avatarCredit, true);
 				if (!profile.avatarLicense.empty())

@@ -44,9 +44,10 @@ StartsWith(const std::string& text, char c)
 }	// namespace
 
 
-PersonEnricher::PersonEnricher(HttpGetFunc httpGet)
+PersonEnricher::PersonEnricher(HttpGetFunc httpGet, const Settings& settings)
 	:
-	fHttpGet(std::move(httpGet))
+	fHttpGet(std::move(httpGet)),
+	fSettings(settings)
 {
 }
 
@@ -128,7 +129,7 @@ PersonEnricher::Enrich(PersonProfile* profile, bool forceWipe)
 	}
 
 	// 1. Email-based enrichment (Libravatar -> Gravatar)
-	if (!profile->mbox.empty())
+	if (!profile->mbox.empty() && fSettings.emailServices)
 		_EnrichFromEmail(profile);
 
 	// 2. The accounts that the profile links to (GitHub, Fediverse, Bluesky)
@@ -152,7 +153,7 @@ PersonEnricher::RefreshPosts(PersonProfile* profile)
 	profile->statusEpoch = 0;
 
 	// a person whose feed is not known yet, but whose Fediverse account is
-	if (profile->feedUrl.empty()) {
+	if (profile->feedUrl.empty() && fSettings.fediverse) {
 		const std::string handle = FediverseHandle(*profile);
 		if (!handle.empty())
 			_ResolveActor(profile, handle);
@@ -167,8 +168,8 @@ PersonEnricher::_EnrichFromEmail(PersonProfile* profile)
 {
 	std::string hash = GravatarResolver::EmailHash(profile->mbox);
 
-	// A. Try Libravatar / Gravatar avatar image
-	if (profile->avatarData.empty()) {
+	// A. Try Libravatar / Gravatar avatar image (not if the photo is not wanted: nothing is downloaded that is thrown away)
+	if (profile->avatarData.empty() && fSettings.photo) {
 		std::string libravatarUrl = GravatarResolver::LibravatarAvatarUrl(hash);
 		std::string imgData;
 		if (_Get(libravatarUrl, kAcceptImage, kProfileCacheSeconds, &imgData)) {
@@ -196,7 +197,7 @@ PersonEnricher::_EnrichFromEmail(PersonProfile* profile)
 bool
 PersonEnricher::_FetchAvatar(PersonProfile* profile, const char* credit)
 {
-	if (!profile->avatarData.empty() || profile->avatarUrl.empty())
+	if (!fSettings.photo || !profile->avatarData.empty() || profile->avatarUrl.empty())
 		return false;
 	std::string imgData;
 	if (!_Get(profile->avatarUrl, kAcceptImage, kProfileCacheSeconds, &imgData))
@@ -226,14 +227,14 @@ void
 PersonEnricher::_EnrichFromHandles(PersonProfile* profile)
 {
 	// GitHub: the account that a link of the profile names (not a nickname that is the same as somebody's account)
-	const std::string ghUser = GitHubUser(*profile);
+	const std::string ghUser = fSettings.github ? GitHubUser(*profile) : std::string();
 	if (!ghUser.empty()) {
 		std::string ghJson;
 		if (_Get(GitHubResolver::UserApiUrl(ghUser), kAcceptJson, kProfileCacheSeconds, &ghJson))
 			GitHubResolver::ParseUserJson(ghJson, profile);
 
 		// If still no avatar, fetch GitHub avatar directly
-		if (profile->avatarData.empty()) {
+		if (profile->avatarData.empty() && fSettings.photo) {
 			std::string imgData;
 			const std::string ghAvatarUrl = GitHubResolver::DirectAvatarUrl(ghUser);
 			if (_Get(ghAvatarUrl, kAcceptImage, kProfileCacheSeconds, &imgData)) {
@@ -245,12 +246,12 @@ PersonEnricher::_EnrichFromHandles(PersonProfile* profile)
 	}
 
 	// Fediverse (ActivityPub): the actor of the handle, with its photo, its text and its outbox
-	const std::string fediHandle = FediverseHandle(*profile);
+	const std::string fediHandle = fSettings.fediverse ? FediverseHandle(*profile) : std::string();
 	if (!fediHandle.empty() && _ResolveActor(profile, fediHandle))
 		_FetchAvatar(profile, "Fediverse");
 
 	// Bluesky: the profile (photo, text) and, for the posts, the address of its feed
-	const std::string bsky = BlueskyLink(*profile);
+	const std::string bsky = fSettings.bluesky ? BlueskyLink(*profile) : std::string();
 	if (!bsky.empty()) {
 		const std::string actor = FeedResolver::BlueskyRssUrl(bsky);		// (https://bsky.app/profile/<handle>/rss)
 		std::string profileJson;
@@ -267,12 +268,12 @@ bool
 PersonEnricher::_FetchPosts(PersonProfile* profile)
 {
 	// Bluesky has its own, richer answer than the feed of RSS (images, no reposts); the feed of RSS is the one that is kept for the person
-	const std::string bsky = BlueskyLink(*profile);
+	const std::string bsky = fSettings.bluesky ? BlueskyLink(*profile) : std::string();
 	std::string body;
 	if (!bsky.empty() && _Get(FeedResolver::BlueskyFeedUrl(bsky), kAcceptJson, kFeedCacheSeconds, &body) && FeedResolver::ParseBlueskyFeedJson(body, profile))
 		return true;
 
-	if (profile->feedUrl.empty() || !_Get(profile->feedUrl, kAcceptFeed, kFeedCacheSeconds, &body))
+	if (!fSettings.feeds || profile->feedUrl.empty() || !_Get(profile->feedUrl, kAcceptFeed, kFeedCacheSeconds, &body))
 		return false;
 
 	size_t first = body.find_first_not_of(" \t\r\n\xEF\xBB\xBF");
@@ -295,7 +296,7 @@ void
 PersonEnricher::_EnrichFromFeed(PersonProfile* profile)
 {
 	// If no feed is known yet, but homepage is known, discover RSS/Atom
-	if (profile->feedUrl.empty() && !profile->homepage.empty()) {
+	if (fSettings.feeds && profile->feedUrl.empty() && !profile->homepage.empty()) {
 		std::string htmlBody;
 		if (_Get(profile->homepage, kAcceptHtml, kProfileCacheSeconds, &htmlBody)) {
 			const std::string discovered = FeedResolver::DiscoverFeedFromHtml(htmlBody, profile->homepage);

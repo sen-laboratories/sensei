@@ -52,7 +52,23 @@ App::AboutRequested()
 void
 App::MessageReceived(BMessage* message)
 {
+	// the settings window of SEN: the instance that is started for it ends with the session
+	if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
+		if (fSession.IsEnded())
+			Quit();
+		else
+			SetPulseRate(5000000);
+		return;
+	}
 	BApplication::MessageReceived(message);
+}
+
+
+void
+App::Pulse()
+{
+	if (fSession.Expired())
+		Quit();
 }
 
 
@@ -148,7 +164,9 @@ App::RefreshPostsOf(const entry_ref& file)
 	if (result != B_OK)
 		return result;
 	fHttp.SetDebug(fDebug);
-	PersonEnricher enricher(fHttp.Function());
+	fSettings = Settings();
+	LoadSettings(&fSettings);
+	PersonEnricher enricher(fHttp.Function(), fSettings);
 	// (force: the navigator knows that they are old)
 	if (!RefreshStatus(file, &profile, &enricher, kFeedCacheSeconds, true))
 		return B_ENTRY_NOT_FOUND;
@@ -170,7 +188,9 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	}
 
 	fHttp.SetDebug(fDebug);
-	PersonEnricher enricher(fHttp.Function());
+	fSettings = Settings();
+	LoadSettings(&fSettings);
+	PersonEnricher enricher(fHttp.Function(), fSettings);
 	bool enriched = enricher.Enrich(&profile, wipe);
 
 	if (!enriched) {
@@ -178,7 +198,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 		return B_ENTRY_NOT_FOUND;
 	}
 
-	result = WritePerson(file, profile, wipe);
+	result = WritePerson(file, profile, wipe, fSettings);
 	if (result != B_OK) {
 		sensei::Notify("SEN Robin", "Person not enriched", "Could not write attributes to person file.", false);
 		return result;

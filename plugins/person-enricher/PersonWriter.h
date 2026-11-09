@@ -9,6 +9,7 @@
 #include <SupportDefs.h>
 
 #include "core/PersonData.h"
+#include "core/PersonSettings.h"
 
 namespace robin {
 
@@ -25,6 +26,6 @@ status_t WriteStatusAttributes(const entry_ref& file, const PersonProfile& profi
 /**
  * Writes enriched attributes, avatar thumbnail, and cached status posts to a person file.
  */
-status_t WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite = false);
+status_t WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite = false, const Settings& settings = Settings());
 
 } // namespace robin
