@@ -3,10 +3,10 @@
 # SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 """
 The application icon of Akari (the movie enricher of SEN): a simplified drawing of its logo, a film projector that throws light onto a document with a graph of three nodes.
-Filled paths only (no strokes, no gradients), a darker shape under each one gives the outline, so that sento/scripts/svg2hvif.py can make the vector icon.
+Filled paths only (no strokes, no gradients), a darker shape under each one gives the outline, so that sento/tools/svg2hvif.py can make the vector icon.
 
     akari-icon.py > akari-icon.svg
-    ../../../../sento/scripts/svg2hvif.py akari-icon.svg --no-fit --rdef      the resource vector_icon for Resources.rdef
+    ../../../../sento/tools/svg2hvif.py akari-icon.svg --no-fit --rdef      the resource vector_icon for Resources.rdef
 """
 import math
 
