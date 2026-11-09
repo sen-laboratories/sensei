@@ -36,6 +36,12 @@ autocomplete. It sends the **name of the place** and nothing else that is yours.
    * The name of a **file** is a guess, and the position tells whether it is right: with a position and no title only the places within **25 km** of it fit, and if there is none the position
      decides (2, with its permission). A **title** is what you said, and is not set aside: a photo of the Stephansdom that was taken at home is still the Stephansdom.
 
+## Looking up a text (the location of a person)
+
+A form can ask the plugin for a **text** that is not what the file is: the *Location* label of a person in Shoji is a link, and a click starts the plugin with the file and `query` (the text of the
+field). The place of that name is searched (and chosen, if several fit, as for any file), made as a **Place** file of its own if there is none yet (with the picture and the description, by the
+enrichment of the new place), and the person is **related** to it (*Located near*). Nothing of the place is written to the person, and the places that are near it are not related.
+
 ## What is written
 
 What the file has already is kept; *Enrich (Overwrite)* (Shift) replaces it.

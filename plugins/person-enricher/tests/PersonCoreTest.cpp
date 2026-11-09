@@ -142,6 +142,7 @@ main()
 		CHECK(robin::GitHubResolver::ParseUserJson(ghSample, &ghProfile));
 		CHECK(ghProfile.name == "The Octocat");
 		CHECK(ghProfile.company == "GitHub");
+		CHECK(ghProfile.jobTitle.empty());		// (the company of an account is no job title)
 		CHECK(ghProfile.homepage == "https://github.blog");
 		CHECK(ghProfile.location == "San Francisco");
 		CHECK(ghProfile.bio == "Building the future of software");

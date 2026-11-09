@@ -506,8 +506,28 @@ App::FindArea(BNode& node, const std::string& language, place::Area* area)
 
 
 status_t
+App::FindByQuery(const std::string& query, place::Hit* hit)
+{
+	fWanted = query;
+	std::string body;
+	status_t result = Get(place::SearchUrl(query, fLanguage, fSettings.boundary), kNominatim, &body);
+	if (result != B_OK)
+		return result;
+	std::vector<place::Hit> hits;
+	if (!place::ParseHits(body, &hits))
+		return B_ERROR;
+	if (hits.empty())
+		return B_ENTRY_NOT_FOUND;
+	// (nothing says where it is: the best match of the name, or the one that the user chooses)
+	return ChoosePlace(hits, query, NULL, 0, hit);
+}
+
+
+status_t
 App::FindPlace(const entry_ref& file, place::Hit* hit)
 {
+	if (!fQuery.empty())
+		return FindByQuery(fQuery, hit);
 	BNode node(&file);
 	BString text;
 	const std::string language = fLanguage;
@@ -666,7 +686,7 @@ FindNearbyPlaces(const place::Position& position, const std::vector<entry_ref>& 
 
 
 status_t
-App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description)
+App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby)
 {
 	BMessenger server(sen::kServerSignature);
 	if (!server.IsValid())
@@ -703,15 +723,17 @@ App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string
 
 	// the places that are near the position as well: the places on this computer, not what OpenStreetMap has around (one request is made for the place; a search of the surroundings is not what its public service is for)
 	std::vector<entry_ref> places(1, placeRef);
-	place::Position position;
-	BNode fileNode(&file);
-	if (!ReadDouble(fileNode, sen::onto::spatial::attr::kLatitude, &position.latitude) || !ReadDouble(fileNode, sen::onto::spatial::attr::kLongitude, &position.longitude)) {
-		position.latitude = hit.latitude;
-		position.longitude = hit.longitude;
+	if (withNearby) {
+		place::Position position;
+		BNode fileNode(&file);
+		if (!ReadDouble(fileNode, sen::onto::spatial::attr::kLatitude, &position.latitude) || !ReadDouble(fileNode, sen::onto::spatial::attr::kLongitude, &position.longitude)) {
+			position.latitude = hit.latitude;
+			position.longitude = hit.longitude;
+		}
+		std::vector<entry_ref> except(places);
+		except.push_back(file);
+		FindNearbyPlaces(position, except, &places);
 	}
-	std::vector<entry_ref> except(places);
-	except.push_back(file);
-	FindNearbyPlaces(position, except, &places);
 
 	status_t status = B_OK;
 	for (const entry_ref& target : places) {
@@ -756,6 +778,8 @@ App::Enrich(BMessage* message, BMessage* reply)
 	// the action decides what is replaced ("wipe": Enrich (Overwrite), the Shift key of the menu); the command line wins over the settings for one run
 	fOverwrite = message->GetBool("wipe", true);
 	fAuto = message->GetBool("auto", !fSettings.choose);
+	// (a text to look up, which is not what the file is: the location of a person, from its form)
+	fQuery = message->GetString("query", "");
 
 	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
 		sensei::NotifyStarted("SEN Spaces", "Enriching place", ref.name);
@@ -781,6 +805,8 @@ App::Enrich(BMessage* message, BMessage* reply)
 		BString text;
 		if (fWanted.empty())
 			text << "OpenStreetMap knows no place at the position of the file.";
+		else if (!fQuery.empty())
+			text << "OpenStreetMap has no place called \"" << fWanted.c_str() << "\".";
 		else if (fNeedsConsent && !place::LooksLikeName(fWanted))
 			text << "The file has a position but no name to search for. Turn on \"Use GPS location for lookup\" in the settings of SEN to look it up by that: the position is then sent to OpenStreetMap."
 				" (Or set the title of the file, dc:title.)";
@@ -815,6 +841,21 @@ App::Enrich(BMessage* message, BMessage* reply)
 		haveEntity = Get(place::EntityUrl(hit.wikidataId, fLanguage), kWikimedia, &body) == B_OK && place::ParseEntity(body, hit.wikidataId, fLanguage, &entity);
 		if (!haveEntity)
 			printf("could not get %s from Wikidata, skipping the description and the picture.\n", hit.wikidataId.c_str());
+	}
+
+	// a text that was looked up (the location of a person): the place is made as a file of its own and the file is related to it, nothing of the place is written to the file
+	if (!fQuery.empty()) {
+		status_t related = RelatePlace(ref, hit, entity.description, false);
+		if (related == B_NOT_INITIALIZED)
+			ShowError("The SEN server is not running: the place cannot be related to the file.");
+		else if (related != B_OK)
+			ShowError("Could not relate the file to the place.");
+		else if (!fAuto) {
+			const std::string kind = KindOf(hit);
+			sensei::Notify("SEN Spaces", "Place linked", (hit.name + (kind.empty() ? "" : " - " + kind)).c_str(), true, &ref);
+		}
+		reply->AddString(sen::key::kDetail, hit.name.c_str());
+		return related;
 	}
 
 	result = place::WritePlace(ref, hit, entity.description, fSettings.boundary, fOverwrite);

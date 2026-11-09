@@ -70,9 +70,6 @@ GitHubResolver::ParseUserJson(const std::string& jsonString, PersonProfile* prof
 		if (profile->company.empty() && root.contains("company") && root["company"].is_string())
 			profile->company = root["company"].get<std::string>();
 
-		if (profile->jobTitle.empty() && !profile->company.empty())
-			profile->jobTitle = profile->company;
-
 		if (profile->location.empty() && root.contains("location") && root["location"].is_string())
 			profile->location = root["location"].get<std::string>();
 
