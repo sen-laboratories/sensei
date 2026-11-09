@@ -9,7 +9,7 @@ TYPE = APP
 
 APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.person-enricher
 
-SRCS = App.cpp PersonWriter.cpp PersonSettingsForm.cpp HttpFetcher.cpp StatusStore.cpp core/PersonSettings.cpp core/PersonEnricher.cpp core/GravatarResolver.cpp core/GitHubResolver.cpp core/FeedResolver.cpp core/FeedText.cpp \
+SRCS = App.cpp PersonWriter.cpp PersonSettingsForm.cpp HttpFetcher.cpp StatusStore.cpp core/PersonSettings.cpp core/PersonEnricher.cpp core/Hunt.cpp core/GravatarResolver.cpp core/GitHubResolver.cpp core/FeedResolver.cpp core/FeedText.cpp \
 	../../common/HttpCache.cpp ../../common/ThumbnailUtil.cpp ../../common/ImageScale.cpp
 RDEFS = Resources.rdef
 RSRCS =

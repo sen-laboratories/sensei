@@ -114,8 +114,14 @@ ReadPerson(const entry_ref& file, PersonProfile* profile)
 	// Job Title / Company
 	if (node.ReadAttrString(sen::onto::people::attr::kJobTitle, &str) == B_OK && !str.IsEmpty())
 		profile->jobTitle = str.String();
-	if (node.ReadAttrString(sen::onto::people::attr::kBeCompany, &str) == B_OK && !str.IsEmpty())
+	if (node.ReadAttrString(sen::onto::people::attr::kWorksFor, &str) == B_OK && !str.IsEmpty())
 		profile->company = str.String();
+	else if (node.ReadAttrString(sen::onto::people::attr::kBeCompany, &str) == B_OK && !str.IsEmpty())
+		profile->company = str.String();
+	if (node.ReadAttrString(sen::onto::people::attr::kLocation, &str) == B_OK && !str.IsEmpty())
+		profile->location = str.String();
+	if (node.ReadAttrString(sen::onto::people::attr::kOrcid, &str) == B_OK && !str.IsEmpty())
+		profile->orcid = str.String();
 
 	// Bio
 	if (node.ReadAttrString(sen::onto::people::attr::kDescription, &str) == B_OK)
@@ -181,7 +187,10 @@ WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite,
 	PutString(node, attr::kNickname, profile.nick, overwrite);
 	PutString(node, attr::kMbox, profile.mbox, overwrite);
 	PutString(node, attr::kHomepage, profile.homepage, overwrite);
-	PutString(node, attr::kJobTitle, profile.jobTitle.empty() ? profile.company : profile.jobTitle, overwrite);
+	PutString(node, attr::kJobTitle, profile.jobTitle, overwrite);
+	PutString(node, attr::kWorksFor, profile.company, overwrite);
+	PutString(node, attr::kLocation, profile.location, overwrite);
+	PutString(node, attr::kOrcid, profile.orcid, overwrite);
 	PutString(node, attr::kDescription, profile.bio, overwrite);
 
 	if (!profile.sameAs.empty())

@@ -167,8 +167,8 @@ PersonEnricher::GravatarId(const PersonProfile& profile)
 }
 
 
-std::string
-PersonEnricher::Explain(const PersonProfile& profile, const Settings& settings)
+std::vector<std::string>
+PersonEnricher::Sources(const PersonProfile& profile, const Settings& settings)
 {
 	std::vector<std::string> looked;
 	if (!profile.mbox.empty() && settings.emailServices)
@@ -183,6 +183,14 @@ PersonEnricher::Explain(const PersonProfile& profile, const Settings& settings)
 		looked.push_back("Bluesky");
 	if (!profile.homepage.empty() && settings.feeds)
 		looked.push_back("the homepage");
+	return looked;
+}
+
+
+std::string
+PersonEnricher::Explain(const PersonProfile& profile, const Settings& settings)
+{
+	const std::vector<std::string> looked = Sources(profile, settings);
 	if (looked.empty()) {
 		return "There is nothing to look up. Add an e-mail address or a link to a profile (GitHub, Mastodon, Bluesky, Gravatar) or a homepage to the person; "
 			"a service that is switched off in the settings of Robin is not asked.";

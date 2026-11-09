@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace robin {
 
@@ -29,7 +30,28 @@ struct Settings {
 	bool photo = true;
 	/** the longer side of the photo, in pixels: a larger photo is made smaller before it is written (a thumbnail is a few hundred pixels, not a megabyte) */
 	int photoSize = 256;
+
+	/**
+	 * The services that are searched for a person by the name and the handle that the file has (the hunt), in the order that is set: `bluesky`, `mastodon`, `github`, `wikidata`, `orcid`. The line
+	 * `hunt = bluesky mastodon -github wikidata orcid` keeps the places of all of them, a service with a `-` is off. Without the line all are on, in this order.
+	 */
+	std::vector<std::string>	huntOrder;			///< all the services in the order of the list, also those that are off (empty: the default order)
+	std::vector<std::string>	huntOn;				///< those that are on, in order
+	bool						huntSet = false;	///< the file has a line `hunt`
+	/** the servers of the Fediverse whose search for accounts is asked (a Mastodon server answers for the accounts that it knows) */
+	std::vector<std::string>	mastodonServers = {"mastodon.social"};
+
+	/** every service of the hunt, the ones that are on and the ones that are off, in the order that is set */
+	std::vector<std::string>	HuntOrder() const;
+	/** the services that are asked, in order */
+	std::vector<std::string>	HuntServices() const;
 };
+
+/** the services of the hunt in their default order */
+const std::vector<std::string>& AllHuntServices();
+/** a short description of a service for the list in the settings, and its name */
+const char* HuntServiceName(const std::string& id);
+const char* HuntServiceInfo(const std::string& id);
 
 const int kMinPhotoSize = 64;
 const int kMaxPhotoSize = 512;

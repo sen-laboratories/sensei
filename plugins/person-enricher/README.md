@@ -11,8 +11,16 @@ SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 </p>
 
 Robin enriches people and contacts (`entity/x-vnd.sen-labs.entity.person` and `application/x-person`) with what their own links and addresses lead to: a public photo, a short profile, the
-accounts they name, and their posts, from open services. It never guesses who a person is: a name or a nickname is not an account (the first `octocat` is somebody else's photo and job);
-the **links of the file** (`schema:sameAs`), its **homepage** and its **e-mail address** are what it goes by.
+accounts they name, and their posts, from open services. What it goes by is what the file says: the **links** (`schema:sameAs`), the **homepage**, the **e-mail address**, and the **handle**
+(`foaf:nick`, with or without the `@`).
+
+A person that has a name or a handle but none of those is **searched for** (the *hunt*): Bluesky, the Fediverse (Mastodon), GitHub, Wikidata and ORCID are asked by the name and the handle, the
+answers are scored against everything that the file says (the name, the handle, a link, the place, the company), and the best one is taken if it is clearly the one. Otherwise a **dialog** shows
+the candidates with the score, and their photos, which come after the window, and the user chooses; with `--auto` the best one is taken. More than eight matches are said to be too many: the best
+eight are shown. Several matches can be checked (your ORCID record and your GitHub account are the same person): they are merged from the top of the list to the bottom (the rows can be dragged, or moved
+with Ctrl or Alt and the arrow keys, to say which one wins), and a value that the file has already, or that a match above has given, is never overwritten.
+
+![The dialog with the matches](images/robin-chooser.png) Nothing is guessed in silence: a hit becomes the links of the person, and the enrichment follows them.
 
 | Feature | What it does | Network |
 |---|---|---|
@@ -66,7 +74,11 @@ Robin fills only what the file does not have yet (`--wipe` replaces), with the e
 |---|---|---|
 | `Media:Thumbnail` | system | the photo, shown by Tracker |
 | `schema:image`, `schema:creditText`, `schema:license` | schema.org | where the photo is from, whom to thank, its licence |
-| `schema:jobTitle` | schema.org | the job (the company if there is no job) |
+| `schema:jobTitle` | schema.org | the job |
+| `schema:worksFor` | schema.org | the company or organization |
+| `schema:homeLocation` | schema.org | where the person lives, as it says |
+| `vivo:orcidId` | VIVO | the ORCID iD of a researcher |
+| `foaf:nick` | FOAF | the **handle**: a Fediverse handle `@user@server`, a Bluesky handle (a domain: `alice.bsky.social`, `sen-labs.org`), a GitHub login; written without a doubled `@` |
 | `dc:description` | Dublin Core | the text of the profile |
 | `foaf:homepage` | FOAF | the homepage |
 | `schema:sameAs` | schema.org | the links of the accounts (a list) |
@@ -93,6 +105,15 @@ by it: `2026-11-08 18.00 - First words of the post.md` (type `text/markdown`, `d
 SenPersonalRelationNavigator --debug relation/x-vnd.sen-labs.relation.person.status contact.person    # what the relation shows
 ```
 
+## The services of the search
+
+In the settings of SEN (Plugins, Enrich, SEN Robin) a table lists the services of the hunt, each with a box and a short note; **drag a row** to change the order in which they are asked, switch one
+off to leave it out. The file `~/config/settings/sen/robin.settings` keeps them as `hunt = bluesky mastodon -github wikidata orcid` (a `-` is off and keeps its place) and the servers of the Fediverse
+that are asked for accounts by name as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a Bluesky handle if there is an account of that name.
+
+**What is sent:** a name or a handle, to the services that are on; all of them are public places where people put themselves on purpose. The photo of a hit is fetched only for the dialog and for the
+file; of the photos that were found, the larger one is the thumbnail.
+
 ## Privacy and politeness
 
 - **E-mail**: hashed here with SHA-256; the services get the hash, not the address. (A hash of an address is still a name for it: whoever knows the address can ask for the same hash. Enriching a person is
@@ -103,8 +124,7 @@ SenPersonalRelationNavigator --debug relation/x-vnd.sen-labs.relation.person.sta
 
 ## Not yet
 
-Wikidata and Wikimedia Commons for people who have no link (notable people); settings of its own (which services may be asked); a photo that is scaled to the size of a thumbnail; rows for
-`schema:sameAs` that the person verified on Mastodon (`rel="me"`).
+Rows for `schema:sameAs` that the person verified on Mastodon (`rel="me"`); X, Instagram and LinkedIn have no open interface, so they are not searched: a link that the person has is kept.
 
 ## Build and test
 

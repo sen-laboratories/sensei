@@ -11,6 +11,7 @@
 
 #include "Sha256.h"
 #include "GravatarResolver.h"
+#include "Hunt.h"
 #include "GitHubResolver.h"
 #include "FeedResolver.h"
 #include "FeedText.h"
@@ -440,6 +441,137 @@ main()
 			robin::Settings off;
 			off.github = false;
 			CHECK(robin::PersonEnricher::Explain(p, off).find("GitHub") == std::string::npos);
+		}
+
+		// ---- the hunt: handles, names, the answers of the services, the scores
+		{
+			using robin::Hunter;
+			using robin::Handle;
+			// handles: with or without the @, a server of the Fediverse, a domain (Bluesky), a plain name; written back in one form
+			CHECK(Hunter::ParseHandle("@alice@m.example").kind == Handle::kFediverse && Hunter::ParseHandle("alice@M.Example").text == "@alice@m.example");
+			CHECK(Hunter::ParseHandle("alice@m.example").user == "alice" && Hunter::ParseHandle("alice@m.example").host == "m.example");
+			CHECK(Hunter::ParseHandle("@alice.bsky.social").kind == Handle::kDomain && Hunter::ParseHandle("@alice.bsky.social").text == "alice.bsky.social");
+			CHECK(Hunter::ParseHandle("sen-labs.org").kind == Handle::kDomain);			// (a domain of one's own is a handle of Bluesky)
+			CHECK(Hunter::ParseHandle("  @alice  ").kind == Handle::kPlain && Hunter::ParseHandle("@alice").text == "alice");
+			CHECK(Hunter::ParseHandle("").kind == Handle::kNone && Hunter::ParseHandle("two words").kind == Handle::kNone && Hunter::ParseHandle("https://x.org/a").kind == Handle::kNone);
+			CHECK(Hunter::ParseHandle("a@b@c.example").kind == Handle::kNone && Hunter::ParseHandle("@nobody@").kind == Handle::kNone);
+
+			// names: accents, case and the order of the words do not count, a middle initial costs little, another name is nothing
+			CHECK(Hunter::NameSimilarity("Gregor Rosenauer", "gregor rosenauer") == 1.0f);
+			CHECK(Hunter::NameSimilarity("Rosenauer, Gregor", "Gregor Rosenauer") == 1.0f);
+			CHECK(Hunter::NameSimilarity("Jos\xC3\xA9 Garc\xC3\xAD" "a", "Jose Garcia") == 1.0f);
+			CHECK(Hunter::NameSimilarity("Gregor B. Rosenauer", "Gregor Rosenauer") > 0.85f && Hunter::NameSimilarity("Gregor B. Rosenauer", "Gregor Rosenauer") < 1.0f);
+			CHECK(Hunter::NameSimilarity("Gregor Rosenauer", "Gregor Poynton") < 0.5f && Hunter::NameSimilarity("Gregor", "Alice") == 0);
+			CHECK(Hunter::UrlEncode("Gregor Rosenauer") == "Gregor%20Rosenauer" && Hunter::UrlEncode("a+b/c") == "a%2Bb%2Fc");
+
+			// Bluesky: the search and a profile
+			std::vector<robin::HuntHit> hits;
+			CHECK(Hunter::ParseBlueskySearch(R"({"actors":[{"did":"did:plc:1","handle":"gregorpoynton.bsky.social","displayName":"Gregor Poynton","description":"Hello","avatar":"https://cdn/a.jpg"},{"did":"did:plc:2","handle":"sen-labs.org"}]})", &hits));
+			CHECK(hits.size() == 2 && hits[0].service == "bluesky" && hits[0].name == "Gregor Poynton" && hits[0].url == "https://bsky.app/profile/gregorpoynton.bsky.social");
+			CHECK(hits[1].name == "sen-labs.org" && hits[1].avatarUrl.empty());
+			robin::HuntHit profileHit;
+			CHECK(Hunter::ParseBlueskyProfile(R"({"handle":"sen-labs.org","displayName":"SEN Labs","followersCount":120})", &profileHit) && profileHit.followers == 120);
+			CHECK(!Hunter::ParseBlueskyProfile(R"({"error":"InvalidRequest"})", &profileHit));
+
+			// Mastodon: the account of another server keeps its handle, one of the server that was asked gets the server; a link of a field is a page of the person
+			hits.clear();
+			CHECK(Hunter::ParseMastodonSearch(R"({"accounts":[{"username":"gregor","acct":"gregor@toot.cafe","display_name":"Gregor","url":"https://toot.cafe/@gregor","note":"<p>he/him. Haiku</p>","avatar":"https://x/a.png","followers_count":40,)"
+				R"("fields":[{"name":"Web","value":"<a href=\"https://gregor.example\" rel=\"me\">gregor.example</a>"}]},{"username":"alice","acct":"alice","display_name":"","url":"https://m.example/@alice","note":""}]})", "m.example", &hits));
+			CHECK(hits.size() == 2 && hits[0].id == "gregor@toot.cafe" && hits[0].description == "he/him. Haiku" && hits[0].links.size() == 1 && hits[0].links[0] == "https://gregor.example");
+			CHECK(hits[1].id == "alice@m.example" && hits[1].name == "alice");
+			// a mirror of a Bluesky account on the bridge is not an answer of its own
+			hits.clear();
+			CHECK(Hunter::ParseMastodonSearch(R"({"accounts":[{"username":"timbl.bsky.social","acct":"timbl.bsky.social@bsky.brid.gy","url":"https://bsky.brid.gy/r/x","note":""}]})", "m.example", &hits));
+			CHECK(hits.empty());
+
+			// GitHub: the answer of the search has the login only (an organization is no person), the user has the rest
+			hits.clear();
+			CHECK(Hunter::ParseGitHubSearch(R"({"items":[{"login":"grexe","html_url":"https://github.com/grexe","avatar_url":"https://a/g.png","type":"User"},{"login":"acme","type":"Organization"}]})", &hits));
+			CHECK(hits.size() == 1 && hits[0].id == "grexe");
+			robin::HuntHit user;
+			CHECK(Hunter::ParseGitHubUser(R"({"login":"grexe","name":"Gregor B. Rosenauer","html_url":"https://github.com/grexe","bio":"Haiku","location":"Vienna","company":"SEN Labs","blog":"sen-labs.org","twitter_username":"grexe","followers":30,"type":"User"})", &user));
+			CHECK(user.name == "Gregor B. Rosenauer" && user.location == "Vienna" && user.homepage == "https://sen-labs.org" && user.links.size() == 2);
+
+			// Wikidata: only people (Q5); the photo from Commons, the ORCID iD and the accounts that the entry knows
+			std::vector<std::string> ids;
+			CHECK(Hunter::ParseWikidataSearch(R"({"search":[{"id":"Q80","label":"Tim Berners-Lee"},{"id":"Q1"}]})", &ids) && ids.size() == 2);
+			hits.clear();
+			CHECK(Hunter::ParseWikidataEntities(R"({"entities":{"Q80":{"id":"Q80","labels":{"en":{"value":"Tim Berners-Lee"}},"descriptions":{"en":{"value":"English computer scientist"}},"claims":{)"
+				R"("P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q5"}}}}],"P18":[{"mainsnak":{"datavalue":{"value":"Tim Berners-Lee 2012.jpg"}}}],)"
+				R"("P496":[{"mainsnak":{"datavalue":{"value":"0000-0003-1279-3709"}}}],"P2037":[{"mainsnak":{"datavalue":{"value":"timbl"}}}],"P4033":[{"mainsnak":{"datavalue":{"value":"@timbl@w3c.social"}}}]}},)"
+				R"("Q1":{"id":"Q1","labels":{"en":{"value":"Universe"}},"claims":{"P31":[{"mainsnak":{"datavalue":{"value":{"id":"Q36906466"}}}}]}}}})", &hits));
+			CHECK(hits.size() == 1 && hits[0].wikidata == "Q80" && hits[0].orcid == "0000-0003-1279-3709" && hits[0].url == "https://www.wikidata.org/wiki/Q80");
+			CHECK(hits[0].avatarUrl == "https://commons.wikimedia.org/wiki/Special:FilePath/Tim_Berners-Lee_2012.jpg?width=512");
+			CHECK(std::find(hits[0].links.begin(), hits[0].links.end(), "https://github.com/timbl") != hits[0].links.end());
+			CHECK(std::find(hits[0].links.begin(), hits[0].links.end(), "https://w3c.social/@timbl") != hits[0].links.end());
+
+			// ORCID: the iDs of the search, the record of one
+			ids.clear();
+			CHECK(Hunter::ParseOrcidSearch(R"({"result":[{"orcid-identifier":{"path":"0000-0002-9322-3515"}}],"num-found":1})", &ids) && ids.size() == 1);
+			robin::HuntHit researcher;
+			CHECK(Hunter::ParseOrcidPerson(R"({"name":{"given-names":{"value":"Yoshua"},"family-name":{"value":"Bengio"}},"biography":{"content":"AI"},)"
+				R"("researcher-urls":{"researcher-url":[{"url":{"value":"https://yoshuabengio.org"}}]}})", "0000-0002-9322-3515", &researcher));
+			CHECK(researcher.name == "Yoshua Bengio" && researcher.url == "https://orcid.org/0000-0002-9322-3515" && researcher.homepage == "https://yoshuabengio.org");
+
+			// scores: a name alone is not enough to be sure, the handle or a link of the file settles it, what else the file says helps
+			robin::PersonProfile wanted;
+			wanted.name = "Gregor Rosenauer";
+			robin::HuntHit byName;
+			byName.service = "github"; byName.id = "grexe"; byName.name = "Gregor Rosenauer"; byName.url = "https://github.com/grexe";
+			CHECK(Hunter::Score(&byName, wanted) < 0.8f && byName.score > 0.6f);
+			robin::HuntHit other = byName;
+			other.name = "Gregor Poynton"; other.id = "gp";
+			CHECK(Hunter::Score(&other, wanted) < 0.4f);
+			wanted.nick = "@grexe";
+			CHECK(Hunter::Score(&byName, wanted) >= 0.9f);
+			wanted.nick.clear();
+			wanted.sameAs = {"https://www.github.com/grexe/"};
+			CHECK(Hunter::Score(&byName, wanted) >= 0.9f);
+			wanted.sameAs.clear();
+			wanted.location = "Vienna";
+			byName.location = "Vienna, Austria";
+			const float withPlace = Hunter::Score(&byName, wanted);
+			byName.location.clear();
+			CHECK(withPlace > Hunter::Score(&byName, wanted));
+			wanted.nick = "sen-labs.org";			// (a domain handle matches the Bluesky account of that name)
+			robin::HuntHit sen;
+			sen.service = "bluesky"; sen.id = "sen-labs.org"; sen.name = "SEN Labs";
+			CHECK(Hunter::Score(&sen, wanted) >= 0.85f);
+
+			// a clear winner needs 0.8 and a gap of 0.25
+			std::vector<robin::HuntHit> ranked(2);
+			ranked[0].score = 0.9f; ranked[1].score = 0.5f;
+			CHECK(Hunter::IsClearWinner(ranked));
+			ranked[1].score = 0.8f;
+			CHECK(!Hunter::IsClearWinner(ranked));
+			ranked.resize(1); ranked[0].score = 0.7f;
+			CHECK(!Hunter::IsClearWinner(ranked) && !Hunter::IsClearWinner({}));
+		}
+
+		// the search through the services that are on, in the order of the settings, with a handle that is a domain
+		{
+			FakeWeb web;
+			web.answers["https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=sen-labs.org"] = R"({"handle":"sen-labs.org","displayName":"SEN Labs","description":"Semantic Extensions Native"})";
+			web.answers["https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?limit=10&q=SEN%20Labs"] = R"({"actors":[{"handle":"sen-labs.org","displayName":"SEN Labs"},{"handle":"other.bsky.social","displayName":"Senior Labs"}]})";
+			robin::PersonProfile wanted;
+			wanted.name = "SEN Labs";
+			wanted.nick = "@sen-labs.org";
+			robin::Settings settings;
+			settings.huntSet = true;
+			settings.huntOrder = {"github", "bluesky"};
+			settings.huntOn = {"bluesky"};								// (GitHub is off, Bluesky on)
+			robin::Hunter hunter(web.Get(), settings);
+			const std::vector<robin::HuntHit> hits = hunter.Search(wanted);
+			CHECK(!hits.empty() && hits[0].id == "sen-labs.org" && hits[0].score >= 0.9f && robin::Hunter::IsClearWinner(hits));
+			CHECK(!web.Asked("github") && !web.Asked("mastodon") && !web.Asked("wikidata"));		// (what is off is never asked)
+
+			// the settings: the order and the switches of the services, `-name` keeps a place
+			robin::Settings parsed;
+			robin::ParseSettings("hunt = wikidata -bluesky github bogus\nmastodon_servers = a.example b.example c\n", &parsed);
+			CHECK((parsed.HuntServices() == std::vector<std::string>{"wikidata", "github"}));
+			CHECK((parsed.HuntOrder() == std::vector<std::string>{"wikidata", "bluesky", "github", "mastodon", "orcid"}));
+			CHECK((parsed.mastodonServers == std::vector<std::string>{"a.example", "b.example"}));
+			CHECK((robin::Settings().HuntServices() == robin::AllHuntServices()));
 		}
 
 		// a homepage with a feed: found in the page, read as RSS

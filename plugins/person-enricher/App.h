@@ -11,10 +11,12 @@
 #include <String.h>
 
 #include <string>
+#include <vector>
 
 #include "../../common/SettingsSession.h"
 #include "HttpFetcher.h"
 #include "PersonSettingsForm.h"
+#include "core/Hunt.h"
 #include "core/PersonData.h"
 
 namespace robin {
@@ -38,6 +40,9 @@ public:
 	int32 ExitCode() const { return fExitCode; }
 
 private:
+	bool _Hunt(const PersonProfile& profile, bool automatic, std::vector<HuntHit>* chosen, bool* cancelled);
+	void _BestPhoto(PersonProfile* profile, const HuntHit& hit);
+
 	HttpFetcher fHttp;
 	Settings fSettings;					///< from the settings file, read for every file (the settings window may have changed it)
 	SettingsProvider fSettingsProvider;

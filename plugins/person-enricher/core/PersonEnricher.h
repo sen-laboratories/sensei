@@ -53,6 +53,8 @@ public:
 	static std::vector<std::string> Links(const PersonProfile& profile);
 	/** What a link of Gravatar names: the hash of an avatar (`gravatar.com/avatar/<hash>`) or the name of a profile (`gravatar.com/<name>`), for the profile of the service; empty if there is none. */
 	static std::string GravatarId(const PersonProfile& profile);
+	/** What the enrichment can go on, as the names of the sources (`Gravatar for the e-mail address`, `GitHub (alice)`...): empty for a person that has no e-mail address and no link of a known service. */
+	static std::vector<std::string> Sources(const PersonProfile& profile, const Settings& settings = Settings());
 	/** What the enrichment had to go on, in a sentence for the user who is told that nothing was found: the sources that it looked at, or what the person lacks so that there is nothing to look at. */
 	static std::string Explain(const PersonProfile& profile, const Settings& settings = Settings());
 

@@ -33,6 +33,7 @@ struct PersonProfile {
 	std::string company;
 	std::string bio;
 	std::string location;
+	std::string orcid;				///< the ORCID iD of a researcher
 	std::vector<std::string> sameAs;
 
 	// Photo & Media
@@ -50,7 +51,7 @@ struct PersonProfile {
 
 	bool HasAvatar() const { return !avatarData.empty(); }
 	bool HasProfileData() const {
-		return !jobTitle.empty() || !bio.empty() || !location.empty() ||
+		return !jobTitle.empty() || !bio.empty() || !location.empty() || !company.empty() || !orcid.empty() ||
 		       !homepage.empty() || !sameAs.empty() || !latestStatus.empty();
 	}
 };
