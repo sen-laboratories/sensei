@@ -69,6 +69,9 @@ private:
 	bool				_WikidataContains(const std::string& a, const std::string& b);
 	status_t			_MakePlace(const entry_ref& beside, const Ancestor& ancestor, entry_ref* made);
 	/** the named things in the area of the place, nearest first as many as the settings say, as targets; the files that are not there yet are made. B_ERROR if Overpass could not be asked: that is not the same as nothing being there */
+	/** The place has no position (and nothing else that its relation can start from): with the setting *Enrich automatically on demand* it is enriched now (SUESS looks up its address) and
+	 *  read again, else the user is told that it has none. True if it has a position afterwards. */
+	bool				_NeedsPosition(const entry_ref& file, PlaceData* place);
 	status_t			_AddPointsOfInterest(const PlaceData& place, const std::map<std::string, entry_ref>& byOsm, std::vector<Target>* targets);
 	/** the named things in the box (kept for a day on disk); false if Overpass could not be asked */
 	bool				_Pois(const Box& area, std::vector<Poi>* pois);
