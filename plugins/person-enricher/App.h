@@ -40,7 +40,7 @@ public:
 	int32 ExitCode() const { return fExitCode; }
 
 private:
-	bool _Hunt(const PersonProfile& profile, bool automatic, std::vector<HuntHit>* chosen, bool* cancelled);
+	bool _Hunt(const PersonProfile& profile, bool automatic, const std::vector<std::string>& services, std::vector<HuntHit>* chosen, bool* cancelled);
 	void _BestPhoto(PersonProfile* profile, const HuntHit& hit);
 
 	HttpFetcher fHttp;

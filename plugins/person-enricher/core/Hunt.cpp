@@ -730,11 +730,20 @@ Hunter::_SearchOrcid(const PersonProfile& wanted, std::vector<HuntHit>* hits)
 std::vector<HuntHit>
 Hunter::Search(const PersonProfile& wanted)
 {
+	return Search(wanted, fSettings.HuntServices());
+}
+
+
+std::vector<HuntHit>
+Hunter::Search(const PersonProfile& wanted, const std::vector<std::string>& services)
+{
 	std::vector<HuntHit> hits;
 	if (wanted.name.empty() && ParseHandle(wanted.nick).kind == Handle::kNone)
 		return hits;
 
-	for (const std::string& service : fSettings.HuntServices()) {
+	for (const std::string& service : services) {
+		if (!fSettings.Uses(service))
+			continue;
 		if (service == "bluesky")
 			_SearchBluesky(wanted, &hits);
 		else if (service == "mastodon")

@@ -57,6 +57,8 @@ public:
 
 	/** All hits of the enabled services, scored and sorted, the best first. Nothing for a person with neither a name nor a handle. */
 	std::vector<HuntHit> Search(const PersonProfile& wanted);
+	/** The same for these services only (the ones that the person has no account at yet), in this order; one that is off is left out. */
+	std::vector<HuntHit> Search(const PersonProfile& wanted, const std::vector<std::string>& services);
 
 	/** Whether the best hit is so much better than the others that nobody has to be asked: from 0.8, and 0.25 ahead of the next. */
 	static bool IsClearWinner(const std::vector<HuntHit>& hits);

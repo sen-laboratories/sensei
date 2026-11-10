@@ -20,7 +20,7 @@ namespace {
 bool
 IsBoolKey(const std::string& key)
 {
-	return key == "email_services" || key == "github" || key == "fediverse" || key == "bluesky" || key == "feeds" || key == "photo";
+	return key == "photo";
 }
 
 
@@ -43,6 +43,14 @@ ParseSize(const std::string& value, int* number)
 
 
 const std::vector<std::string>&
+AllServices()
+{
+	static const std::vector<std::string> services = {"bluesky", "mastodon", "github", "wikidata", "orcid", "email", "feeds"};
+	return services;
+}
+
+
+const std::vector<std::string>&
 AllHuntServices()
 {
 	static const std::vector<std::string> services = {"bluesky", "mastodon", "github", "wikidata", "orcid"};
@@ -51,7 +59,7 @@ AllHuntServices()
 
 
 const char*
-HuntServiceName(const std::string& id)
+ServiceName(const std::string& id)
 {
 	if (id == "bluesky")
 		return "Bluesky";
@@ -63,12 +71,16 @@ HuntServiceName(const std::string& id)
 		return "Wikidata";
 	if (id == "orcid")
 		return "ORCID";
+	if (id == "email")
+		return "Gravatar and Libravatar";
+	if (id == "feeds")
+		return "Homepage and feeds";
 	return "";
 }
 
 
 const char*
-HuntServiceInfo(const std::string& id)
+ServiceInfo(const std::string& id)
 {
 	if (id == "bluesky")
 		return "People on Bluesky, by name or handle (a domain is a handle); photo and bio";
@@ -80,19 +92,23 @@ HuntServiceInfo(const std::string& id)
 		return "Well-known people; photo, description, ORCID and the accounts that are known";
 	if (id == "orcid")
 		return "Researchers, by name; bio and links";
+	if (id == "email")
+		return "By the hash of the e-mail address (never the address): photo, profile, verified accounts";
+	if (id == "feeds")
+		return "The feed of the homepage and the accounts: the posts";
 	return "";
 }
 
 
 std::vector<std::string>
-Settings::HuntOrder() const
+Settings::ServiceOrder() const
 {
 	std::vector<std::string> order;
-	for (const std::string& id : huntOrder) {
-		if (*HuntServiceName(id) != '\0' && std::find(order.begin(), order.end(), id) == order.end())
+	for (const std::string& id : serviceOrder) {
+		if (*ServiceName(id) != '\0' && std::find(order.begin(), order.end(), id) == order.end())
 			order.push_back(id);
 	}
-	for (const std::string& id : AllHuntServices()) {
+	for (const std::string& id : AllServices()) {
 		if (std::find(order.begin(), order.end(), id) == order.end())
 			order.push_back(id);
 	}
@@ -100,14 +116,35 @@ Settings::HuntOrder() const
 }
 
 
+bool
+Settings::Uses(const std::string& id) const
+{
+	if (*ServiceName(id) == '\0')
+		return false;
+	if (serviceSet && std::find(serviceOn.begin(), serviceOn.end(), id) == serviceOn.end())
+		return false;
+	// (the switch of the service itself: a program may have it off while the list has it on)
+	if (id == "email")
+		return emailServices;
+	if (id == "github")
+		return github;
+	if (id == "mastodon")
+		return fediverse;
+	if (id == "bluesky")
+		return bluesky;
+	if (id == "feeds")
+		return feeds;
+	return true;
+}
+
+
 std::vector<std::string>
 Settings::HuntServices() const
 {
-	if (!huntSet)
-		return AllHuntServices();
 	std::vector<std::string> on;
-	for (const std::string& id : HuntOrder()) {
-		if (std::find(huntOn.begin(), huntOn.end(), id) != huntOn.end())
+	for (const std::string& id : ServiceOrder()) {
+		const std::vector<std::string>& searchable = AllHuntServices();
+		if (std::find(searchable.begin(), searchable.end(), id) != searchable.end() && Uses(id))
 			on.push_back(id);
 	}
 	return on;
@@ -120,19 +157,9 @@ ParseSettings(const std::string& text, Settings* settings)
 	for (const auto& pair : st::Pairs(text)) {
 		const std::string& key = pair.first;
 		const std::string& value = pair.second;
-		if (key == "email_services")
-			settings->emailServices = st::ParseBool(value, settings->emailServices);
-		else if (key == "github")
-			settings->github = st::ParseBool(value, settings->github);
-		else if (key == "fediverse")
-			settings->fediverse = st::ParseBool(value, settings->fediverse);
-		else if (key == "bluesky")
-			settings->bluesky = st::ParseBool(value, settings->bluesky);
-		else if (key == "feeds")
-			settings->feeds = st::ParseBool(value, settings->feeds);
-		else if (key == "photo")
+		if (key == "photo") {
 			settings->photo = st::ParseBool(value, settings->photo);
-		else if (key == "be_people") {
+		} else if (key == "be_people") {
 			const std::string v = st::Trim(value);
 			if (v == "off" || v == "legacy" || v == "all")
 				settings->bePeople = v;
@@ -140,12 +167,11 @@ ParseSettings(const std::string& text, Settings* settings)
 			const std::string v = st::Trim(value);
 			if (v == "ask" || v == "always" || v == "never")
 				settings->nameCorrection = v;
-		}
-		else if (key == "hunt") {
+		} else if (key == "services") {
 			// (`name` is on, `-name` is off and keeps its place; a name that is none of the services is left out)
-			settings->huntSet = true;
-			settings->huntOrder.clear();
-			settings->huntOn.clear();
+			settings->serviceSet = true;
+			settings->serviceOrder.clear();
+			settings->serviceOn.clear();
 			std::string word;
 			for (size_t i = 0; i <= value.size(); i++) {
 				if (i < value.size() && !std::isspace((unsigned char)value[i])) {
@@ -157,11 +183,20 @@ ParseSettings(const std::string& text, Settings* settings)
 				const bool off = word[0] == '-';
 				const std::string id = off ? word.substr(1) : word;
 				word.clear();
-				if (*HuntServiceName(id) == '\0')
+				if (*ServiceName(id) == '\0')
 					continue;
-				settings->huntOrder.push_back(id);
+				if (std::find(settings->serviceOrder.begin(), settings->serviceOrder.end(), id) != settings->serviceOrder.end())
+					continue;
+				settings->serviceOrder.push_back(id);
 				if (!off)
-					settings->huntOn.push_back(id);
+					settings->serviceOn.push_back(id);
+			}
+			// (a service that the line does not name is a new one: on, at the end)
+			for (const std::string& id : AllServices()) {
+				if (std::find(settings->serviceOrder.begin(), settings->serviceOrder.end(), id) == settings->serviceOrder.end()) {
+					settings->serviceOrder.push_back(id);
+					settings->serviceOn.push_back(id);
+				}
 			}
 		} else if (key == "mastodon_servers") {
 			std::vector<std::string> servers;
@@ -183,6 +218,15 @@ ParseSettings(const std::string& text, Settings* settings)
 				settings->photoSize = size;
 		}
 	}
+	// the switches of the services are what the list says
+	if (settings->serviceSet) {
+		auto on = [settings](const char* id) { return std::find(settings->serviceOn.begin(), settings->serviceOn.end(), id) != settings->serviceOn.end(); };
+		settings->emailServices = on("email");
+		settings->github = on("github");
+		settings->fediverse = on("mastodon");
+		settings->bluesky = on("bluesky");
+		settings->feeds = on("feeds");
+	}
 }
 
 
@@ -200,7 +244,7 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return fail("a # or a line break cannot be stored in the settings file");
 	if (IsBoolKey(key))
 		return st::IsBool(v) ? true : fail("yes or no");
-	if (key == "hunt" || key == "mastodon_servers")
+	if (key == "services" || key == "mastodon_servers")
 		return true;
 	if (key == "be_people")
 		return (v == "off" || v == "legacy" || v == "all") ? true : fail("off, legacy or all");

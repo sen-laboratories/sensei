@@ -212,6 +212,63 @@ PersonEnricher::_Get(const std::string& url, const char* accept, long maxAgeSeco
 
 
 bool
+PersonEnricher::HasAccount(const PersonProfile& profile, const std::string& service)
+{
+	if (service == "github")
+		return !GitHubUser(profile).empty();
+	if (service == "mastodon")
+		return !FediverseHandle(profile).empty();
+	if (service == "bluesky")
+		return !BlueskyLink(profile).empty();
+	if (service == "orcid") {
+		if (!profile.orcid.empty())
+			return true;
+		for (const std::string& link : Links(profile)) {
+			if (link.find("orcid.org/") != std::string::npos)
+				return true;
+		}
+		return false;
+	}
+	if (service == "wikidata") {
+		for (const std::string& link : Links(profile)) {
+			if (link.find("wikidata.org/wiki/Q") != std::string::npos || link.find("wikidata.org/entity/Q") != std::string::npos)
+				return true;
+		}
+	}
+	return false;
+}
+
+
+void
+PersonEnricher::_WithBestPhoto(PersonProfile* profile, const std::function<void()>& step)
+{
+	const std::string data = std::move(profile->avatarData), url = profile->avatarUrl, credit = profile->avatarCredit, license = profile->avatarLicense;
+	profile->avatarData.clear();
+	profile->avatarUrl.clear();
+	profile->avatarCredit.clear();
+	profile->avatarLicense.clear();
+
+	step();
+
+	auto restore = [&]() {
+		profile->avatarData = data;
+		profile->avatarUrl = url;
+		profile->avatarCredit = credit;
+		profile->avatarLicense = license;
+	};
+	if (data.empty()) {
+		// (nothing before: what the step found stays; if it found no photo at all, the address that the profile had stays)
+		if (profile->avatarData.empty() && profile->avatarUrl.empty())
+			restore();
+		return;
+	}
+	const bool better = !profile->avatarData.empty() && (fJudge ? fJudge(profile->avatarData) > fJudge(data) : profile->avatarData.size() > data.size());
+	if (!better)
+		restore();
+}
+
+
+bool
 PersonEnricher::Enrich(PersonProfile* profile, bool forceWipe)
 {
 	if (profile == nullptr)
@@ -226,20 +283,33 @@ PersonEnricher::Enrich(PersonProfile* profile, bool forceWipe)
 		profile->recentPosts.clear();
 	}
 
-	// 1. Email-based enrichment (Libravatar -> Gravatar)
-	if (!profile->mbox.empty() && fSettings.emailServices)
-		_EnrichFromEmail(profile);
-	else if (fSettings.emailServices) {
-		// no e-mail address, but a link to a Gravatar profile or avatar
-		const std::string gravatar = GravatarId(*profile);
-		if (!gravatar.empty())
-			_EnrichFromGravatar(profile, gravatar, gravatar.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos && (gravatar.size() == 32 || gravatar.size() == 64));
+	// every service that is on, in the order of the list: what an earlier one gave is not replaced (each step fills what is empty), the photo is the best of all
+	for (const std::string& id : fSettings.ServiceOrder()) {
+		if (!fSettings.Uses(id))
+			continue;
+		if (id == "email") {
+			_WithBestPhoto(profile, [this, profile]() {
+				// Libravatar -> Gravatar by the e-mail address; or, without one, a link to a Gravatar profile or avatar
+				if (!profile->mbox.empty()) {
+					_EnrichFromEmail(profile);
+				} else {
+					const std::string gravatar = GravatarId(*profile);
+					if (!gravatar.empty())
+						_EnrichFromGravatar(profile, gravatar, gravatar.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos && (gravatar.size() == 32 || gravatar.size() == 64));
+				}
+			});
+		} else if (id == "github") {
+			_WithBestPhoto(profile, [this, profile]() { _EnrichFromGitHub(profile); });
+		} else if (id == "mastodon") {
+			_WithBestPhoto(profile, [this, profile]() { _EnrichFromFediverse(profile); });
+		} else if (id == "bluesky") {
+			_WithBestPhoto(profile, [this, profile]() { _EnrichFromBluesky(profile); });
+		} else if (id == "feeds") {
+			_DiscoverFeed(profile);
+		}
 	}
 
-	// 2. The accounts that the profile links to (GitHub, Fediverse, Bluesky)
-	_EnrichFromHandles(profile);
-
-	// 3. Feed discovery & the posts
+	// the posts, from the first service of the list that has them
 	_EnrichFromFeed(profile);
 
 	return profile->HasAvatar() || profile->HasProfileData();
@@ -257,7 +327,7 @@ PersonEnricher::RefreshPosts(PersonProfile* profile)
 	profile->statusEpoch = 0;
 
 	// a person whose feed is not known yet, but whose Fediverse account is
-	if (profile->feedUrl.empty() && fSettings.fediverse) {
+	if (profile->feedUrl.empty() && fSettings.Uses("mastodon")) {
 		const std::string handle = FediverseHandle(*profile);
 		if (!handle.empty())
 			_ResolveActor(profile, handle);
@@ -352,42 +422,59 @@ PersonEnricher::_ResolveActor(PersonProfile* profile, const std::string& handle)
 
 
 void
-PersonEnricher::_EnrichFromHandles(PersonProfile* profile)
+PersonEnricher::_EnrichFromGitHub(PersonProfile* profile)
 {
-	// GitHub: the account that a link of the profile names (not a nickname that is the same as somebody's account)
-	const std::string ghUser = fSettings.github ? GitHubUser(*profile) : std::string();
-	if (!ghUser.empty()) {
-		std::string ghJson;
-		if (_Get(GitHubResolver::UserApiUrl(ghUser), kAcceptJson, kProfileCacheSeconds, &ghJson))
-			GitHubResolver::ParseUserJson(ghJson, profile);
+	// the account that a link of the profile names (not a nickname that is the same as somebody's account)
+	const std::string ghUser = GitHubUser(*profile);
+	if (ghUser.empty())
+		return;
+	std::string ghJson;
+	if (_Get(GitHubResolver::UserApiUrl(ghUser), kAcceptJson, kProfileCacheSeconds, &ghJson))
+		GitHubResolver::ParseUserJson(ghJson, profile);
 
-		// If still no avatar, fetch GitHub avatar directly
-		if (profile->avatarData.empty() && fSettings.photo) {
-			std::string imgData;
-			const std::string ghAvatarUrl = GitHubResolver::DirectAvatarUrl(ghUser);
-			if (_Get(ghAvatarUrl, kAcceptImage, kProfileCacheSeconds, &imgData)) {
-				profile->avatarData = std::move(imgData);
-				profile->avatarUrl = ghAvatarUrl;
-				profile->avatarCredit = "GitHub";
-			}
+	// the photo of the account
+	if (profile->avatarData.empty() && fSettings.photo) {
+		std::string imgData;
+		const std::string ghAvatarUrl = GitHubResolver::DirectAvatarUrl(ghUser);
+		if (_Get(ghAvatarUrl, kAcceptImage, kProfileCacheSeconds, &imgData)) {
+			profile->avatarData = std::move(imgData);
+			profile->avatarUrl = ghAvatarUrl;
+			profile->avatarCredit = "GitHub";
 		}
 	}
+}
 
+
+void
+PersonEnricher::_EnrichFromFediverse(PersonProfile* profile)
+{
 	// Fediverse (ActivityPub): the actor of the handle, with its photo, its text and its outbox
-	const std::string fediHandle = fSettings.fediverse ? FediverseHandle(*profile) : std::string();
-	if (!fediHandle.empty() && _ResolveActor(profile, fediHandle))
+	const std::string fediHandle = FediverseHandle(*profile);
+	if (fediHandle.empty())
+		return;
+	const bool hadFeed = !profile->feedUrl.empty();
+	if (_ResolveActor(profile, fediHandle))
 		_FetchAvatar(profile, "Fediverse");
+	if (!hadFeed && !profile->feedUrl.empty())
+		profile->feedService = "mastodon";
+}
 
-	// Bluesky: the profile (photo, text) and, for the posts, the address of its feed
-	const std::string bsky = fSettings.bluesky ? BlueskyLink(*profile) : std::string();
-	if (!bsky.empty()) {
-		const std::string actor = FeedResolver::BlueskyRssUrl(bsky);		// (https://bsky.app/profile/<handle>/rss)
-		std::string profileJson;
-		if (_Get(FeedResolver::BlueskyProfileUrl(bsky), kAcceptJson, kProfileCacheSeconds, &profileJson))
-			FeedResolver::ParseBlueskyProfileJson(profileJson, profile);
-		_FetchAvatar(profile, "Bluesky");
-		if (profile->feedUrl.empty())
-			profile->feedUrl = actor;
+
+void
+PersonEnricher::_EnrichFromBluesky(PersonProfile* profile)
+{
+	// the profile (photo, text) and, for the posts, the address of its feed
+	const std::string bsky = BlueskyLink(*profile);
+	if (bsky.empty())
+		return;
+	const std::string actor = FeedResolver::BlueskyRssUrl(bsky);		// (https://bsky.app/profile/<handle>/rss)
+	std::string profileJson;
+	if (_Get(FeedResolver::BlueskyProfileUrl(bsky), kAcceptJson, kProfileCacheSeconds, &profileJson))
+		FeedResolver::ParseBlueskyProfileJson(profileJson, profile);
+	_FetchAvatar(profile, "Bluesky");
+	if (profile->feedUrl.empty()) {
+		profile->feedUrl = actor;
+		profile->feedService = "bluesky";
 	}
 }
 
@@ -395,13 +482,38 @@ PersonEnricher::_EnrichFromHandles(PersonProfile* profile)
 bool
 PersonEnricher::_FetchPosts(PersonProfile* profile)
 {
-	// Bluesky has its own, richer answer than the feed of RSS (images, no reposts); the feed of RSS is the one that is kept for the person
-	const std::string bsky = fSettings.bluesky ? BlueskyLink(*profile) : std::string();
-	std::string body;
-	if (!bsky.empty() && _Get(FeedResolver::BlueskyFeedUrl(bsky), kAcceptJson, kFeedCacheSeconds, &body) && FeedResolver::ParseBlueskyFeedJson(body, profile))
-		return true;
+	// the first service of the list that has posts: Bluesky has its own, richer answer than the feed of RSS (images, no reposts); the feed that is kept for the person is the one of the Fediverse or
+	// of the homepage
+	bool triedFeed = false;
+	for (const std::string& id : fSettings.ServiceOrder()) {
+		if (!fSettings.Uses(id))
+			continue;
+		std::string body;
+		if (id == "bluesky") {
+			const std::string bsky = BlueskyLink(*profile);
+			if (!bsky.empty() && _Get(FeedResolver::BlueskyFeedUrl(bsky), kAcceptJson, kFeedCacheSeconds, &body) && FeedResolver::ParseBlueskyFeedJson(body, profile))
+				return true;
+		} else if ((id == "mastodon" || id == "feeds") && !triedFeed) {
+			triedFeed = true;
+			if (_FetchFeedPosts(profile))
+				return true;
+		}
+	}
+	return false;
+}
 
-	if (!fSettings.feeds || profile->feedUrl.empty() || !_Get(profile->feedUrl, kAcceptFeed, kFeedCacheSeconds, &body))
+
+bool
+PersonEnricher::_FetchFeedPosts(PersonProfile* profile)
+{
+	if (profile->feedUrl.empty())
+		return false;
+	// (the feed belongs to the service that gave it; one from the file, or from a homepage, is that of the homepages)
+	const std::string owner = profile->feedService.empty() ? "feeds" : profile->feedService;
+	if (!fSettings.Uses(owner))
+		return false;
+	std::string body;
+	if (!_Get(profile->feedUrl, kAcceptFeed, kFeedCacheSeconds, &body))
 		return false;
 
 	size_t first = body.find_first_not_of(" \t\r\n\xEF\xBB\xBF");
@@ -421,18 +533,25 @@ PersonEnricher::_FetchPosts(PersonProfile* profile)
 
 
 void
-PersonEnricher::_EnrichFromFeed(PersonProfile* profile)
+PersonEnricher::_DiscoverFeed(PersonProfile* profile)
 {
-	// If no feed is known yet, but homepage is known, discover RSS/Atom
-	if (fSettings.feeds && profile->feedUrl.empty() && !profile->homepage.empty()) {
+	// If no feed is known yet, but a homepage is, discover RSS/Atom
+	if (profile->feedUrl.empty() && !profile->homepage.empty()) {
 		std::string htmlBody;
 		if (_Get(profile->homepage, kAcceptHtml, kProfileCacheSeconds, &htmlBody)) {
 			const std::string discovered = FeedResolver::DiscoverFeedFromHtml(htmlBody, profile->homepage);
-			if (!discovered.empty())
+			if (!discovered.empty()) {
 				profile->feedUrl = discovered;
+				profile->feedService = "feeds";
+			}
 		}
 	}
+}
 
+
+void
+PersonEnricher::_EnrichFromFeed(PersonProfile* profile)
+{
 	if (profile->recentPosts.empty())
 		_FetchPosts(profile);
 }

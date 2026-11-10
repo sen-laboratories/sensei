@@ -47,6 +47,7 @@ struct PersonProfile {
 
 	// Microfeed & Status
 	std::string feedUrl;
+	std::string feedService;		///< the service whose feed `feedUrl` is (`mastodon`, `bluesky`, `feeds` for the feed of a homepage), if this run found it; empty: the file had it
 	std::string latestStatus;
 	std::string statusDate;			///< as the feed wrote it
 	int64_t		statusEpoch = 0;	///< when the latest post was made (seconds since 1970); 0 if unknown

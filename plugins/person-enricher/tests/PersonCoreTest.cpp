@@ -599,9 +599,9 @@ main()
 			wanted.name = "SEN Labs";
 			wanted.nick = "@sen-labs.org";
 			robin::Settings settings;
-			settings.huntSet = true;
-			settings.huntOrder = {"github", "bluesky"};
-			settings.huntOn = {"bluesky"};								// (GitHub is off, Bluesky on)
+			settings.serviceSet = true;
+			settings.serviceOrder = {"github", "bluesky"};
+			settings.serviceOn = {"bluesky"};								// (GitHub is off, Bluesky on)
 			robin::Hunter hunter(web.Get(), settings);
 			const std::vector<robin::HuntHit> hits = hunter.Search(wanted);
 			CHECK(!hits.empty() && hits[0].id == "sen-labs.org" && hits[0].score >= 0.9f && robin::Hunter::IsClearWinner(hits));
@@ -609,9 +609,11 @@ main()
 
 			// the settings: the order and the switches of the services, `-name` keeps a place
 			robin::Settings parsed;
-			robin::ParseSettings("hunt = wikidata -bluesky github bogus\nmastodon_servers = a.example b.example c\n", &parsed);
-			CHECK((parsed.HuntServices() == std::vector<std::string>{"wikidata", "github"}));
-			CHECK((parsed.HuntOrder() == std::vector<std::string>{"wikidata", "bluesky", "github", "mastodon", "orcid"}));
+			robin::ParseSettings("services = wikidata -bluesky github bogus\nmastodon_servers = a.example b.example c\n", &parsed);
+			// (a service that the line does not name is a new one: on, at the end)
+			CHECK((parsed.HuntServices() == std::vector<std::string>{"wikidata", "github", "mastodon", "orcid"}));
+			CHECK((parsed.ServiceOrder() == std::vector<std::string>{"wikidata", "bluesky", "github", "mastodon", "orcid", "email", "feeds"}));
+			CHECK(!parsed.bluesky && parsed.github && parsed.fediverse && parsed.emailServices && parsed.feeds);
 			CHECK((parsed.mastodonServers == std::vector<std::string>{"a.example", "b.example"}));
 			CHECK((robin::Settings().HuntServices() == robin::AllHuntServices()));
 		}
@@ -636,20 +638,20 @@ main()
 		CHECK(defaults.emailServices && defaults.github && defaults.fediverse && defaults.bluesky && defaults.feeds && defaults.photo && defaults.photoSize == 256);
 
 		robin::Settings s;
-		robin::ParseSettings("# my settings\n email_services = no\ngithub=off\nfediverse = yes\nphoto_size = 128 # smaller\nunknown = kept\nbluesky = maybe\nphoto = 0\n", &s);
-		CHECK(!s.emailServices && !s.github && s.fediverse && s.bluesky && s.feeds && !s.photo && s.photoSize == 128);		// ("maybe" is no answer: what was there stays)
+		robin::ParseSettings("# my settings\n services = bluesky mastodon -github wikidata orcid -email feeds\nphoto_size = 128 # smaller\nunknown = kept\nphoto = 0\n", &s);
+		CHECK(!s.emailServices && !s.github && s.fediverse && s.bluesky && s.feeds && !s.photo && s.photoSize == 128);
+		CHECK(!s.Uses("github") && !s.Uses("email") && s.Uses("feeds") && s.Uses("orcid") && !s.Uses("bogus"));
 		robin::Settings bad;
-		// the list of the services has two switches for each: Search (the hunt, by name) and Follow (the accounts that the links name); they do not depend on each other
+		// the list of the services is one switch for each, in the order of the priority; a program may switch one off with its flag, too
 		{
 			robin::Settings one;
-			robin::ParseSettings("hunt = bluesky mastodon -github wikidata orcid\n", &one);
-			CHECK(one.github && one.fediverse && one.bluesky);				// (searching GitHub is off, following a GitHub link is on)
+			CHECK(one.Uses("github") && one.Uses("email") && one.Uses("feeds") && one.ServiceOrder().size() == 7 && one.HuntServices().size() == 5);		// (all on by default)
+			robin::ParseSettings("services = bluesky mastodon -github wikidata orcid email feeds\n", &one);
 			const std::vector<std::string> on = one.HuntServices();
 			CHECK(on.size() == 4 && std::find(on.begin(), on.end(), "github") == on.end());
-			robin::Settings follow;
-			robin::ParseSettings("bluesky = no\n", &follow);
-			CHECK(!follow.bluesky && follow.github && follow.fediverse);
-			CHECK(follow.HuntServices().size() == 5);						// (and Bluesky is still searched)
+			robin::Settings flag;
+			flag.bluesky = false;
+			CHECK(!flag.Uses("bluesky") && flag.HuntServices().size() == 4);
 			// the name of a person that an account spells differently: ask (default), always, never
 			robin::Settings names;
 			CHECK(names.nameCorrection == "ask");
@@ -681,11 +683,11 @@ main()
 		CHECK(bad.photoSize == 64);
 
 		std::string why;
-		CHECK(robin::ValidateSetting("github", "yes") && robin::ValidateSetting("photo_size", "512"));
-		CHECK(!robin::ValidateSetting("github", "sure", &why) && why == "yes or no");
+		CHECK(robin::ValidateSetting("photo", "yes") && robin::ValidateSetting("services", "bluesky -github") && robin::ValidateSetting("photo_size", "512"));
+		CHECK(!robin::ValidateSetting("photo", "sure", &why) && why == "yes or no");
 		CHECK(!robin::ValidateSetting("photo_size", "63", &why) && !robin::ValidateSetting("photo_size", "513") && !robin::ValidateSetting("photo_size", "x"));
 		CHECK(!robin::ValidateSetting("no_such", "1", &why) && why == "no such setting");
-		CHECK(!robin::ValidateSetting("feeds", "yes # no", &why));
+		CHECK(!robin::ValidateSetting("photo", "yes # no", &why));
 	}
 
 	// 12. A service that is switched off is never asked
@@ -724,6 +726,55 @@ main()
 				CHECK(one.Asked(hosts[host]) == allowed);
 			}
 		}
+	}
+
+	// 12a. The services are one list, in the order of the priority: what an earlier one gave is kept (the bio), the best photo of all wins
+	{
+		auto person = []() {
+			robin::PersonProfile p;
+			p.name = "Alice";
+			p.sameAs = {"https://github.com/alice", "https://bsky.app/profile/alice.bsky.social"};
+			return p;
+		};
+		auto answers = [](FakeWeb* web) {
+			web->answers["https://api.github.com/users/alice"] = R"({"name":"Alice","bio":"from GitHub","html_url":"https://github.com/alice"})";
+			web->answers["https://github.com/alice.png"] = "LARGE-PHOTO-OF-GITHUB";
+			web->answers[robin::FeedResolver::BlueskyProfileUrl("https://bsky.app/profile/alice.bsky.social")] = R"({"handle":"alice.bsky.social","displayName":"Alice","description":"from Bluesky","avatar":"https://cdn.example/b.jpg"})";
+			web->answers["https://cdn.example/b.jpg"] = "small";
+		};
+		for (int first = 0; first < 2; first++) {
+			FakeWeb web;
+			answers(&web);
+			robin::Settings settings;
+			settings.serviceSet = true;
+			settings.serviceOrder = first == 0 ? std::vector<std::string>{"bluesky", "github"} : std::vector<std::string>{"github", "bluesky"};
+			settings.serviceOn = settings.serviceOrder;
+			robin::PersonEnricher enricher(web.Get(), settings);
+			robin::PersonProfile p = person();
+			CHECK(enricher.Enrich(&p));
+			CHECK(p.bio == (first == 0 ? "from Bluesky" : "from GitHub"));			// (the first service of the list that has it)
+			CHECK(p.avatarData == "LARGE-PHOTO-OF-GITHUB" && p.avatarCredit == "GitHub");	// (the best photo, not the first)
+		}
+		// a service that is off in the list is not asked, and its photo is not there
+		{
+			FakeWeb web;
+			answers(&web);
+			robin::Settings settings;
+			robin::ParseSettings("services = bluesky -github mastodon wikidata orcid email feeds\n", &settings);
+			robin::PersonEnricher enricher(web.Get(), settings);
+			robin::PersonProfile p = person();
+			enricher.Enrich(&p);
+			CHECK(p.bio == "from Bluesky" && p.avatarData == "small" && !web.Asked("api.github.com"));
+		}
+		// the accounts that a person has (the search by name is for the services without one)
+		robin::PersonProfile known = person();
+		known.nick = "@alice@m.example";
+		CHECK(robin::PersonEnricher::HasAccount(known, "github") && robin::PersonEnricher::HasAccount(known, "bluesky") && robin::PersonEnricher::HasAccount(known, "mastodon"));
+		CHECK(!robin::PersonEnricher::HasAccount(known, "wikidata") && !robin::PersonEnricher::HasAccount(known, "orcid"));
+		known.orcid = "0000-0002-1825-0097";
+		known.sameAs.push_back("https://www.wikidata.org/wiki/Q42");
+		CHECK(robin::PersonEnricher::HasAccount(known, "wikidata") && robin::PersonEnricher::HasAccount(known, "orcid"));
+		CHECK(!robin::PersonEnricher::HasAccount(robin::PersonProfile(), "github"));
 	}
 
 	// 12b. No photo wanted: none is downloaded, the rest is still asked

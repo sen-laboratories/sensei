@@ -45,8 +45,6 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"email_services", kBool, "Photo and profile by e-mail address (Libravatar, Gravatar)", "Asks with the SHA-256 hash of the address, never the address."},
-	{"feeds", kBool, "Feeds of homepages and accounts", "Looks at the homepage for a feed and reads its posts."},
 	{"photo", kBool, "Photo as the thumbnail", "Writes the photo into the file, with its source and license."},
 	{"be_people", kChoice, "Fill the attributes of People", "Contact name and Nickname (META:name, META:nickname), where they are empty."},
 	{"name_correction", kChoice, "When an account spells a name differently", "Ask: Enrich (Overwrite) corrects the name and renames the file."},
@@ -81,8 +79,6 @@ void
 ToMessage(const Settings& s, BMessage* message)
 {
 	message->MakeEmpty();
-	message->AddBool("email_services", s.emailServices);
-	message->AddBool("feeds", s.feeds);
 	message->AddBool("photo", s.photo);
 	message->AddString("be_people", s.bePeople.c_str());
 	message->AddString("name_correction", s.nameCorrection.c_str());
@@ -91,20 +87,12 @@ ToMessage(const Settings& s, BMessage* message)
 		message->AddString("mastodon_servers", server.c_str());
 
 	// the services that are searched for a person by name or handle: a row for each, in the order of the list
-	const std::vector<std::string> on = s.HuntServices();
-	for (const std::string& id : s.HuntOrder()) {
+	for (const std::string& id : s.ServiceOrder()) {
 		BMessage row;
-		row.AddString("name", HuntServiceName(id));
+		row.AddString("name", ServiceName(id));
 		row.AddString("id", id.c_str());
-		row.AddString("info", HuntServiceInfo(id));
-		row.AddBool("enabled", std::find(on.begin(), on.end(), id) != on.end());
-		// (the accounts that the links of a person name: for the services that have them; the others have no cell in this column)
-		if (id == "github")
-			row.AddBool("follow", s.github);
-		else if (id == "mastodon")
-			row.AddBool("follow", s.fediverse);
-		else if (id == "bluesky")
-			row.AddBool("follow", s.bluesky);
+		row.AddString("info", ServiceInfo(id));
+		row.AddBool("enabled", s.Uses(id));
 		message->AddMessage("services", &row);
 	}
 }
@@ -132,28 +120,24 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	// the services of the search by name: a box for each, in the order that they are asked (drag a row to change it)
 	BMessage services;
 	services.AddString(form::kAttrLabel, "Services");
-	services.AddString(form::kAttrHelp, "Search: asked by name, in this order (drag to reorder). Follow: the accounts that the links of a person name.");
+	services.AddString(form::kAttrHelp, "Asked in this order: what an earlier service gave is kept. Drag a row to move it.");
 	services.AddString(form::kAttrKind, form::kKindTable);
 	services.AddBool(form::kAttrReorderable, true);
 	services.AddInt32(form::kAttrOrder, 0);
 	schema->AddMessage("services", &services);
 	BMessage use;
-	use.AddString(form::kAttrLabel, "Search");
+	use.AddString(form::kAttrLabel, "Use");
 	use.AddInt32(form::kAttrOrder, 0);
 	schema->AddMessage("services.enabled", &use);
-	BMessage follow;
-	follow.AddString(form::kAttrLabel, "Follow");
-	follow.AddInt32(form::kAttrOrder, 1);
-	schema->AddMessage("services.follow", &follow);
 	BMessage serviceName;
 	serviceName.AddString(form::kAttrLabel, "Service");
 	serviceName.AddBool(form::kAttrReadOnly, true);
-	serviceName.AddInt32(form::kAttrOrder, 2);
+	serviceName.AddInt32(form::kAttrOrder, 1);
 	schema->AddMessage("services.name", &serviceName);
 	BMessage serviceInfo;
 	serviceInfo.AddString(form::kAttrLabel, "Info");
 	serviceInfo.AddBool(form::kAttrReadOnly, true);
-	serviceInfo.AddInt32(form::kAttrOrder, 3);
+	serviceInfo.AddInt32(form::kAttrOrder, 2);
 	schema->AddMessage("services.info", &serviceInfo);
 	BMessage serviceId;
 	serviceId.AddBool(form::kAttrHidden, true);
@@ -202,9 +186,13 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 	// the services of the search: a cell of the table by its row (`services_01.enabled`), or the whole table (a move of a row, Revert, Defaults)
 	Settings current;
 	LoadSettings(&current);
-	const std::vector<std::string> orderBefore = current.HuntOrder();
+	const std::vector<std::string> orderBefore = current.ServiceOrder();
 	std::vector<std::string> order = orderBefore;
-	std::vector<std::string> on = current.HuntServices();
+	std::vector<std::string> on;
+	for (const std::string& id : orderBefore) {
+		if (current.Uses(id))
+			on.push_back(id);
+	}
 	bool servicesChanged = false;
 
 	char* name = nullptr;
@@ -221,7 +209,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 				if (changes.FindMessage(name, row, &each) != B_OK)
 					continue;
 				const std::string id = each.GetString("id", "");
-				if (*HuntServiceName(id) == '\0') {
+				if (*ServiceName(id) == '\0') {
 					refused->push_back("services");
 					continue;
 				}
@@ -229,12 +217,6 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 					order.push_back(id);
 				if (each.GetBool("enabled", false))
 					on.push_back(id);
-				bool followed = false;
-				if (each.FindBool("follow", &followed) == B_OK) {
-					const char* flag = id == "github" ? "github" : id == "mastodon" ? "fediverse" : id == "bluesky" ? "bluesky" : NULL;
-					if (flag != NULL)
-						valid.push_back({flag, followed ? "yes" : "no"});
-				}
 			}
 			for (const std::string& id : orderBefore) {
 				if (std::find(order.begin(), order.end(), id) == order.end())
@@ -248,24 +230,13 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			const int row = dot == std::string::npos ? -1 : atoi(key.substr(9, dot - 9).c_str());
 			bool enabled = false;
 			const std::string column = dot == std::string::npos ? std::string() : key.substr(dot + 1);
-			if ((column != "enabled" && column != "follow") || row < 0 || row >= (int)orderBefore.size() || changes.FindBool(name, &enabled) != B_OK) {
+			if (column != "enabled" || row < 0 || row >= (int)orderBefore.size() || changes.FindBool(name, &enabled) != B_OK) {
 				refused->push_back(key);
 				if (first == B_OK)
 					first = B_BAD_VALUE;
 				continue;
 			}
 			const std::string& id = orderBefore[row];
-			if (column == "follow") {
-				const char* flag = id == "github" ? "github" : id == "mastodon" ? "fediverse" : id == "bluesky" ? "bluesky" : NULL;
-				if (flag == NULL) {
-					refused->push_back(key);
-					if (first == B_OK)
-						first = B_BAD_VALUE;
-					continue;
-				}
-				valid.push_back({flag, enabled ? "yes" : "no"});
-				continue;
-			}
 			on.erase(std::remove(on.begin(), on.end(), id), on.end());
 			if (enabled)
 				on.push_back(id);
@@ -305,7 +276,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 		std::string line;
 		for (const std::string& id : order)
 			line += (line.empty() ? "" : " ") + std::string(std::find(on.begin(), on.end(), id) != on.end() ? "" : "-") + id;
-		valid.push_back({"hunt", line});
+		valid.push_back({"services", line});
 	}
 	if (valid.empty())
 		return first;

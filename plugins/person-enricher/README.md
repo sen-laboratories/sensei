@@ -115,14 +115,24 @@ by it: `2026-11-08 18.00 - First words of the post.md` (type `text/markdown`, `d
 SenPersonalRelationNavigator --debug relation/x-vnd.sen-labs.relation.person.status contact.person    # what the relation shows
 ```
 
-## The services of the search
+## The services
 
-In the settings of SEN (Plugins, Enrich, SEN Robin) one table lists the services, each with two boxes and a short note. **Search**: the service is asked for people by name (the hunt); **drag a row** to change the order
-in which they are asked. **Follow** (Bluesky, Mastodon, GitHub): the accounts that the links of a person name are followed (profile, photo, posts); the other services have no such accounts. The file `~/config/settings/sen/robin.settings` keeps them as
-`hunt = bluesky mastodon -github wikidata orcid` (a `-` is off for the search and keeps its place), `github = yes`, `fediverse = yes`, `bluesky = yes` (Follow), and the servers of the Fediverse that are asked for accounts by name, a list in the
-settings, as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a Bluesky handle if there is an account of that name.
+In the settings of SEN (Plugins, Enrich, SEN Robin) one table lists the services, each with a box (*Use*) and a short note: **Bluesky, Mastodon, GitHub, Wikidata, ORCID, Gravatar and Libravatar** (by the hash of the
+e-mail address) and **Homepage and feeds**. All are on by default; **drag a row** to change the order, which is the **priority**.
 
-**What is sent:** a name or a handle, to the services that are on; all of them are public places where people put themselves on purpose. The photo of a hit is fetched only for the dialog and for the
+Robin asks every service that is on, in this order, for what it knows about the person:
+
+- a service the person has an **account** at (a link in `schema:sameAs`, a handle as nickname, an e-mail address, a homepage) is asked for that account;
+- a service the person has **no account** at yet is searched for people of that name (the dialog *Choose a person*, as before; one that is clearly the one is taken, `--auto` takes the best); what you choose
+  goes into the links of the file, and from then on the account is asked directly.
+- **What an earlier service gave is not replaced by a later one** (the bio, the job, the company...), and what the file had before is never replaced (Enrich (Overwrite) does). The **photo** is the exception: the best
+  one of all services is kept. The bio is `dc:description` (Description). The **posts** come from the first service of the list that has them.
+
+The file `~/config/settings/sen/robin.settings` keeps the list as `services = bluesky mastodon -github wikidata orcid email feeds` (a `-` is off and keeps its place; a service that the line does not name is a new
+one and on), and the servers of the Fediverse that are asked for accounts by name, a list in the settings, as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a
+Bluesky handle if there is an account of that name. Wikidata and ORCID are asked when the person is searched; what they gave stays in the file, they are not asked again for an account.
+
+**What is sent:** a name or a handle, to the services that are on and that the person has no account at yet (an account that the file names is asked for that account only); all of them are public places where people put themselves on purpose. The photo of a hit is fetched only for the dialog and for the
 file; of the photos that were found, the larger one is the thumbnail.
 
 ## Privacy and politeness

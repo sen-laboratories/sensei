@@ -26,14 +26,23 @@ public:
 	 */
 	using HttpGetFunc = std::function<bool(const std::string& url, const char* accept, long maxAgeSeconds, std::string* body, int* httpStatus)>;
 
+	/** How good a photo is (the size of its longer side in pixels; a program that can read images says it; without one the number of bytes): the better one is kept when several services have a photo. */
+	using PhotoJudge = std::function<float(const std::string& imageData)>;
+
 	/** @param settings which services may be asked (a service that is switched off is never asked) */
 	PersonEnricher(HttpGetFunc httpGet, const Settings& settings = Settings());
 
+	void SetPhotoJudge(PhotoJudge judge) { fJudge = std::move(judge); }
+
 	/**
-	 * Runs the Robin enrichment cascade on the provided profile.
+	 * Runs the Robin enrichment on the provided profile: every service that is on, in the order of the list of the settings, is asked for the account that the profile names (a link, a handle, an
+	 * e-mail address, a homepage). What an earlier service gave is not replaced by a later one (what the profile had before is never replaced); the photo is the exception, the best one is kept.
 	 * Fetches avatar, bio, job title, company, sameAs links, feeds, and latest status.
 	 */
 	bool Enrich(PersonProfile* profile, bool forceWipe = false);
+
+	/** Whether the profile names an account at a service of the list (`github`, `mastodon`, `bluesky`, `wikidata`, `orcid`): the search by name is for the others. */
+	static bool HasAccount(const PersonProfile& profile, const std::string& service);
 
 	/**
 	 * Fetches the posts again: from the feed that the profile has (an RSS or Atom feed, the outbox of an ActivityPub actor, Bluesky), or from where the links of the profile lead; nothing else
@@ -62,8 +71,16 @@ private:
 	void _EnrichFromEmail(PersonProfile* profile);
 	/** the profile of Gravatar for an identifier: the hash of an e-mail address (the photo too, from Libravatar or Gravatar) or the name of a profile (the photo is the one that the profile gives) */
 	void _EnrichFromGravatar(PersonProfile* profile, const std::string& id, bool isHash);
-	void _EnrichFromHandles(PersonProfile* profile);
+	void _EnrichFromGitHub(PersonProfile* profile);
+	void _EnrichFromFediverse(PersonProfile* profile);
+	void _EnrichFromBluesky(PersonProfile* profile);
+	/** the feed of the homepage, if no service gave a feed */
+	void _DiscoverFeed(PersonProfile* profile);
+	/** the posts, from the first service of the list that has them */
 	void _EnrichFromFeed(PersonProfile* profile);
+	/** runs a step that may find a photo, and keeps the better of its photo and the one that the profile had */
+	void _WithBestPhoto(PersonProfile* profile, const std::function<void()>& step);
+	bool _FetchFeedPosts(PersonProfile* profile);
 	bool _ResolveActor(PersonProfile* profile, const std::string& handle);
 	bool _FetchPosts(PersonProfile* profile);
 	bool _FetchAvatar(PersonProfile* profile, const char* credit);
@@ -71,6 +88,7 @@ private:
 
 	HttpGetFunc fHttpGet;
 	Settings fSettings;
+	PhotoJudge fJudge;
 };
 
 } // namespace robin

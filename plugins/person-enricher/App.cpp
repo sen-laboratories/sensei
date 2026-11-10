@@ -377,14 +377,14 @@ CorrectName(PersonProfile* profile, const entry_ref& file, bool automatic, bool 
 }	// namespace
 
 
-// The people that fit the name and the handle of the file, on the services that are on: one that is clearly the one is taken, else the user chooses (with their photos, which come after the
+// The people that fit the name and the handle of the file, on these services (the ones that are on and that the person has no account at yet): one that is clearly the one is taken, else the user chooses (with their photos, which come after the
 // window) unless --auto says to take the best. Returns the hit; false if there is none or the user cancelled (`cancelled` says which).
 bool
-App::_Hunt(const PersonProfile& profile, bool automatic, std::vector<HuntHit>* chosen, bool* cancelled)
+App::_Hunt(const PersonProfile& profile, bool automatic, const std::vector<std::string>& services, std::vector<HuntHit>* chosen, bool* cancelled)
 {
 	*cancelled = false;
 	Hunter hunter(fHttp.Function(), fSettings);
-	std::vector<HuntHit> hits = hunter.Search(profile);
+	std::vector<HuntHit> hits = hunter.Search(profile, services);
 	if (hits.empty())
 		return false;
 
@@ -476,16 +476,22 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	fSettings = Settings();
 	LoadSettings(&fSettings);
 	PersonEnricher enricher(fHttp.Function(), fSettings);
-	const bool hadSources = !PersonEnricher::Sources(profile, fSettings).empty();
+	enricher.SetPhotoJudge([](const std::string& image) { return PictureSide(image); });		// (the best photo is the largest)
+	// the services of the list, in its order: for the accounts that the file names
 	bool enriched = enricher.Enrich(&profile, wipe);
 
-	// A person with a name or a handle but nothing that says which account is its own (or that the sources gave nothing for): the services are searched for it, and what is found is
-	// what the file says now: its links, and the next enrichment follows them.
+	// The services that are on and that the person has no account at yet are searched for it by its name and handle; what is found is what the file says now: its links, and the next enrichment
+	// follows them.
 	std::vector<HuntHit> found;
 	bool hunted = false;
-	if (!hadSources || !enriched) {
+	std::vector<std::string> missing;
+	for (const std::string& service : fSettings.HuntServices()) {
+		if (!PersonEnricher::HasAccount(profile, service))
+			missing.push_back(service);
+	}
+	if (!missing.empty() && (!profile.name.empty() || !profile.nick.empty())) {
 		bool cancelled = false;
-		if (_Hunt(profile, automatic, &found, &cancelled)) {
+		if (_Hunt(profile, automatic, missing, &found, &cancelled)) {
 			hunted = true;
 			// (merged in the order of the list: what a hit says is not replaced by the ones below it, nor is anything the file had; the links of all of them are kept)
 			for (const HuntHit& hit : found) {
@@ -497,12 +503,12 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 			enriched = true;
 			for (const HuntHit& hit : found)
 				_BestPhoto(&profile, hit);
-		} else if (cancelled) {
-			return B_CANCELED;
+		} else if (cancelled && !enriched) {
+			return B_CANCELED;		// (nobody was chosen and the accounts gave nothing: nothing to write; else what they gave is kept)
 		}
 	}
 
-	if (!enriched || (!hunted && !hadSources)) {
+	if (!enriched && !hunted) {
 		BString text(PersonEnricher::Explain(profile, fSettings).c_str());
 		if (!hunted && !fSettings.HuntServices().empty() && (!profile.name.empty() || !profile.nick.empty())) {
 			text.SetTo("Searched ");
