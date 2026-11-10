@@ -3,6 +3,7 @@
  * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
  */
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -90,6 +91,17 @@ main()
 		CHECK(CompareNames("Al", "Ed") == NameMatch::Different);							// (a short name has no variants)
 		CHECK(CompareNames("Ann Lee", "Ann Li") == NameMatch::Different);
 		CHECK(CompareNames("", "Scot Hacker") == NameMatch::Different);
+		// a server that wants signed requests (401 for the actor): the public API of Mastodon tells the account
+		CHECK(robin::FeedResolver::MastodonLookupUrl("@Gargron@mastodon.social") == "https://mastodon.social/api/v1/accounts/lookup?acct=Gargron");
+		CHECK(robin::FeedResolver::MastodonLookupUrl("shacker@zirk.us") == "https://zirk.us/api/v1/accounts/lookup?acct=shacker");
+		CHECK(robin::FeedResolver::MastodonLookupUrl("nohost").empty());
+		robin::PersonProfile api;
+		api.name = "Scott Hacker";
+		const std::string account = "{\"acct\":\"shacker\",\"display_name\":\"Scot Hacker\",\"note\":\"<p>Djangonaut</p>\",\"avatar\":\"https://x/a.png\",\"url\":\"https://zirk.us/@shacker\"}";
+		CHECK(robin::FeedResolver::ParseMastodonAccountJson(account, &api));
+		CHECK(api.name == "Scott Hacker" && api.accountName == "Scot Hacker" && api.bio == "Djangonaut" && api.avatarUrl == "https://x/a.png");
+		CHECK(api.feedUrl == "https://zirk.us/@shacker.rss" && api.sameAs.size() == 1);
+		CHECK(!robin::FeedResolver::ParseMastodonAccountJson("{\"error\":\"Record not found\"}", &api));
 		// the name of the account is remembered, the name of the file stays
 		robin::PersonProfile named;
 		named.name = "Scott Hacker";
@@ -627,6 +639,26 @@ main()
 		robin::ParseSettings("# my settings\n email_services = no\ngithub=off\nfediverse = yes\nphoto_size = 128 # smaller\nunknown = kept\nbluesky = maybe\nphoto = 0\n", &s);
 		CHECK(!s.emailServices && !s.github && s.fediverse && s.bluesky && s.feeds && !s.photo && s.photoSize == 128);		// ("maybe" is no answer: what was there stays)
 		robin::Settings bad;
+		// one list of the services: what is off in the list is off for the accounts of the links, and a key that switched a service off switches it off in the list
+		{
+			robin::Settings one;
+			robin::ParseSettings("hunt = bluesky mastodon -github wikidata orcid\n", &one);
+			CHECK(!one.github && one.fediverse && one.bluesky);
+			const std::vector<std::string> on = one.HuntServices();
+			CHECK(on.size() == 4 && std::find(on.begin(), on.end(), "github") == on.end());
+			robin::Settings legacyKey;
+			robin::ParseSettings("bluesky = no\n", &legacyKey);
+			const std::vector<std::string> all = legacyKey.HuntServices();
+			CHECK(all.size() == 4 && std::find(all.begin(), all.end(), "bluesky") == all.end());
+			// the name of a person that an account spells differently: ask (default), always, never
+			robin::Settings names;
+			CHECK(names.nameCorrection == "ask");
+			robin::ParseSettings("name_correction = always\n", &names);
+			CHECK(names.nameCorrection == "always");
+			robin::ParseSettings("name_correction = sometimes\n", &names);
+			CHECK(names.nameCorrection == "always");
+			CHECK(robin::ValidateSetting("name_correction", "never") && !robin::ValidateSetting("name_correction", "yes"));
+		}
 		// the attributes of People: off, legacy (the contacts of People) or all people files; anything else is no value
 		{
 			robin::Settings be;

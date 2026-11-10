@@ -39,10 +39,10 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"api_key", kText, "TMDB API key", "The API Key (v3) or the API Read Access Token (v4) of The Movie Database: free, at themoviedb.org/settings/api (Settings, API). Without one nothing can be looked up. It is kept in the settings file as it is."},
+	{"api_key", kText, "TMDB API key", "A free API key (v3) or token (v4) from themoviedb.org/settings/api. Without one nothing is looked up."},
 	{"language", kText, "Language", "The language of titles, descriptions and biographies that TMDB gives."},
-	{"crew", kBool, "Make people of the director and the crew", "Writers, producers, composer, cinematography and editing: each is a person with a Contribution to the movie."},
-	{"cast", kBool, "Make people of the cast", "Each actor is a person with a Contribution (the role Actor, the character, the place in the credits)."},
+	{"crew", kBool, "Make people of the director and the crew", "Each is a person with a Contribution to the movie."},
+	{"cast", kBool, "Make people of the cast", "Each actor is a person with a Contribution (role, character, place)."},
 };
 
 const struct {

@@ -32,6 +32,7 @@ enum FieldType {
 	kBool,
 	kNumber,
 	kText,
+	kList,		///< several texts, in a list
 	kChoice		///< one of a few values, as radio buttons
 };
 
@@ -44,16 +45,13 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"email_services", kBool, "Photo and profile by e-mail address (Libravatar, Gravatar)",
-		"Ask Libravatar and Gravatar for a photo and a profile of a person that has an e-mail address. They are given the SHA-256 hash of the address, never the address: but whoever knows an address can work out its hash, so a service learns that this address is looked up."},
-	{"github", kBool, "GitHub", "Ask GitHub about a person whose links (schema:sameAs) name a GitHub account: its profile and its photo. A nickname alone is never taken for an account."},
-	{"fediverse", kBool, "Fediverse (Mastodon and others)", "Ask the server of a person's Fediverse account (a link like https://host/@name, or @name@host as the nickname) for its photo, its text and its posts."},
-	{"bluesky", kBool, "Bluesky", "Ask Bluesky about a person whose links name a Bluesky profile: its photo, its text and its posts."},
-	{"feeds", kBool, "Feeds of homepages and accounts", "Look at the homepage of a person for the address of its feed (an RSS or Atom feed), and read the feeds of a person: the posts that the relation Status shows."},
-	{"photo", kBool, "Photo as the thumbnail", "Write the photo that was found into the file as its thumbnail, with where it is from and its license."},
-	{"be_people", kChoice, "Fill the attributes of People", "Put the name and the nickname into the attributes of the People application of Haiku (Contact name and Nickname: META:name, META:nickname), where they are empty (what is there is never replaced), so that the columns of the People window show them. By default only the contact files of People (application/x-person) get them, not the Person of SEN."},
-	{"mastodon_servers", kText, "Mastodon servers to search", "The servers of the Fediverse whose search for accounts is asked when a person is looked for by its name (a server knows the accounts that it has seen), separated by blanks. A handle of the form user@server is asked at its own server."},
-	{"photo_size", kNumber, "Size of the photo (pixels)", "The longer side of the photo: a larger photo is made smaller before it is written to the file (a thumbnail is a few hundred pixels, not a megabyte)."},
+	{"email_services", kBool, "Photo and profile by e-mail address (Libravatar, Gravatar)", "Asks with the SHA-256 hash of the address, never the address."},
+	{"feeds", kBool, "Feeds of homepages and accounts", "Looks at the homepage for a feed and reads its posts."},
+	{"photo", kBool, "Photo as the thumbnail", "Writes the photo into the file, with its source and license."},
+	{"be_people", kChoice, "Fill the attributes of People", "Contact name and Nickname (META:name, META:nickname), where they are empty."},
+	{"name_correction", kChoice, "When an account spells a name differently", "Ask: Enrich (Overwrite) corrects the name and renames the file."},
+	{"mastodon_servers", kList, "Mastodon servers to search", "Asked when a person is searched by name."},
+	{"photo_size", kNumber, "Size of the photo (pixels)", "The longer side; a larger photo is made smaller."},
 };
 
 
@@ -90,11 +88,10 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddBool("feeds", s.feeds);
 	message->AddBool("photo", s.photo);
 	message->AddString("be_people", s.bePeople.c_str());
+	message->AddString("name_correction", s.nameCorrection.c_str());
 	message->AddInt32("photo_size", s.photoSize);
-	std::string servers;
 	for (const std::string& server : s.mastodonServers)
-		servers += (servers.empty() ? "" : " ") + server;
-	message->AddString("mastodon_servers", servers.c_str());
+		message->AddString("mastodon_servers", server.c_str());
 
 	// the services that are searched for a person by name or handle: a row for each, in the order of the list
 	const std::vector<std::string> on = s.HuntServices();
@@ -130,8 +127,8 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	schema->AddInt32(form::kSchemaVersion, 1);
 	// the services of the search by name: a box for each, in the order that they are asked (drag a row to change it)
 	BMessage services;
-	services.AddString(form::kAttrLabel, "Search for people on");
-	services.AddString(form::kAttrHelp, "The services that are asked, in this order, when a person has a name or a handle but nothing that says which account is its own. Drag a row to change the order. A name is sent to the services that are on; they are all public places where people have put themselves.");
+	services.AddString(form::kAttrLabel, "Services");
+	services.AddString(form::kAttrHelp, "Asked in this order, for the accounts of the links and to search by name. Drag to reorder.");
 	services.AddString(form::kAttrKind, form::kKindTable);
 	services.AddBool(form::kAttrReorderable, true);
 	services.AddInt32(form::kAttrOrder, 0);
@@ -168,13 +165,18 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		}
 		if (field.type == kChoice) {
 			attributes.AddString(form::kAttrKind, form::kKindRadio);
-			const char* const values[] = { "off", "legacy", "all" };
-			const char* const labels[] = { "Off", "Only the contacts of People (application/x-person)", "All people files (also the Person of SEN)" };
-			for (int i = 0; i < 3; i++) {
-				attributes.AddString(form::kAttrChoices, values[i]);
-				attributes.AddString(form::kAttrChoiceLabels, labels[i]);
+			std::vector<std::pair<const char*, const char*>> choices;
+			if (strcmp(field.key, "be_people") == 0)
+				choices = { {"off", "Off"}, {"legacy", "Only legacy Person files (x-person)"}, {"all", "All Person files"} };
+			else
+				choices = { {"ask", "Ask me"}, {"always", "Always correct the name and rename the file"}, {"never", "Never"} };
+			for (const auto& choice : choices) {
+				attributes.AddString(form::kAttrChoices, choice.first);
+				attributes.AddString(form::kAttrChoiceLabels, choice.second);
 			}
 		}
+		if (field.type == kList)
+			attributes.AddBool(form::kAttrList, true);
 		// (the size of the photo means something only while the photo is written)
 		if (strcmp(field.key, "photo_size") == 0)
 			attributes.AddString(form::kAttrEnabledWhen, "photo=true");
@@ -250,6 +252,19 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 				field = &each;
 		}
 		std::string text, why;
+		if (field != nullptr && field->type == kList) {
+			// (a list: all its values, written in one line separated by blanks)
+			type_code listType = 0;
+			int32 count = 0;
+			changes.GetInfo(name, &listType, &count);
+			for (int32 value = 0; value < count; value++) {
+				const std::string one = changes.GetString(name, value, "");
+				if (!one.empty())
+					text += (text.empty() ? "" : " ") + one;
+			}
+			valid.push_back({key, text});
+			continue;
+		}
 		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text, &why)) {
 			refused->push_back(why.empty() ? key : key + " (" + why + ")");
 			if (first == B_OK)
@@ -265,6 +280,11 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 		for (const std::string& id : order)
 			line += (line.empty() ? "" : " ") + std::string(std::find(on.begin(), on.end(), id) != on.end() ? "" : "-") + id;
 		valid.push_back({"hunt", line});
+		// (one list: the keys of the services that the accounts of the links use are kept in step with it)
+		auto isOn = [&on](const char* id) { return std::find(on.begin(), on.end(), id) != on.end() ? "yes" : "no"; };
+		valid.push_back({"github", isOn("github")});
+		valid.push_back({"fediverse", isOn("mastodon")});
+		valid.push_back({"bluesky", isOn("bluesky")});
 	}
 	if (valid.empty())
 		return first;

@@ -88,13 +88,15 @@ Robin fills only what the file does not have yet (`--wipe` replaces), with the e
 
 The ontology is in `sen-oni` (`schema/sen-people.yaml`).
 
-**The attributes of the People application.** The contacts of Haiku's People (`application/x-person`) have attributes of their own, `META:name` (*Contact name*) and `META:nickname` (*Nickname*), which the columns of the People window show.
-Robin writes the attributes above; the setting **Fill the attributes of People** (`be_people`: *legacy* by default, for the contact files of People only; *off*; *all* for every people file, also the Person of SEN) puts the name and the nickname into
+**The attributes of the People application.** The legacy Person files of Haiku's People (`application/x-person`) have attributes of their own, `META:name` (*Contact name*) and `META:nickname` (*Nickname*), which the columns of the People window show.
+Robin writes the attributes above; the setting **Fill the attributes of People** (`be_people`: *legacy* by default, for the legacy Person files (x-person) only; *off*; *all* for every Person file, also the Person of SEN) puts the name and the nickname into
 those two as well, **where they are empty** (never replaced, except the old spelling of a name that you just agreed to correct).
 
 **A name that the account spells differently.** If the account of the person (Mastodon, GitHub, Gravatar, or the person that you chose) gives a name that is a variant of the one in the file (a letter or two, an accent:
 "Scot" for "Scott"), Robin asks whether that is a typo in the file: *Keep*, *Use "Scot Hacker"* (the name and the given and family name), or *Use and rename the file* (the file name is the *Real name* column of Tracker).
-Enrich (Overwrite) takes it without asking, `--auto` leaves the name and says it in the summary. A name that is not a variant (a nickname) is never offered.
+The setting **When an account spells a name differently** (`name_correction`) chooses: *ask* (the default: the question above; Enrich (Overwrite) takes the name **and renames the file**, `--auto` leaves it and says it in the
+summary), *always* (the name and the file name are corrected without asking) or *never*. A file whose name is right but whose *file name* is the old spelling is offered the rename the same way. A name that is not a variant
+(a nickname) is never offered.
 
 ## The posts: the relation *status*
 
@@ -115,9 +117,9 @@ SenPersonalRelationNavigator --debug relation/x-vnd.sen-labs.relation.person.sta
 
 ## The services of the search
 
-In the settings of SEN (Plugins, Enrich, SEN Robin) a table lists the services of the hunt, each with a box and a short note; **drag a row** to change the order in which they are asked, switch one
-off to leave it out. The file `~/config/settings/sen/robin.settings` keeps them as `hunt = bluesky mastodon -github wikidata orcid` (a `-` is off and keeps its place) and the servers of the Fediverse
-that are asked for accounts by name as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a Bluesky handle if there is an account of that name.
+In the settings of SEN (Plugins, Enrich, SEN Robin) one table lists the services, each with a box and a short note; **drag a row** to change the order in which they are asked, switch one
+off to leave it out: it is then neither searched by name nor asked about the accounts that the links of a person name. The file `~/config/settings/sen/robin.settings` keeps them as `hunt = bluesky mastodon -github wikidata orcid` (a `-` is off and keeps its place;
+`github`, `fediverse` and `bluesky` are kept in step) and the servers of the Fediverse that are asked for accounts by name, a list in the settings, as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a Bluesky handle if there is an account of that name.
 
 **What is sent:** a name or a handle, to the services that are on; all of them are public places where people put themselves on purpose. The photo of a hit is fetched only for the dialog and for the
 file; of the photos that were found, the larger one is the thumbnail.

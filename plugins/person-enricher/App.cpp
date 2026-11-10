@@ -307,24 +307,46 @@ Words(const std::string& name)
 
 
 /**
- * The account of the person calls it by a variant of the name that the file has ("Scot Hacker" for "Scott Hacker": the file may have the typo): what the file has is never replaced on its own,
- * the user is asked (not with --auto: it is said in the summary instead). A variant is meant, never another name (a nickname, a pseudonym). Enrich (Overwrite) is the user's word to take it. If the
- * name of the file is what is wrong, it may be renamed, too (@p renameFile). True if the profile has the name of the account now.
+ * The account of the person calls it by a variant of the name that the file has ("Scot Hacker" for "Scott Hacker": the file may have the typo). What the setting `name_correction` says: `never` leaves it;
+ * `always` takes the name of the account and renames the file if that has the old name; `ask` (the default) asks the user (not with --auto: it is said in the summary instead), and Enrich (Overwrite) is the
+ * user's word to take it, with the name of the file. A variant is meant, never another name (a nickname, a pseudonym). True if the profile has the name of the account now; @p renameFile: the file is to
+ * be renamed, too.
  */
 bool
-CorrectName(PersonProfile* profile, const entry_ref& file, bool automatic, bool overwrite, bool* renameFile, std::string* note)
+CorrectName(PersonProfile* profile, const entry_ref& file, bool automatic, bool overwrite, const std::string& mode, bool* renameFile, std::string* note)
 {
 	*renameFile = false;
-	if (profile->accountName.empty() || CompareNames(profile->name, profile->accountName) != NameMatch::Variant)
+	if (mode == "never" || profile->accountName.empty())
 		return false;
-	const std::string stored = profile->name, account = profile->accountName;
-	if (automatic) {
-		*note = "The account calls the person \"" + account + "\", the file says \"" + stored + "\"";
+	// the name of the person is right already (an earlier run, or the user) and only the name of the file is the typo: the file is what is renamed
+	if (CompareNames(profile->name, profile->accountName) == NameMatch::Same && profile->name != file.name && CompareNames(file.name, profile->name) == NameMatch::Variant) {
+		if (mode == "always" || (mode == "ask" && overwrite)) {
+			*renameFile = true;
+		} else if (automatic) {
+			*note = std::string("The file is called \"") + file.name + "\", the person \"" + profile->name + "\"";
+		} else {
+			BString text;
+			text << "The file is called \"" << file.name << "\", but the name of the person is \"" << profile->name.c_str() << "\". Rename the file?";
+			BString rename;
+			rename << "Rename to \"" << profile->name.c_str() << "\"";
+			BAlert* alert = new BAlert("name", text.String(), "Keep", rename.String(), NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+			alert->SetShortcut(0, B_ESCAPE);
+			*renameFile = alert->Go() == 1;
+		}
 		return false;
 	}
-	bool take = overwrite;
-	if (!overwrite) {
-		const bool nameOfFile = stored == file.name;
+	if (CompareNames(profile->name, profile->accountName) != NameMatch::Variant)
+		return false;
+	const std::string stored = profile->name, account = profile->accountName;
+	const bool nameOfFile = stored == file.name;
+	bool take = false;
+	if (mode == "always" || (mode == "ask" && overwrite)) {
+		take = true;
+		*renameFile = nameOfFile;
+	} else if (automatic) {
+		*note = "The account calls the person \"" + account + "\", the file says \"" + stored + "\"";
+		return false;
+	} else {
 		BString text;
 		text << "The account calls this person \"" << account.c_str() << "\". The file says \"" << stored.c_str() << "\". Is that a typo in the file?";
 		BString use;
@@ -496,7 +518,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	// a typo in the name that the account shows: the user is asked
 	bool renameFile = false;
 	std::string nameNote;
-	const bool nameCorrected = CorrectName(&profile, file, automatic, wipe, &renameFile, &nameNote);
+	const bool nameCorrected = CorrectName(&profile, file, automatic, wipe, fSettings.nameCorrection, &renameFile, &nameNote);
 
 	result = WritePerson(file, profile, wipe, fSettings);
 	if (result != B_OK) {
@@ -522,6 +544,8 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	}
 	if (nameCorrected)
 		detail << "Name: " << profile.name.c_str() << (renameFile && current != file ? " (file renamed)" : "") << "; ";
+	else if (renameFile && current != file)
+		detail << "File renamed to " << profile.name.c_str() << "; ";
 	else if (!nameNote.empty())
 		detail << nameNote.c_str() << "; ";
 	if (profile.HasAvatar())

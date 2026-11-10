@@ -233,6 +233,55 @@ FeedResolver::WebFingerUrl(std::string_view handle)
 
 
 std::string
+FeedResolver::MastodonLookupUrl(std::string_view handle)
+{
+	std::string h(handle);
+	if (!h.empty() && h.front() == '@')
+		h.erase(0, 1);
+	const size_t at = h.find('@');
+	if (at == std::string::npos || at == 0 || at == h.size() - 1)
+		return "";
+	return "https://" + h.substr(at + 1) + "/api/v1/accounts/lookup?acct=" + h.substr(0, at);
+}
+
+
+bool
+FeedResolver::ParseMastodonAccountJson(const std::string& json, PersonProfile* profile)
+{
+	if (profile == nullptr || json.empty())
+		return false;
+	try {
+		auto root = nlohmann::json::parse(json);
+		if (!root.is_object() || !root.contains("acct"))
+			return false;
+		auto text = [&root](const char* key) { return root.contains(key) && root[key].is_string() ? root[key].get<std::string>() : std::string(); };
+
+		const std::string name = text("display_name");
+		if (!name.empty()) {
+			if (profile->name.empty())
+				profile->name = name;
+			else if (profile->accountName.empty())
+				profile->accountName = name;
+		}
+		if (profile->bio.empty() && !text("note").empty())
+			profile->bio = feedtext::HtmlToPlainText(text("note"));
+		if (profile->avatarUrl.empty())
+			profile->avatarUrl = text("avatar");
+		const std::string page = text("url");
+		if (!page.empty()) {
+			if (std::find(profile->sameAs.begin(), profile->sameAs.end(), page) == profile->sameAs.end())
+				profile->sameAs.push_back(page);
+			if (profile->feedUrl.empty())
+				profile->feedUrl = page + ".rss";		// (the public posts of an account, as RSS)
+		}
+		return true;
+	} catch (...) {
+		return false;
+	}
+}
+
+
+std::string
 FeedResolver::ParseActorUrlFromWebFinger(const std::string& webFingerJson)
 {
 	if (webFingerJson.empty())

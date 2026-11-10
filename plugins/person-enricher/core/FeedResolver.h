@@ -27,6 +27,15 @@ public:
 	/** Parses ActivityPub Actor JSON to extract outbox URL, avatar, and bio. */
 	static bool ParseActorJson(const std::string& actorJson, PersonProfile* profile);
 
+	/**
+	 * The public API of Mastodon for the account of a handle (`@user@host`): `https://host/api/v1/accounts/lookup?acct=user`. A server that answers an unsigned request for the actor with 401 (authorized
+	 * fetch: mastodon.social does) still tells this: the name, the text, the photo and the page of the account. Empty if the handle is none.
+	 */
+	static std::string MastodonLookupUrl(std::string_view handle);
+
+	/** Parses what that API says of an account into the profile (the name of the account, the text, the photo, the page and its feed `<page>.rss`). */
+	static bool ParseMastodonAccountJson(const std::string& json, PersonProfile* profile);
+
 	/** Parses a page of an ActivityPub outbox: the notes that the person wrote (not what was boosted, not replies). */
 	static bool ParseOutboxJson(const std::string& outboxJson, PersonProfile* profile);
 

@@ -342,9 +342,12 @@ PersonEnricher::_ResolveActor(PersonProfile* profile, const std::string& handle)
 		return false;
 	const std::string actorUrl = FeedResolver::ParseActorUrlFromWebFinger(webFinger);
 	std::string actor;
-	if (actorUrl.empty() || !_Get(actorUrl, kAcceptActivity, kProfileCacheSeconds, &actor))
-		return false;
-	return FeedResolver::ParseActorJson(actor, profile);
+	if (!actorUrl.empty() && _Get(actorUrl, kAcceptActivity, kProfileCacheSeconds, &actor) && FeedResolver::ParseActorJson(actor, profile))
+		return true;
+	// a server with authorized fetch (401 for an actor that is asked for without a signature): the public API of Mastodon tells the account, too
+	const std::string lookupUrl = FeedResolver::MastodonLookupUrl(handle);
+	std::string account;
+	return !lookupUrl.empty() && _Get(lookupUrl, kAcceptJson, kProfileCacheSeconds, &account) && FeedResolver::ParseMastodonAccountJson(account, profile);
 }
 
 
