@@ -229,7 +229,7 @@ DescribeHit(const HuntHit& hit)
 {
 	sen::Candidate candidate;
 	candidate.title = hit.name.c_str();
-	candidate.subtitle << HuntServiceName(hit.service) << " - " << (hit.service == "bluesky" || hit.service == "mastodon" ? "@" : "") << hit.id.c_str();
+	candidate.subtitle << ServiceName(hit.service) << " - " << (hit.service == "bluesky" || hit.service == "mastodon" ? "@" : "") << hit.id.c_str();
 	BString detail;
 	if (!hit.jobTitle.empty())
 		detail << hit.jobTitle.c_str() << " - ";
@@ -240,7 +240,7 @@ DescribeHit(const HuntHit& hit)
 	detail << Shorter(hit.description, 120);
 	candidate.detail = detail;
 	// (the name of the service without what is in brackets: "Mastodon (Fediverse)" is "Mastodon" above the bar, the subtitle has the rest)
-	candidate.source = HuntServiceName(hit.service);
+	candidate.source = ServiceName(hit.service);
 	const int32 bracket = candidate.source.FindFirst(" (");
 	if (bracket > 0)
 		candidate.source.Truncate(bracket);
@@ -454,7 +454,7 @@ App::_BestPhoto(PersonProfile* profile, const HuntHit& hit)
 	if (!profile->HasAvatar() || theirs > PictureSide(profile->avatarData)) {
 		profile->avatarData = data;
 		profile->avatarUrl = hit.avatarUrl;
-		profile->avatarCredit = HuntServiceName(hit.service);
+		profile->avatarCredit = ServiceName(hit.service);
 		profile->avatarLicense.clear();
 	}
 }
@@ -514,7 +514,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 			text.SetTo("Searched ");
 			const std::vector<std::string> services = fSettings.HuntServices();
 			for (size_t i = 0; i < services.size(); i++)
-				text << (i == 0 ? "" : (i + 1 == services.size() ? " and " : ", ")) << HuntServiceName(services[i]);
+				text << (i == 0 ? "" : (i + 1 == services.size() ? " and " : ", ")) << ServiceName(services[i]);
 			text << " for " << (profile.name.empty() ? profile.nick.c_str() : profile.name.c_str()) << ": nobody fits. A handle or a link of the person helps.";
 		}
 		sensei::Notify("SEN Robin", "Person not enriched", text.String(), false);
@@ -545,7 +545,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	if (hunted) {
 		detail << "Found ";
 		for (size_t i = 0; i < found.size(); i++)
-			detail << (i == 0 ? "" : " + ") << found[i].name.c_str() << " (" << HuntServiceName(found[i].service) << ")";
+			detail << (i == 0 ? "" : " + ") << found[i].name.c_str() << " (" << ServiceName(found[i].service) << ")";
 		detail << "; ";
 	}
 	if (nameCorrected)
