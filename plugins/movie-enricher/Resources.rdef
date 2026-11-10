@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
 
-	internal = 6,
+	internal = 7,
 
 	short_info = "SEN Akari (Movie Enricher)",
 	long_info  = "Grabs movie metadata from The Movie Database: title, release, length, poster, and director, crew and cast as people with a Contribution to the movie.\nThis product uses the TMDB API but is not endorsed or certified by TMDB."
