@@ -18,6 +18,8 @@
 #include <Url.h>
 #include <fs_attr.h>
 
+#include <location/LocationClient.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,6 +63,9 @@ App::App()
 	fNeedsConsent(false),
 	fOverwrite(true),
 	fStreetOnly(false),
+	fNearTried(false),
+	fHasNear(false),
+	fNearRadius(0),
 	fAuto(false),
 	fExitCode(0)
 {
@@ -356,8 +361,45 @@ Describe(const place::Hit& hit, float score, const std::string& distance)
 }
 
 
+bool
+App::FindNearUser(place::Position* position, double* radiusKilometres)
+{
+	if (!fNearTried) {
+		fNearTried = true;
+		fHasNear = false;
+		// (the client starts the server if it does not run, as it is made to; the settings of the server and the permission of this program say how much it tells, and if Basho is not
+		// installed there is no position: nothing is looked for near the user then)
+		if (fSettings.nearMe) {
+			LocationClient client;
+			BMessage fix;
+			double latitude = 0, longitude = 0;
+			const status_t got = client.GetCurrent(&fix, 2000000, false, "city");
+			if (got != B_OK)
+				printf("Basho tells nothing of where the user is: %s%s%s.\n", strerror(got), fix.HasString("error") ? " - " : "", fix.GetString("error", ""));
+			else if (fix.FindDouble("latitude", &latitude) != B_OK || fix.FindDouble("longitude", &longitude) != B_OK)
+				printf("Basho tells no position (level %s).\n", fix.GetString("granularity", "?"));
+			if (got == B_OK && fix.FindDouble("latitude", &latitude) == B_OK && fix.FindDouble("longitude", &longitude) == B_OK) {
+				// (an address of the internet is placed to a city: the radius says how far off it may be; the area to search is twice that, at least 30 km)
+				float accuracy = 0;
+				fix.FindFloat("accuracy", &accuracy);
+				fNear.latitude = latitude;
+				fNear.longitude = longitude;
+				fNearRadius = std::min(150.0, std::max(30.0, 2.0 * accuracy / 1000.0));
+				fHasNear = true;
+				printf("the user is near %s (%.2f, %.2f), looking within %.0f km first.\n", fix.GetString("city", "?"), latitude, longitude, fNearRadius);
+			}
+		}
+	}
+	if (fHasNear) {
+		*position = fNear;
+		*radiusKilometres = fNearRadius;
+	}
+	return fHasNear;
+}
+
+
 status_t
-App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen)
+App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen, double nearKilometres)
 {
 	struct Entry {
 		size_t	index;
@@ -387,7 +429,7 @@ App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted,
 		if (!pool[i].fits)
 			continue;
 		matching++;
-		if (near != NULL && pool[i].kilometres <= 5.0) {
+		if (near != NULL && pool[i].kilometres <= nearKilometres) {
 			nearMatching++;
 			nearest = i;
 		}
@@ -510,17 +552,22 @@ status_t
 App::FindByQuery(const std::string& query, place::Hit* hit)
 {
 	fWanted = query;
+	// (nothing says where it is: where the user is, roughly, is where the search looks first, and the nearest of the places of that name is the best)
+	place::Position user;
+	double radius = 0;
+	const bool hasUser = FindNearUser(&user, &radius);
 	std::string body;
-	status_t result = Get(place::SearchUrl(query, fLanguage, fSettings.boundary), kNominatim, &body);
+	status_t result = Get(hasUser ? place::SearchUrl(query, fLanguage, fSettings.boundary, 12, place::kBoundaryTolerance, place::AreaAround(user, radius))
+		: place::SearchUrl(query, fLanguage, fSettings.boundary), kNominatim, &body);
 	if (result != B_OK)
 		return result;
 	std::vector<place::Hit> hits;
 	if (!place::ParseHits(body, &hits))
 		return B_ERROR;
+	place::RemoveStopDetails(&hits);
 	if (hits.empty())
 		return B_ENTRY_NOT_FOUND;
-	// (nothing says where it is: the best match of the name, or the one that the user chooses)
-	return ChoosePlace(hits, query, NULL, 0, hit);
+	return ChoosePlace(hits, query, hasUser ? &user : NULL, 0, hit, radius);
 }
 
 
@@ -559,7 +606,17 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	// where the file says that it is (its city, region and country): the search stays there. Not asked for a file that is looked up by its position alone.
 	place::Area area;
 	const bool byPositionAlone = hasPosition && !hasTitle && !place::LooksLikeName(name);
-	const bool hasArea = !byPositionAlone && FindArea(node, language, &area);
+	bool hasArea = !byPositionAlone && FindArea(node, language, &area);
+
+	// nothing in the file says where it is (no position, no city): where the user is, roughly, is where the search looks first, and ranks the answers (a Westbahnhof in Wien, not the one in
+	// Budapest that has the name in German, too)
+	place::Position user;
+	double userRadius = 0;
+	bool hasUser = false;
+	if (!hasArea && !hasPosition && !byPositionAlone && (hasUser = FindNearUser(&user, &userRadius))) {
+		area = place::AreaAround(user, userRadius);
+		hasArea = true;
+	}
 
 	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
 	BString address;
@@ -628,13 +685,14 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	if (name.empty())
 		return B_ENTRY_NOT_FOUND;
 	std::string body;
-	const std::string searchUrl = hasArea ? place::SearchUrl(name, language, fSettings.boundary, 8, place::kBoundaryTolerance, area) : place::SearchUrl(name, language, fSettings.boundary);
+	const std::string searchUrl = hasArea ? place::SearchUrl(name, language, fSettings.boundary, hasUser ? 12 : 8, place::kBoundaryTolerance, area) : place::SearchUrl(name, language, fSettings.boundary);
 	status_t result = Get(searchUrl, kNominatim, &body);
 	if (result != B_OK)
 		return result;
 	std::vector<place::Hit> hits;
 	if (!place::ParseHits(body, &hits))
 		return B_ERROR;
+	place::RemoveStopDetails(&hits);
 	if (hasArea) {
 		// (never a place of another country than the file says: what the search ranks first may be one that has the name in another language)
 		const size_t before = hits.size();
@@ -657,7 +715,7 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	// the position decides; a title is what the user said, and it is not set aside
 	const double kMaxFileNameKilometres = 25.0;
 	result = hits.empty() ? B_ENTRY_NOT_FOUND
-		: ChoosePlace(hits, name, hasPosition ? &position : NULL, hasPosition && !hasTitle ? kMaxFileNameKilometres : 0, hit);
+		: ChoosePlace(hits, name, hasPosition ? &position : (hasUser ? &user : NULL), hasPosition && !hasTitle ? kMaxFileNameKilometres : 0, hit, hasUser ? userRadius : 5.0);
 	if (result == B_ENTRY_NOT_FOUND && hasPosition && !hasTitle) {
 		if (mayUsePosition)
 			return FindByPosition(position, hit);

@@ -44,6 +44,7 @@ struct Field {
 const Field kFields[] = {
 	{"language", kText, "Language", "The language of the names and descriptions of places. The first entry is the language of the system."},
 	{"lookup_by_position", kBool, "Use GPS location for lookup", "Look up a photo or another file by its GPS location (the attributes schema:latitude and schema:longitude) when it has no title or name of a place to search for. OFF by default: the location of your file is then sent to the Nominatim service of OpenStreetMap. A Place or Location file with a location and no name is always looked up by it, and a location that only ranks the answers of a search by name is never sent."},
+	{"near_me", kBool, "Prefer places near me", "Look for places near you first: Spaces asks Basho, the location server, where your computer is roughly (the city, as much as you allow it there), ranks the answers by distance and sends the area around it (some tens of kilometres, not your position) to OpenStreetMap as the area to search first. Used for a name that says nothing of where (a station called Westbahnhof) in a file that has no position or city of its own. Nothing happens if Basho is not installed or does not allow it."},
 	{"picture", kBool, "Picture of the place", "Use a picture that Wikidata names (a photo, the coat of arms, the flag, a map) as the thumbnail, with its license and author. Two more requests, to Wikidata and Wikimedia Commons."},
 	{"boundary", kBool, "Keep the outline of the place", "The simplified outline is what tells where places are in relation to each other (within, touches, overlaps). A large outline takes room in the file."},
 };
@@ -100,6 +101,7 @@ ToMessage(const Settings& s, BMessage* message)
 	message->MakeEmpty();
 	message->AddString("language", s.language.c_str());
 	message->AddBool("lookup_by_position", s.lookupByPosition);
+	message->AddBool("near_me", s.nearMe);
 	message->AddBool("picture", s.picture);
 	message->AddBool("boundary", s.boundary);
 }

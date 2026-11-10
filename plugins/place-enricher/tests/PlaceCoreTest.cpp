@@ -256,6 +256,40 @@ TestWhatToMakeOfThem()
 	building.type = "bus_stop";
 	CHECK(place::PlaceTypeName(building) == "bus stop");
 
+	// where the user is, roughly (Basho): the area to search first, a bias and no restriction (no country)
+	{
+		place::Position user;
+		user.latitude = 48.2085;
+		user.longitude = 16.3721;
+		const place::Area around = place::AreaAround(user, 30);
+		CHECK(around.hasBox && around.countryCode.empty());
+		CHECK(around.south < user.latitude && around.north > user.latitude && around.west < user.longitude && around.east > user.longitude);
+		CHECK(std::fabs((around.north - around.south) * 111.32 / 2 - 30) < 0.5);
+		// (a degree of longitude is shorter here than at the equator: the box is wider in degrees than in latitude)
+		CHECK((around.east - around.west) > (around.north - around.south));
+		const std::string url = place::SearchUrl("Westbahnhof", "en", false, 8, place::kBoundaryTolerance, around);
+		CHECK(url.find("viewbox=") != std::string::npos && url.find("countrycodes") == std::string::npos && url.find("bounded") == std::string::npos);
+		// platforms and stops of a station are not places of their own when the station is there
+		std::vector<place::Hit> stops(5);
+		stops[0].name = "Westbahnhof"; stops[0].category = "railway"; stops[0].type = "station"; stops[0].latitude = 48.196; stops[0].longitude = 16.339;
+		stops[1].name = "Westbahnhof"; stops[1].category = "railway"; stops[1].type = "platform"; stops[1].latitude = 48.1955; stops[1].longitude = 16.3385;
+		stops[2].name = "Westbahnhof"; stops[2].category = "highway"; stops[2].type = "bus_stop"; stops[2].latitude = 48.197; stops[2].longitude = 16.338;
+		stops[3].name = "Westbahnhof"; stops[3].category = "building"; stops[3].type = "train_station"; stops[3].latitude = 48.196; stops[3].longitude = 16.337;
+		stops[4].name = "Haltestelle Nord"; stops[4].category = "highway"; stops[4].type = "bus_stop"; stops[4].latitude = 48.3; stops[4].longitude = 16.4;	// (nothing else of that name: it stays)
+		place::RemoveStopDetails(&stops);
+		CHECK(stops.size() == 3 && stops[0].type == "station" && stops[1].type == "train_station" && stops[2].name == "Haltestelle Nord");
+		std::vector<place::Hit> only(1);
+		only[0].name = "Westbahnhof"; only[0].category = "railway"; only[0].type = "platform";
+		place::RemoveStopDetails(&only);
+		CHECK(only.size() == 1);		// (a platform that is all there is stays)
+		place::Settings defaults;
+		CHECK(defaults.nearMe);
+		place::Settings off;
+		place::ParseSettings("near_me = no\n", &off);
+		CHECK(!off.nearMe);
+		CHECK(place::ValidateSetting("near_me", "yes") && !place::ValidateSetting("near_me", "maybe"));
+	}
+
 	CHECK(place::AddressLine(dom) == "Stephansplatz 3, 1010 Wien, Österreich");
 	CHECK(place::AddressLine(wien[0]).empty());		// (a city has no postal address)
 

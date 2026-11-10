@@ -350,6 +350,65 @@ AreaFrom(const std::vector<Hit>& hits, const std::string& countryText, Area* are
 }
 
 
+namespace {
+
+/** a platform or a stop of a line: part of a station, not a place that somebody means */
+bool
+IsStopDetail(const Hit& hit)
+{
+	if (hit.category == "railway")
+		return hit.type == "platform" || hit.type == "stop" || hit.type == "tram_stop";
+	if (hit.category == "highway")
+		return hit.type == "platform" || hit.type == "bus_stop";
+	if (hit.category == "public_transport")
+		return hit.type == "platform" || hit.type == "stop_position";
+	return false;
+}
+
+}	// namespace
+
+
+void
+RemoveStopDetails(std::vector<Hit>* hits)
+{
+	std::vector<Hit> kept;
+	for (size_t i = 0; i < hits->size(); i++) {
+		const Hit& hit = (*hits)[i];
+		bool part = false;
+		if (IsStopDetail(hit)) {
+			for (size_t j = 0; j < hits->size() && !part; j++) {
+				const Hit& other = (*hits)[j];
+				Position where;
+				where.latitude = other.latitude;
+				where.longitude = other.longitude;
+				part = j != i && !IsStopDetail(other) && Plain(other.name) == Plain(hit.name) && DistanceKm(hit, where) < 1.0;
+			}
+		}
+		if (!part)
+			kept.push_back(hit);
+	}
+	*hits = kept;
+}
+
+
+Area
+AreaAround(const Position& position, double radiusKm)
+{
+	const double kKilometresPerDegree = 111.32;
+	const double pi = 3.14159265358979323846;
+	const double latitude = std::min(89.0, std::max(-89.0, position.latitude));
+	const double dLatitude = radiusKm / kKilometresPerDegree;
+	const double dLongitude = radiusKm / (kKilometresPerDegree * std::max(0.05, std::cos(latitude * pi / 180.0)));
+	Area area;
+	area.hasBox = true;
+	area.south = std::max(-90.0, latitude - dLatitude);
+	area.north = std::min(90.0, latitude + dLatitude);
+	area.west = std::max(-180.0, position.longitude - dLongitude);
+	area.east = std::min(180.0, position.longitude + dLongitude);
+	return area;
+}
+
+
 std::string
 SearchUrl(const std::string& query, const std::string& language, bool boundary, int limit, double tolerance, const Area& area)
 {

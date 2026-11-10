@@ -45,6 +45,8 @@ ParseSettings(const std::string& text, Settings* settings)
 				settings->language = value;
 		} else if (key == "lookup_by_position") {
 			settings->lookupByPosition = st::ParseBool(value, settings->lookupByPosition);
+		} else if (key == "near_me") {
+			settings->nearMe = st::ParseBool(value, settings->nearMe);
 		} else if (key == "picture") {
 			settings->picture = st::ParseBool(value, settings->picture);
 		} else if (key == "boundary") {
@@ -68,7 +70,7 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return fail("a # or a line break cannot be stored in the settings file");
 	if (key == "language")
 		return IsLanguage(v) ? true : fail("a language like de or de-AT, or nothing for the language of the system");
-	if (key == "lookup_by_position" || key == "picture" || key == "boundary")
+	if (key == "lookup_by_position" || key == "near_me" || key == "picture" || key == "boundary")
 		return st::IsBool(v) ? true : fail("yes or no");
 	return fail("no such setting");
 }

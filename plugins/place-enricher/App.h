@@ -74,7 +74,16 @@ private:
 	 * in Wien is not the one in Budapest, which has the name in German, too). False if the file says nothing of where it is, or nothing was found: the search then has no area.
 	 */
 	bool			FindArea(BNode& node, const std::string& language, place::Area* area);
-	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen);
+	/**
+	 * Where the user is, roughly, from Basho (the location server), if the setting allows it, Basho runs and the user lets this program know it: the position, and how far off it may be
+	 * (kilometres, the radius of the area to search). Asked once per run. False: no position (nothing is sent anywhere then).
+	 */
+	bool			FindNearUser(place::Position* position, double* radiusKilometres);
+	/**
+	 * Chooses among the answers (or asks). @p near ranks them by their distance, @p maxKilometres leaves out those that are farther from it (0: none), @p nearKilometres is how close a place
+	 * must be to count as "the one that is near" (a single place of that name that is within it is taken without asking): 5 km for the position of a file, the radius of the fix for the user.
+	 */
+	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen, double nearKilometres = 5.0);
 	/**
 	 * What a Location, a photo or another file that is no Place is "located near": the Place that Nominatim found for it, and the Places on this computer that are near its position (within 250 metres,
 	 * and no larger than 2 km across: a district or a city that contains it is reached through the place). The Place that was found is the file of a Place that has its link to OpenStreetMap
@@ -104,6 +113,10 @@ private:
 	bool					fPositionGiven;		///< the command line allows the lookup by position (--position)
 	bool					fNeedsConsent;		///< the file has a position that was not used because the user has not allowed it (to say so)
 	bool					fOverwrite;
+	bool					fNearTried;			///< Basho was asked for where the user is (once per run)
+	bool					fHasNear;
+	place::Position			fNear;
+	double					fNearRadius;
 	std::string				fNamedPlace;		///< the name of the place that is looked up with its address (the title, else the name of the file)
 	bool					fStreetOnly;		///< the file has a name and an address, and only the street was found: what the street has of its own is not written to the file
 	bool					fAuto;

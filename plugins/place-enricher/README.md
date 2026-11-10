@@ -81,6 +81,7 @@ setting that all plugins share.
 |---|---|---|
 | `language` | the system's | the language of names and descriptions (`de`, `en`, `pt`...) |
 | `lookup_by_position` | `no` | **Use GPS location for lookup**: look up a photo or another file that is no place by its GPS location when it has no title or name of a place; the location is sent to OpenStreetMap |
+| `near_me` | `yes` | **Prefer places near me**: Spaces asks Basho (the location server) where the computer roughly is and looks there first (see *Near you*); nothing happens if Basho is not installed or does not tell |
 | `picture` | `yes` | the picture of the place as the thumbnail (two more requests) |
 | `boundary` | `yes` | keep the outline of the place |
 
@@ -98,6 +99,20 @@ A file that is **no Place** (a Location, a photo with a position, anything else 
 found is the one that has the link to OpenStreetMap (or Wikidata) of the place, else it is made in the Library (name, kind, position, outline, address, as for any place) and enriched later in the background (the picture,
 the description); a building that has no name gets its address as the name (`Anton-Langer-Gasse 66`). The position of a Location is its own and is always used; the GPS position of a photo only with *Use GPS location for lookup*.
 A Place that is looked up is not related to anything: its data are the place's.
+
+## Near you (Basho)
+
+A name that says nothing of where (a station called "Westbahnhof") has many places in OpenStreetMap, and the first one that Nominatim ranks may be in another country (the Budapest station has the German name, too).
+If the file has no position, no city and no address that says where, Spaces asks **Basho**, the location server, where the computer is *roughly* (the city, and only as fine as you allow it there: the settings of
+Basho and its permission for Spaces), and then
+
+- searches with the **area around it** (a box of at least 30 km around the city, the *viewbox* of Nominatim: a bias, not a restriction: places of that name elsewhere are still found) so that the places near you are among
+  the answers; only that box, never the position, goes to OpenStreetMap;
+- **ranks the answers by distance** (the distances are shown in the list), takes a single place of that name in the area without asking, and with `--auto` the nearest that has the name;
+- leaves out the **platforms and stops** of a station when the station itself is there, so that they do not crowd it out.
+
+Turn it off with the setting *Prefer places near me*. A file that has a position, a city or an address uses that, as before. The program is linked to `liblocation.a` of the package `basho_devel` (build only);
+Basho itself is not required: without it nothing is looked up near you.
 
 ## Looking up an address
 
