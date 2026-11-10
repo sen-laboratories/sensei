@@ -259,6 +259,8 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 				const char* flag = id == "github" ? "github" : id == "mastodon" ? "fediverse" : id == "bluesky" ? "bluesky" : NULL;
 				if (flag == NULL) {
 					refused->push_back(key);
+					if (first == B_OK)
+						first = B_BAD_VALUE;
 					continue;
 				}
 				valid.push_back({flag, enabled ? "yes" : "no"});
