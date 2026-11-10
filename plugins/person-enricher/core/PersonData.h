@@ -23,6 +23,7 @@ struct FeedPost {
 struct PersonProfile {
 	std::string name;
 	std::string accountName;		///< the name that an account (a profile, the person that the user chose) gives the person, if the file's name is another one (a variant of it): to correct a typo
+	std::string previousName;		///< the name that the file had before the user agreed to take `accountName`
 	bool		replaceName = false;	///< the user agreed to take `accountName`: it is written even if the file has a name
 	std::string givenName;
 	std::string familyName;

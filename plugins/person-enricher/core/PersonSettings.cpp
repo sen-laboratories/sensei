@@ -132,6 +132,11 @@ ParseSettings(const std::string& text, Settings* settings)
 			settings->feeds = st::ParseBool(value, settings->feeds);
 		else if (key == "photo")
 			settings->photo = st::ParseBool(value, settings->photo);
+		else if (key == "be_people") {
+			const std::string v = st::Trim(value);
+			if (v == "off" || v == "legacy" || v == "all")
+				settings->bePeople = v;
+		}
 		else if (key == "hunt") {
 			// (`name` is on, `-name` is off and keeps its place; a name that is none of the services is left out)
 			settings->huntSet = true;
@@ -193,6 +198,8 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return st::IsBool(v) ? true : fail("yes or no");
 	if (key == "hunt" || key == "mastodon_servers")
 		return true;
+	if (key == "be_people")
+		return (v == "off" || v == "legacy" || v == "all") ? true : fail("off, legacy or all");
 	if (key == "photo_size") {
 		int size = 0;
 		return ParseSize(v, &size) ? true : fail("a whole number of pixels from 64 to 512");

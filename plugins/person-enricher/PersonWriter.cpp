@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <ctime>
+#include <cstring>
 
 #include <sen/Sen.h>
 #include <sen/SenList.h>
@@ -64,6 +65,29 @@ PutList(BNode& node, const char* attribute, const std::vector<std::string>& valu
 	}
 	std::string joined = sen::list::Join(current, separator);
 	node.WriteAttr(attribute, B_STRING_TYPE, 0, joined.c_str(), joined.size() + 1);
+}
+
+/** whether the file is a person of the People application of Haiku (the stock type): the one whose attributes META:name and META:nickname the People window and its columns show */
+bool
+IsStockPerson(BNode& node)
+{
+	char mime[B_MIME_TYPE_LENGTH];
+	return BNodeInfo(&node).GetType(mime) == B_OK && strcmp(mime, sen::onto::people::mime::kPeoplePerson) == 0;
+}
+
+/**
+ * The attribute of the People application beside the one of SEN (`META:name` for `foaf:name`): put where it is empty, so that the columns of People show what the enrichment found. What the file has
+ * there is never replaced, except the spelling of a name that the user just agreed to correct (it was the old one: the same name in two places).
+ */
+void
+MirrorBe(BNode& node, const char* attribute, const std::string& value, const std::string& previous)
+{
+	if (value.empty())
+		return;
+	BString current;
+	const bool has = node.ReadAttrString(attribute, &current) == B_OK && !current.IsEmpty();
+	if (!has || (!previous.empty() && current == previous.c_str()))
+		PutString(node, attribute, value, true);
 }
 
 } // namespace
@@ -186,6 +210,11 @@ WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite,
 	PutString(node, attr::kGivenName, profile.givenName, overwrite || profile.replaceName);
 	PutString(node, attr::kFamilyName, profile.familyName, overwrite || profile.replaceName);
 	PutString(node, attr::kNickname, profile.nick, overwrite);
+	// the files of the stock People application have their own attributes for them, which its window shows: filled beside ours (as the setting says: the contacts of People, or all people files)
+	if (settings.bePeople == "all" || (settings.bePeople == "legacy" && IsStockPerson(node))) {
+		MirrorBe(node, attr::kBeName, profile.name, profile.replaceName ? profile.previousName : std::string());
+		MirrorBe(node, attr::kBeNickname, profile.nick, std::string());
+	}
 	PutString(node, attr::kMbox, profile.mbox, overwrite);
 	PutString(node, attr::kHomepage, profile.homepage, overwrite);
 	PutString(node, attr::kJobTitle, profile.jobTitle, overwrite);

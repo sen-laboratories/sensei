@@ -28,6 +28,12 @@ struct Settings {
 	bool feeds = true;
 	/** write the photo into the file as its thumbnail (`Media:Thumbnail`, with where it is from and its licence) */
 	bool photo = true;
+	/**
+	 * Fill the attributes of the People application of Haiku (`META:name`, `META:nickname`) with the name and the nickname, where they are empty, so that the columns of the People window show them:
+	 * `off`, `legacy` (the default: only the contact files of that application, `application/x-person`) or `all` (every person file, also the Person of SEN).
+	 * Only where the attribute is empty: what is there is never replaced.
+	 */
+	std::string bePeople = "legacy";
 	/** the longer side of the photo, in pixels: a larger photo is made smaller before it is written (a thumbnail is a few hundred pixels, not a megabyte) */
 	int photoSize = 256;
 

@@ -78,7 +78,7 @@ Robin fills only what the file does not have yet (`--wipe` replaces), with the e
 | `schema:worksFor` | schema.org | the company or organization |
 | `schema:homeLocation` | schema.org | where the person lives, as it says |
 | `vivo:orcidId` | VIVO | the ORCID iD of a researcher |
-| `foaf:nick` | FOAF | the **handle**: a Fediverse handle `@user@server`, a Bluesky handle (a domain: `alice.bsky.social`, `sen-labs.org`), a GitHub login; written without a doubled `@` |
+| `foaf:nick` | FOAF | the **nickname** (the handle): a Fediverse handle `@user@server`, a Bluesky handle (a domain: `alice.bsky.social`, `sen-labs.org`), a GitHub login; written without a doubled `@` |
 | `dc:description` | Dublin Core | the text of the profile |
 | `foaf:homepage` | FOAF | the homepage |
 | `schema:sameAs` | schema.org | the links of the accounts (a list) |
@@ -87,6 +87,14 @@ Robin fills only what the file does not have yet (`--wipe` replaces), with the e
 | `SEN:statusDate` | SEN | **when the latest post was made** (`'TIME'`), as the feed says it, not when it was found |
 
 The ontology is in `sen-oni` (`schema/sen-people.yaml`).
+
+**The attributes of the People application.** The contacts of Haiku's People (`application/x-person`) have attributes of their own, `META:name` (*Contact name*) and `META:nickname` (*Nickname*), which the columns of the People window show.
+Robin writes the attributes above; the setting **Fill the attributes of People** (`be_people`: *legacy* by default, for the contact files of People only; *off*; *all* for every people file, also the Person of SEN) puts the name and the nickname into
+those two as well, **where they are empty** (never replaced, except the old spelling of a name that you just agreed to correct).
+
+**A name that the account spells differently.** If the account of the person (Mastodon, GitHub, Gravatar, or the person that you chose) gives a name that is a variant of the one in the file (a letter or two, an accent:
+"Scot" for "Scott"), Robin asks whether that is a typo in the file: *Keep*, *Use "Scot Hacker"* (the name and the given and family name), or *Use and rename the file* (the file name is the *Real name* column of Tracker).
+Enrich (Overwrite) takes it without asking, `--auto` leaves the name and says it in the summary. A name that is not a variant (a nickname) is never offered.
 
 ## The posts: the relation *status*
 

@@ -31,7 +31,8 @@ const char* const kSettingsFile = "sen/robin.settings";
 enum FieldType {
 	kBool,
 	kNumber,
-	kText
+	kText,
+	kChoice		///< one of a few values, as radio buttons
 };
 
 /** One setting: the key of the file (the name of the field), its type, and what the form shows. */
@@ -50,6 +51,7 @@ const Field kFields[] = {
 	{"bluesky", kBool, "Bluesky", "Ask Bluesky about a person whose links name a Bluesky profile: its photo, its text and its posts."},
 	{"feeds", kBool, "Feeds of homepages and accounts", "Look at the homepage of a person for the address of its feed (an RSS or Atom feed), and read the feeds of a person: the posts that the relation Status shows."},
 	{"photo", kBool, "Photo as the thumbnail", "Write the photo that was found into the file as its thumbnail, with where it is from and its license."},
+	{"be_people", kChoice, "Fill the attributes of People", "Put the name and the nickname into the attributes of the People application of Haiku (Contact name and Nickname: META:name, META:nickname), where they are empty (what is there is never replaced), so that the columns of the People window show them. By default only the contact files of People (application/x-person) get them, not the Person of SEN."},
 	{"mastodon_servers", kText, "Mastodon servers to search", "The servers of the Fediverse whose search for accounts is asked when a person is looked for by its name (a server knows the accounts that it has seen), separated by blanks. A handle of the form user@server is asked at its own server."},
 	{"photo_size", kNumber, "Size of the photo (pixels)", "The longer side of the photo: a larger photo is made smaller before it is written to the file (a thumbnail is a few hundred pixels, not a megabyte)."},
 };
@@ -87,6 +89,7 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddBool("bluesky", s.bluesky);
 	message->AddBool("feeds", s.feeds);
 	message->AddBool("photo", s.photo);
+	message->AddString("be_people", s.bePeople.c_str());
 	message->AddInt32("photo_size", s.photoSize);
 	std::string servers;
 	for (const std::string& server : s.mastodonServers)
@@ -162,6 +165,15 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 			attributes.AddDouble(form::kAttrMin, kMinPhotoSize);
 			attributes.AddDouble(form::kAttrMax, kMaxPhotoSize);
 			attributes.AddDouble(form::kAttrStep, 32);
+		}
+		if (field.type == kChoice) {
+			attributes.AddString(form::kAttrKind, form::kKindRadio);
+			const char* const values[] = { "off", "legacy", "all" };
+			const char* const labels[] = { "Off", "Only the contacts of People (application/x-person)", "All people files (also the Person of SEN)" };
+			for (int i = 0; i < 3; i++) {
+				attributes.AddString(form::kAttrChoices, values[i]);
+				attributes.AddString(form::kAttrChoiceLabels, labels[i]);
+			}
 		}
 		// (the size of the photo means something only while the photo is written)
 		if (strcmp(field.key, "photo_size") == 0)

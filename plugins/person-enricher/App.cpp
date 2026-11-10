@@ -346,6 +346,7 @@ CorrectName(PersonProfile* profile, const entry_ref& file, bool automatic, bool 
 		if (profile->familyName == before.back())
 			profile->familyName = after.back();
 	}
+	profile->previousName = stored;
 	profile->name = account;
 	profile->replaceName = true;
 	return true;

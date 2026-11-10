@@ -627,6 +627,20 @@ main()
 		robin::ParseSettings("# my settings\n email_services = no\ngithub=off\nfediverse = yes\nphoto_size = 128 # smaller\nunknown = kept\nbluesky = maybe\nphoto = 0\n", &s);
 		CHECK(!s.emailServices && !s.github && s.fediverse && s.bluesky && s.feeds && !s.photo && s.photoSize == 128);		// ("maybe" is no answer: what was there stays)
 		robin::Settings bad;
+		// the attributes of People: off, legacy (the contacts of People) or all people files; anything else is no value
+		{
+			robin::Settings be;
+			CHECK(be.bePeople == "legacy");
+			robin::ParseSettings("be_people = off\n", &be);
+			CHECK(be.bePeople == "off");
+			robin::ParseSettings("be_people = legacy\n", &be);
+			CHECK(be.bePeople == "legacy");
+			robin::ParseSettings("be_people = all\n", &be);
+			CHECK(be.bePeople == "all");
+			robin::ParseSettings("be_people = maybe\n", &be);
+			CHECK(be.bePeople == "all");
+			CHECK(robin::ValidateSetting("be_people", "legacy") && robin::ValidateSetting("be_people", "off") && !robin::ValidateSetting("be_people", "yes"));
+		}
 		robin::ParseSettings("photo_size = 5000\n", &bad);
 		CHECK(bad.photoSize == 256);
 		robin::ParseSettings("photo_size = 12.5\n", &bad);
