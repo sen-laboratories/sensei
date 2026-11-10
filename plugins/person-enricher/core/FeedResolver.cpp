@@ -265,8 +265,12 @@ FeedResolver::ParseActorJson(const std::string& actorJson, PersonProfile* profil
 	try {
 		auto root = nlohmann::json::parse(actorJson);
 
-		if (profile->name.empty() && root.contains("name") && root["name"].is_string())
-			profile->name = root["name"].get<std::string>();
+		if (root.contains("name") && root["name"].is_string() && !root["name"].get<std::string>().empty()) {
+			if (profile->name.empty())
+				profile->name = root["name"].get<std::string>();
+			else if (profile->accountName.empty())
+				profile->accountName = root["name"].get<std::string>();
+		}
 
 		if (profile->bio.empty() && root.contains("summary") && root["summary"].is_string())
 			profile->bio = feedtext::HtmlToPlainText(root["summary"].get<std::string>());

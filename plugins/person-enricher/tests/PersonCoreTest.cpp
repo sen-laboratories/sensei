@@ -18,6 +18,7 @@
 #include "PersonSettings.h"
 #include "../../../common/BoxScale.h"
 #include "PersonEnricher.h"
+#include "NameMatch.h"
 
 static int sFailures = 0;
 static int sChecks = 0;
@@ -71,6 +72,34 @@ int
 main()
 {
 	std::printf("Running Robin Core Unit Tests...\n");
+
+	// 0. the name that an account gives the person, against the name of the file
+	{
+		using robin::CompareNames;
+		using robin::NameMatch;
+		CHECK(CompareNames("Scott Hacker", "Scot Hacker") == NameMatch::Variant);			// (the typo that was found: one t)
+		CHECK(CompareNames("Scot Hacker", "Scott Hacker") == NameMatch::Variant);
+		CHECK(CompareNames("Scott Hacker", "scott  hacker") == NameMatch::Same);			// (case and blanks)
+		CHECK(CompareNames("Scott Hacker", "Scott Hacker.") == NameMatch::Same);
+		CHECK(CompareNames("Jose Garcia", "Jos\xC3\xA9 Garcia") == NameMatch::Variant);		// (an accent)
+		CHECK(CompareNames("Gregor Rosenauer", "Gregor Rosnauer") == NameMatch::Variant);
+		CHECK(CompareNames("Gregor Rosenauer", "Gregory Rosenauer") == NameMatch::Variant);
+		CHECK(CompareNames("Scott Hacker", "Hacker42") == NameMatch::Different);			// (a nickname is another name)
+		CHECK(CompareNames("Scott Hacker", "Jane Doe") == NameMatch::Different);
+		CHECK(CompareNames("Scott Hacker", "Scott Hacker Jr") == NameMatch::Different);
+		CHECK(CompareNames("Al", "Ed") == NameMatch::Different);							// (a short name has no variants)
+		CHECK(CompareNames("Ann Lee", "Ann Li") == NameMatch::Different);
+		CHECK(CompareNames("", "Scot Hacker") == NameMatch::Different);
+		// the name of the account is remembered, the name of the file stays
+		robin::PersonProfile named;
+		named.name = "Scott Hacker";
+		const std::string actor = "{\"name\":\"Scot Hacker\",\"summary\":\"<p>Writer</p>\"}";
+		CHECK(robin::FeedResolver::ParseActorJson(actor, &named));
+		CHECK(named.name == "Scott Hacker" && named.accountName == "Scot Hacker" && !named.replaceName);
+		robin::PersonProfile unnamed;
+		CHECK(robin::FeedResolver::ParseActorJson(actor, &unnamed));
+		CHECK(unnamed.name == "Scot Hacker" && unnamed.accountName.empty());
+	}
 
 	// 1. SHA-256 (the values are those of `shasum -a 256`)
 	{

@@ -5,6 +5,7 @@
 
 #include "App.h"
 
+#include <Alert.h>
 #include <Bitmap.h>
 #include <DataIO.h>
 #include <TranslationUtils.h>
@@ -26,6 +27,7 @@
 #include "PersonWriter.h"
 #include "StatusStore.h"
 #include "core/Hunt.h"
+#include "core/NameMatch.h"
 #include "core/PersonEnricher.h"
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.person-enricher";
@@ -282,6 +284,73 @@ ApplyHit(PersonProfile* profile, const HuntHit& hit)
 	}
 }
 
+
+/** the words of a name */
+std::vector<std::string>
+Words(const std::string& name)
+{
+	std::vector<std::string> words;
+	std::string word;
+	for (char c : name) {
+		if (c == ' ') {
+			if (!word.empty())
+				words.push_back(word);
+			word.clear();
+		} else {
+			word += c;
+		}
+	}
+	if (!word.empty())
+		words.push_back(word);
+	return words;
+}
+
+
+/**
+ * The account of the person calls it by a variant of the name that the file has ("Scot Hacker" for "Scott Hacker": the file may have the typo): what the file has is never replaced on its own,
+ * the user is asked (not with --auto: it is said in the summary instead). A variant is meant, never another name (a nickname, a pseudonym). Enrich (Overwrite) is the user's word to take it. If the
+ * name of the file is what is wrong, it may be renamed, too (@p renameFile). True if the profile has the name of the account now.
+ */
+bool
+CorrectName(PersonProfile* profile, const entry_ref& file, bool automatic, bool overwrite, bool* renameFile, std::string* note)
+{
+	*renameFile = false;
+	if (profile->accountName.empty() || CompareNames(profile->name, profile->accountName) != NameMatch::Variant)
+		return false;
+	const std::string stored = profile->name, account = profile->accountName;
+	if (automatic) {
+		*note = "The account calls the person \"" + account + "\", the file says \"" + stored + "\"";
+		return false;
+	}
+	bool take = overwrite;
+	if (!overwrite) {
+		const bool nameOfFile = stored == file.name;
+		BString text;
+		text << "The account calls this person \"" << account.c_str() << "\". The file says \"" << stored.c_str() << "\". Is that a typo in the file?";
+		BString use;
+		use << "Use \"" << account.c_str() << "\"";
+		BAlert* alert = new BAlert("name", text.String(), "Keep", use.String(), nameOfFile ? "Use and rename the file" : NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+		alert->SetShortcut(0, B_ESCAPE);
+		const int32 answer = alert->Go();
+		take = answer >= 1;
+		*renameFile = answer == 2;
+	}
+	if (!take)
+		return false;
+
+	// (the parts of the name that were the words of the old one are the words of the new one)
+	const std::vector<std::string> before = Words(stored), after = Words(account);
+	if (!before.empty() && !after.empty()) {
+		if (profile->givenName == before.front())
+			profile->givenName = after.front();
+		if (profile->familyName == before.back())
+			profile->familyName = after.back();
+	}
+	profile->name = account;
+	profile->replaceName = true;
+	return true;
+}
+
 }	// namespace
 
 
@@ -396,8 +465,11 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 		if (_Hunt(profile, automatic, &found, &cancelled)) {
 			hunted = true;
 			// (merged in the order of the list: what a hit says is not replaced by the ones below it, nor is anything the file had; the links of all of them are kept)
-			for (const HuntHit& hit : found)
+			for (const HuntHit& hit : found) {
 				ApplyHit(&profile, hit);
+				if (profile.accountName.empty() && !hit.name.empty())
+					profile.accountName = hit.name;
+			}
 			enricher.Enrich(&profile, false);		// (the links that the hits brought: their accounts, photos, posts)
 			enriched = true;
 			for (const HuntHit& hit : found)
@@ -420,10 +492,24 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 		return B_ENTRY_NOT_FOUND;
 	}
 
+	// a typo in the name that the account shows: the user is asked
+	bool renameFile = false;
+	std::string nameNote;
+	const bool nameCorrected = CorrectName(&profile, file, automatic, wipe, &renameFile, &nameNote);
+
 	result = WritePerson(file, profile, wipe, fSettings);
 	if (result != B_OK) {
 		sensei::Notify("SEN Robin", "Person not enriched", "Could not write attributes to person file.", false);
 		return result;
+	}
+
+	entry_ref current = file;
+	if (renameFile) {
+		BEntry entry(&file);
+		if (entry.Rename(profile.name.c_str()) == B_OK)
+			entry.GetRef(&current);
+		else
+			nameNote = "The file could not be renamed (there is one of that name already)";
 	}
 
 	BString detail;
@@ -433,6 +519,10 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 			detail << (i == 0 ? "" : " + ") << found[i].name.c_str() << " (" << HuntServiceName(found[i].service) << ")";
 		detail << "; ";
 	}
+	if (nameCorrected)
+		detail << "Name: " << profile.name.c_str() << (renameFile && current != file ? " (file renamed)" : "") << "; ";
+	else if (!nameNote.empty())
+		detail << nameNote.c_str() << "; ";
 	if (profile.HasAvatar())
 		detail << "Photo (" << profile.avatarCredit.c_str() << "); ";
 	if (!profile.jobTitle.empty())
@@ -443,7 +533,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	if (summary != nullptr)
 		*summary = detail;
 
-	sensei::Notify("SEN Robin", "Person enriched", detail.String(), true, &file);
+	sensei::Notify("SEN Robin", "Person enriched", detail.String(), true, &current);
 	return B_OK;
 }
 

@@ -181,9 +181,10 @@ WritePerson(const entry_ref& file, const PersonProfile& profile, bool overwrite,
 
 	namespace attr = sen::onto::people::attr;
 
-	PutString(node, attr::kName, profile.name, overwrite);
-	PutString(node, attr::kGivenName, profile.givenName, overwrite);
-	PutString(node, attr::kFamilyName, profile.familyName, overwrite);
+	// (a name that the user agreed to correct replaces the stored one, with its parts)
+	PutString(node, attr::kName, profile.name, overwrite || profile.replaceName);
+	PutString(node, attr::kGivenName, profile.givenName, overwrite || profile.replaceName);
+	PutString(node, attr::kFamilyName, profile.familyName, overwrite || profile.replaceName);
 	PutString(node, attr::kNickname, profile.nick, overwrite);
 	PutString(node, attr::kMbox, profile.mbox, overwrite);
 	PutString(node, attr::kHomepage, profile.homepage, overwrite);

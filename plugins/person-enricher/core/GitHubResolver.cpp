@@ -64,8 +64,12 @@ GitHubResolver::ParseUserJson(const std::string& jsonString, PersonProfile* prof
 	try {
 		auto root = nlohmann::json::parse(jsonString);
 
-		if (profile->name.empty() && root.contains("name") && root["name"].is_string())
-			profile->name = root["name"].get<std::string>();
+		if (root.contains("name") && root["name"].is_string() && !root["name"].get<std::string>().empty()) {
+			if (profile->name.empty())
+				profile->name = root["name"].get<std::string>();
+			else if (profile->accountName.empty())
+				profile->accountName = root["name"].get<std::string>();
+		}
 
 		if (profile->company.empty() && root.contains("company") && root["company"].is_string())
 			profile->company = root["company"].get<std::string>();

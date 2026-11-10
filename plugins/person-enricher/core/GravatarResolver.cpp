@@ -79,11 +79,16 @@ GravatarResolver::ParseProfileJson(const std::string& jsonString, PersonProfile*
 			data = root["entry"][0];
 		}
 
-		if (profile->name.empty()) {
-			if (data.contains("display_name") && data["display_name"].is_string())
-				profile->name = data["display_name"].get<std::string>();
-			else if (data.contains("displayName") && data["displayName"].is_string())
-				profile->name = data["displayName"].get<std::string>();
+		std::string accountName;
+		if (data.contains("display_name") && data["display_name"].is_string())
+			accountName = data["display_name"].get<std::string>();
+		else if (data.contains("displayName") && data["displayName"].is_string())
+			accountName = data["displayName"].get<std::string>();
+		if (!accountName.empty()) {
+			if (profile->name.empty())
+				profile->name = accountName;
+			else if (profile->accountName.empty())
+				profile->accountName = accountName;
 		}
 
 		// the photo of the profile (v3 `avatar_url`, v2 `thumbnailUrl`): for a profile that was found by its name the photo is not a hash of the e-mail address away
