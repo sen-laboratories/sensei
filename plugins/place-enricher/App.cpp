@@ -60,6 +60,7 @@ App::App()
 	fPositionGiven(false),
 	fNeedsConsent(false),
 	fOverwrite(true),
+	fStreetOnly(false),
 	fAuto(false),
 	fExitCode(0)
 {
@@ -563,6 +564,31 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
 	BString address;
 	if (!hasPosition && node.ReadAttrString(sen::onto::spatial::attr::kAddress, &address) == B_OK && !address.IsEmpty()) {
+		// a name and an address (a hairdresser in a street): the place of that name in that street first; the street alone is what is left when OpenStreetMap does not know the place
+		BString title;
+		if (hasTitle && node.ReadAttrString(sen::onto::spatial::attr::kTitle, &title) == B_OK) {
+			title.Trim();
+			if (!title.IsEmpty() && title != address) {
+				BString both(title);
+				both << ", " << address;
+				fWanted = title.String();
+				std::string namedBody;
+				status_t named = Get(hasArea ? place::SearchUrl(both.String(), language, fSettings.boundary, 3, place::kBoundaryTolerance, area)
+					: place::SearchUrl(both.String(), language, fSettings.boundary, 3), kNominatim, &namedBody);
+				if (named != B_OK)
+					return named;
+				std::vector<place::Hit> namedHits;
+				if (place::ParseHits(namedBody, &namedHits)) {
+					if (hasArea)
+						place::KeepInArea(&namedHits, area);
+					if (!namedHits.empty()) {
+						*hit = namedHits[0];
+						return B_OK;
+					}
+				}
+				fStreetOnly = true;		// (told to the user at the end if the street is what the answer is)
+			}
+		}
 		fWanted = address.String();
 		std::string addressBody;
 		const std::string addressUrl = hasArea ? place::SearchUrl(address.String(), language, fSettings.boundary, 3, place::kBoundaryTolerance, area)
@@ -786,6 +812,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 	fAuto = message->GetBool("auto", !fSettings.choose);
 	// (a text to look up, which is not what the file is: the location of a person, from its form)
 	fQuery = message->GetString("query", "");
+	fStreetOnly = false;
 
 	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
 		sensei::NotifyStarted("SEN Spaces", "Enriching place", ref.name);
@@ -864,7 +891,30 @@ App::Enrich(BMessage* message, BMessage* reply)
 		return related;
 	}
 
-	result = place::WritePlace(ref, hit, entity.description, fSettings.boundary, fOverwrite);
+	// a named place that OpenStreetMap does not know, in a street that it does: the position and the town are the street's, the rest (its name, kind, outline, link, postcode: it has several) is not the place's
+	place::Hit written = hit;
+	fStreetOnly = fStreetOnly && hit.category == "highway";
+	if (fStreetOnly) {
+		BString title;
+		BNode titled(&ref);
+		titled.ReadAttrString(sen::onto::spatial::attr::kTitle, &title);
+		written.name = title.String();
+		written.category.clear();
+		written.type.clear();
+		written.addressType.clear();
+		written.hasBox = false;
+		written.wkt.clear();
+		written.osmType.clear();
+		written.osmId = 0;
+		written.wikidataId.clear();
+		written.wikipedia.clear();
+		written.website.clear();
+		written.otherNames.clear();
+		written.postcode.clear();
+		entity = place::Entity();
+		haveEntity = false;
+	}
+	result = place::WritePlace(ref, written, entity.description, fSettings.boundary, fOverwrite);
 	if (result != B_OK) {
 		ShowError("Failed to write the metadata to the file.");
 		return result;
@@ -902,6 +952,16 @@ App::Enrich(BMessage* message, BMessage* reply)
 			if (related != B_OK && related != B_NOT_INITIALIZED)
 				printf("could not relate %s to the place %s: %s\n", ref.name, hit.name.c_str(), strerror(related));
 		}
+	}
+
+	if (fStreetOnly) {
+		BString only;
+		only << "Only the street was found: " << hit.road.c_str() << ". OpenStreetMap does not know \"" << written.name.c_str() << "\" there; the position is the street's. Add the house number to the address to place it exactly.";
+		printf("%s\n", only.String());
+		if (!fAuto)
+			sensei::Notify("SEN Spaces", "Place enriched", only.String(), true, &ref);
+		reply->AddString(sen::key::kDetail, only.String());
+		return B_OK;
 	}
 
 	BString summary;

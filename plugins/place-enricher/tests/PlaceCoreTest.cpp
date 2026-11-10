@@ -245,6 +245,16 @@ TestWhatToMakeOfThem()
 	CHECK(place::PlaceTypeName(building) == "administrative area");
 	building.addressType = "state_district";
 	CHECK(place::PlaceTypeName(building) == "state district");
+	// a road is a street (what OpenStreetMap calls its class does not say much), the IRI keeps the tag
+	building.category = "highway"; building.type = "secondary";
+	CHECK(place::PlaceTypeName(building) == "street");
+	CHECK(place::PlaceTypeIri(building) == "https://wiki.openstreetmap.org/wiki/Tag:highway=secondary");
+	building.type = "living_street";
+	CHECK(place::PlaceTypeName(building) == "street");
+	building.type = "pedestrian";
+	CHECK(place::PlaceTypeName(building) == "pedestrian street");
+	building.type = "bus_stop";
+	CHECK(place::PlaceTypeName(building) == "bus stop");
 
 	CHECK(place::AddressLine(dom) == "Stephansplatz 3, 1010 Wien, Österreich");
 	CHECK(place::AddressLine(wien[0]).empty());		// (a city has no postal address)

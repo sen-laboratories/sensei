@@ -104,6 +104,7 @@ private:
 	bool					fPositionGiven;		///< the command line allows the lookup by position (--position)
 	bool					fNeedsConsent;		///< the file has a position that was not used because the user has not allowed it (to say so)
 	bool					fOverwrite;
+	bool					fStreetOnly;		///< the file has a name and an address, and only the street was found: what the street has of its own is not written to the file
 	bool					fAuto;
 	int32					fExitCode;
 };

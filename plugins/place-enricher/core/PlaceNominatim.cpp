@@ -567,6 +567,17 @@ PlaceTypeName(const Hit& hit)
 	else
 		name = hit.category;	// (`building=yes` is a building)
 	std::replace(name.begin(), name.end(), '_', ' ');
+	// a road is a street for the people who read it, not "secondary" (the class of the road in OpenStreetMap, which stays in the IRI of the type)
+	if (hit.category == "highway") {
+		static const char* const kStreets[] = { "motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "living street", "service",
+			"motorway link", "trunk link", "primary link", "secondary link", "tertiary link", "road" };
+		for (const char* street : kStreets) {
+			if (name == street)
+				return "street";
+		}
+		if (name == "pedestrian")
+			return "pedestrian street";
+	}
 	// a stop or a station of a kind of railway: "metro station", not "station" (the tags of a metro station and of a train station are the same but for what runs there)
 	if (!hit.transportMode.empty() && (hit.category == "railway" || hit.category == "public_transport")
 			&& (name == "station" || name == "halt" || name == "stop" || name == "stop position" || name == "platform"))

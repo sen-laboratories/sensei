@@ -103,7 +103,9 @@ A Place that is looked up is not related to anything: its data are the place's.
 
 A file that has an **address** (`schema:address`, e.g. `Anton-Langer-Gasse 66, 1130 Wien`) and **no position** is looked up by the address: the best answer of the search is the house or the street, and what Nominatim
 says is written to the file: the **position** (the file had none), the bounding box, the kind of place (`apartments`, `building`; as an IRI `Tag:building=apartments`), the link to OpenStreetMap (its object type and id),
-the address parts. A file that has a position uses it; one that has both is looked up by the position. Then, as for any lookup, a Location or photo is located near the place.
+the address parts. A file that has a position uses it; one that has both is looked up by the position.
+A file that has a **title and an address** (a hairdresser in a street) is searched as "title, address" first. If OpenStreetMap does not know that place, only the street is found: the file then gets the position and
+the town of the street and keeps its own title, and nothing else of the street (not its kind, outline, link or postcode); the notification says that only the street was found, and that the house number in the address would place it exactly. Then, as for any lookup, a Location or photo is located near the place.
 
 ## What it does not do
 
