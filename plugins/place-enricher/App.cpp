@@ -686,7 +686,7 @@ FindNearbyPlaces(const place::Position& position, const std::vector<entry_ref>& 
 
 
 status_t
-App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby)
+App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby, const std::string& label)
 {
 	BMessenger server(sen::kServerSignature);
 	if (!server.IsValid())
@@ -741,6 +741,12 @@ App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string
 		add.AddString(sen::key::kRelationType, sen::onto::spatial::mime::kLocatedNear);
 		add.AddRef(sen::key::kSourceRef, &file);
 		add.AddRef(sen::key::kTargetRef, &target);
+		// a text that was looked up (the location of a person) is the label of the relation to its place: that is how the form finds the place again, and opens it instead of looking it up again
+		if (!label.empty() && target == placeRef) {
+			BMessage properties;
+			properties.AddString(sen::attr::kRelationLabel, label.c_str());
+			add.AddMessage(sen::key::kRelationProperties, &properties);
+		}
 		result = server.SendMessage(&add, &answer, 10000000, 10000000);
 		if (result == B_OK && answer.GetInt32(sen::key::kStatus, 0) >= 400) {
 			printf("the SEN server: %s\n", answer.GetString(sen::key::kDetail, "no relation"));
@@ -845,7 +851,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 
 	// a text that was looked up (the location of a person): the place is made as a file of its own and the file is related to it, nothing of the place is written to the file
 	if (!fQuery.empty()) {
-		status_t related = RelatePlace(ref, hit, entity.description, false);
+		status_t related = RelatePlace(ref, hit, entity.description, false, fQuery);
 		if (related == B_NOT_INITIALIZED)
 			ShowError("The SEN server is not running: the place cannot be related to the file.");
 		else if (related != B_OK)

@@ -81,8 +81,9 @@ private:
 	 * (or Wikidata), else it is made in the Library with what Nominatim says and enriched later (picture, outline) in the background. The relations `located near` are stored, the same as ones
 	 * that the user makes by hand.
 	 */
-	/** @param withNearby also relate the file to the places that are near it on this computer (a photo is; a person that lives in a place is related to that place only) */
-	status_t		RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby = true);
+	/** @param withNearby also relate the file to the places that are near it on this computer (a photo is; a person that lives in a place is related to that place only)
+	 * @param label the label of the relation to the place that was found (the text that was looked up) */
+	status_t		RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby = true, const std::string& label = std::string());
 	void			ShowError(const char* message);
 	void			PrintUsage(const char* error = NULL);
 	/** the settings as they are now (the file, the settings of SEN that all plugins share): the instance may have been started before the user changed them; what the command line gave is kept */
