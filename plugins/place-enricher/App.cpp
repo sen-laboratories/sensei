@@ -564,14 +564,20 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
 	BString address;
 	if (!hasPosition && node.ReadAttrString(sen::onto::spatial::attr::kAddress, &address) == B_OK && !address.IsEmpty()) {
-		// a name and an address (a hairdresser in a street): the place of that name in that street first; the street alone is what is left when OpenStreetMap does not know the place
+		// a name and an address (a hairdresser in a street): the place of that name in that street first; the street alone is what is left when OpenStreetMap does not know the place.
+		// The name is the title of the file, else the name of the file itself ("Ti Amo", but not IMG_0001.jpg)
 		BString title;
-		if (hasTitle && node.ReadAttrString(sen::onto::spatial::attr::kTitle, &title) == B_OK) {
+		if (hasTitle)
+			node.ReadAttrString(sen::onto::spatial::attr::kTitle, &title);
+		else if (place::LooksLikeName(name))
+			title = name.c_str();
+		{
 			title.Trim();
 			if (!title.IsEmpty() && title != address) {
 				BString both(title);
 				both << ", " << address;
 				fWanted = title.String();
+				fNamedPlace = title.String();
 				std::string namedBody;
 				status_t named = Get(hasArea ? place::SearchUrl(both.String(), language, fSettings.boundary, 3, place::kBoundaryTolerance, area)
 					: place::SearchUrl(both.String(), language, fSettings.boundary, 3), kNominatim, &namedBody);
@@ -813,6 +819,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 	// (a text to look up, which is not what the file is: the location of a person, from its form)
 	fQuery = message->GetString("query", "");
 	fStreetOnly = false;
+	fNamedPlace.clear();
 
 	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
 		sensei::NotifyStarted("SEN Spaces", "Enriching place", ref.name);
@@ -895,10 +902,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 	place::Hit written = hit;
 	fStreetOnly = fStreetOnly && hit.category == "highway";
 	if (fStreetOnly) {
-		BString title;
-		BNode titled(&ref);
-		titled.ReadAttrString(sen::onto::spatial::attr::kTitle, &title);
-		written.name = title.String();
+		written.name = fNamedPlace;		// (the name that the file has: the title is set if it had none, and never the name of the street)
 		written.category.clear();
 		written.type.clear();
 		written.addressType.clear();
