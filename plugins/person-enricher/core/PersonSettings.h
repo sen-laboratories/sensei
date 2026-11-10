@@ -19,8 +19,8 @@ struct Settings {
 	/** Libravatar and Gravatar, by the SHA-256 hash of the e-mail address of the person (never the address): photo, and from Gravatar the profile and the accounts that the person verified */
 	bool emailServices = true;
 	/**
-	 * GitHub, the Fediverse (ActivityPub: WebFinger, the actor, the outbox: a handle `@user@host` or a link to a profile on a server of it) and Bluesky: for the accounts that the links of a person name.
-	 * They are switched in the list of the services (one list: a service that is off there is neither followed nor searched); the keys `github`, `fediverse` and `bluesky` are kept in step with it.
+	 * GitHub, the Fediverse (ActivityPub: WebFinger, the actor, the outbox: a handle `@user@host` or a link to a profile on a server of it) and Bluesky: whether the accounts that the links of a person
+	 * name are followed (asked for the profile, the photo, the posts). In the list of the services this is the column *Follow*; the column *Search* is whether the service is searched by name (`hunt`).
 	 */
 	bool github = true;
 	bool fediverse = true;

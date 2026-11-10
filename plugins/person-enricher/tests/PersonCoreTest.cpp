@@ -639,17 +639,17 @@ main()
 		robin::ParseSettings("# my settings\n email_services = no\ngithub=off\nfediverse = yes\nphoto_size = 128 # smaller\nunknown = kept\nbluesky = maybe\nphoto = 0\n", &s);
 		CHECK(!s.emailServices && !s.github && s.fediverse && s.bluesky && s.feeds && !s.photo && s.photoSize == 128);		// ("maybe" is no answer: what was there stays)
 		robin::Settings bad;
-		// one list of the services: what is off in the list is off for the accounts of the links, and a key that switched a service off switches it off in the list
+		// the list of the services has two switches for each: Search (the hunt, by name) and Follow (the accounts that the links name); they do not depend on each other
 		{
 			robin::Settings one;
 			robin::ParseSettings("hunt = bluesky mastodon -github wikidata orcid\n", &one);
-			CHECK(!one.github && one.fediverse && one.bluesky);
+			CHECK(one.github && one.fediverse && one.bluesky);				// (searching GitHub is off, following a GitHub link is on)
 			const std::vector<std::string> on = one.HuntServices();
 			CHECK(on.size() == 4 && std::find(on.begin(), on.end(), "github") == on.end());
-			robin::Settings legacyKey;
-			robin::ParseSettings("bluesky = no\n", &legacyKey);
-			const std::vector<std::string> all = legacyKey.HuntServices();
-			CHECK(all.size() == 4 && std::find(all.begin(), all.end(), "bluesky") == all.end());
+			robin::Settings follow;
+			robin::ParseSettings("bluesky = no\n", &follow);
+			CHECK(!follow.bluesky && follow.github && follow.fediverse);
+			CHECK(follow.HuntServices().size() == 5);						// (and Bluesky is still searched)
 			// the name of a person that an account spells differently: ask (default), always, never
 			robin::Settings names;
 			CHECK(names.nameCorrection == "ask");

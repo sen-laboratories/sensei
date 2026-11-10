@@ -117,9 +117,10 @@ SenPersonalRelationNavigator --debug relation/x-vnd.sen-labs.relation.person.sta
 
 ## The services of the search
 
-In the settings of SEN (Plugins, Enrich, SEN Robin) one table lists the services, each with a box and a short note; **drag a row** to change the order in which they are asked, switch one
-off to leave it out: it is then neither searched by name nor asked about the accounts that the links of a person name. The file `~/config/settings/sen/robin.settings` keeps them as `hunt = bluesky mastodon -github wikidata orcid` (a `-` is off and keeps its place;
-`github`, `fediverse` and `bluesky` are kept in step) and the servers of the Fediverse that are asked for accounts by name, a list in the settings, as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a Bluesky handle if there is an account of that name.
+In the settings of SEN (Plugins, Enrich, SEN Robin) one table lists the services, each with two boxes and a short note. **Search**: the service is asked for people by name (the hunt); **drag a row** to change the order
+in which they are asked. **Follow** (Bluesky, Mastodon, GitHub): the accounts that the links of a person name are followed (profile, photo, posts); the other services have no such accounts. The file `~/config/settings/sen/robin.settings` keeps them as
+`hunt = bluesky mastodon -github wikidata orcid` (a `-` is off for the search and keeps its place), `github = yes`, `fediverse = yes`, `bluesky = yes` (Follow), and the servers of the Fediverse that are asked for accounts by name, a list in the
+settings, as `mastodon_servers = mastodon.social`. A handle `user@server` is asked at its own server; a domain is a Bluesky handle if there is an account of that name.
 
 **What is sent:** a name or a handle, to the services that are on; all of them are public places where people put themselves on purpose. The photo of a hit is fetched only for the dialog and for the
 file; of the photos that were found, the larger one is the thumbnail.

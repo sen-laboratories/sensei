@@ -103,15 +103,11 @@ Settings::HuntOrder() const
 std::vector<std::string>
 Settings::HuntServices() const
 {
-	// (a service that the keys github, fediverse or bluesky switched off is off in the list, too: one list)
-	auto allowed = [this](const std::string& id) {
-		return (id != "github" || github) && (id != "mastodon" || fediverse) && (id != "bluesky" || bluesky);
-	};
+	if (!huntSet)
+		return AllHuntServices();
 	std::vector<std::string> on;
 	for (const std::string& id : HuntOrder()) {
-		if (!allowed(id))
-			continue;
-		if (!huntSet || std::find(huntOn.begin(), huntOn.end(), id) != huntOn.end())
+		if (std::find(huntOn.begin(), huntOn.end(), id) != huntOn.end())
 			on.push_back(id);
 	}
 	return on;
@@ -186,13 +182,6 @@ ParseSettings(const std::string& text, Settings* settings)
 			if (ParseSize(value, &size))
 				settings->photoSize = size;
 		}
-	}
-	// one list of the services: what is off in it is off for the accounts of the links, too
-	if (settings->huntSet) {
-		auto in = [settings](const char* id) { return std::find(settings->huntOn.begin(), settings->huntOn.end(), id) != settings->huntOn.end(); };
-		settings->github = settings->github && in("github");
-		settings->fediverse = settings->fediverse && in("mastodon");
-		settings->bluesky = settings->bluesky && in("bluesky");
 	}
 }
 
