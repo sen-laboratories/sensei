@@ -89,11 +89,12 @@ for name in $plugins; do
 	[ -f "$dir/package.stage" ] && sh "$dir/package.stage" "$stage"
 
 	# the logo of the About window of the plugin (sen/SenAbout.h): the picture in the folder images of the plugin, else the one of SENSEI
-	logo=$(ls "$dir"/images/*logo*.jpg 2>/dev/null | head -n1)
+	# (a PNG with transparency, the icon of the plugin made bigger, or a JPEG)
+	logo=$(ls "$dir"/images/*logo*.png "$dir"/images/*logo*.jpg 2>/dev/null | head -n1)
 	[ -n "$logo" ] || logo=$ROOT/images/sensei-logo.jpg
 	if [ -f "$logo" ]; then
 		mkdir -p "$stage/data/sen/plugins/$signature"
-		cp "$logo" "$stage/data/sen/plugins/$signature/logo.jpg"
+		cp "$logo" "$stage/data/sen/plugins/$signature/logo.${logo##*.}"
 	fi
 
 	# the signature must be there as the attribute that the server queries for
