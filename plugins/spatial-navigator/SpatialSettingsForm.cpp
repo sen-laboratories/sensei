@@ -48,23 +48,21 @@ struct Field {
 
 const Field kFields[] = {
 	{"poi_radius", "Search radius (m)",
-		"How far around a place or location what is nearby is looked for, in metres. The area is at least twice this across; a place that is larger is searched in its own box (up to 3 km across)."},
+		"How far around a place nearby things are looked for, in metres."},
 	{"poi_limit", "Most things nearby",
-		"How many things nearby at most. The notable ones (sights with a Wikidata item or a Wikipedia article) come before shops of the same distance, then the nearest."},
+		"At most this many things; sights come before shops, then the nearest."},
 	{"poi_cache_hours", "Keep answers for (hours)",
-		"How long what OpenStreetMap said about the surroundings of a place is kept. A place is not remapped that often, so a day is enough: a folder of what is nearby that is opened later asks again. 1 to 168 hours."},
+		"How long an answer is kept before the server is asked again (1 to 168)."},
 	{"map_style", "Map style",
-		"The default style of the map of a place (Shoji): the tiles of OpenStreetMap data from public servers, without a key. The map says whose it is. A view of the map can choose another style "
-		"with the secondary mouse button, and go back to this one."},
+		"The default map style in Shoji. A map can choose its own (secondary mouse button)."},
 	{"overpass_mirror", "Overpass server",
-		"The server that is asked for what is nearby a place (OpenStreetMap, Overpass API). The public server is often busy; the mirrors give the same data and have other limits. "
-		"The question and the box of the place go to the server that is chosen."},
+		"The server that is asked for what is nearby. The public one is often busy; the mirrors have other limits."},
 	{"overpass_url", "Custom mirror URL",
-		"The address of the interpreter of the mirror, like https://overpass.example.org/api/interpreter. For a server that takes the key in the path, put {key} where it goes. Enabled for the custom mirror."},
+		"The interpreter of the mirror, like https://host/api/interpreter. {key} marks where a key goes."},
 	{"overpass_custom_key", "The custom mirror requires an API key",
-		"Tick this if the custom mirror wants a key. The field of the key is enabled only for a server that requires one. Enabled for the custom mirror."},
+		"Tick this if the custom mirror wants a key."},
 	{"overpass_key", "API key",
-		"The key of a server that requires one (NextGIS, Overpass.ch: sign up there for it; or a custom mirror that you ticked). It is put in the address of the server in place of {key}, else sent as Authorization: Bearer <key> over https. It is kept in the settings file as it is typed."},
+		"For servers that need one: replaces {key} in the address, else sent as a bearer token (https only)."},
 };
 
 bool
@@ -235,8 +233,7 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	test.AddString(form::kAttrLabel, "Test the server");
 	test.AddString(form::kAttrKind, form::kKindButton);
 	test.AddString(form::kAttrShows, kTestResult);
-	test.AddString(form::kAttrHelp, "Asks the server that is chosen above (with its key) a small question about the centre of Wien, and tells whether it answers and how fast. "
-		"Change the settings first: they are used as they are shown.");
+	test.AddString(form::kAttrHelp, "Asks the chosen server a small question and shows the answer.");
 	test.AddInt32(form::kAttrOrder, order++);
 	schema->AddMessage(kTestButton, &test);
 	// the status of the test: the HTTP status as a short text, with the icon of its state in front (info: it works, warning: another status than success, error: down or not reachable) and the
