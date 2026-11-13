@@ -39,8 +39,8 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"email", kText, "E-mail address", "Unpaywall and OpenAlex ask who you are (their polite pool); Unpaywall refuses requests without an address."},
-	{"api_key", kText, "OpenAlex key", "Free, from openalex.org/settings/api. Without one all requests of an address share a small daily budget. The key is kept in the settings file as it is."},
+	{"email", kText, "E-mail address", "Unpaywall and OpenAlex ask who you are. Unpaywall needs an address."},
+	{"api_key", kText, "OpenAlex key", "Free, from openalex.org/settings/api. Without one all requests share a small daily budget."},
 	{"unpaywall", kBool, "Ask Unpaywall for the open access status", "Needs an address; else the data of OpenAlex is used."},
 	{"title_search", kBool, "Look a paper up by its title if there is no DOI", ""},
 	{"semantic_scholar", kBool, "Ask Semantic Scholar if OpenAlex does not know the paper", ""},
@@ -48,7 +48,7 @@ const Field kFields[] = {
 	{"arxiv", kBool, "Ask arXiv if OpenAlex does not know the paper", "A paper whose document names an arXiv identifier is looked up there first."},
 	{"overwrite", kBool, "Replace what the file already has", "Off: only the missing attributes are filled."},
 	{"rename", kBool, "Rename the file after the paper", "The names of papers say nothing (the numbers of a conference)."},
-	{"rename_pattern", kText, "Name pattern", "Tokens: {year} {first_author} {title} {doi}. {title} gives Deep learning.pdf, {year}_{first_author}_{title} gives 2015_LeCun_Deep learning.pdf."},
+	{"rename_pattern", kText, "Name pattern", "Tokens: {year} {first_author} {title} {doi}, for example {year}_{first_author}_{title}."},
 	{"rename_underscores", kBool, "Underscores instead of blanks in the new name", ""},
 	{"authors", kText, "Authors become people", "The authors of an enriched paper are made files next to it, with the Authorship relation."},
 	{"max_pages", kNumber, "Pages to search for a DOI", "Of the beginning of the document."},

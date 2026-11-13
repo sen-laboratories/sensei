@@ -75,6 +75,18 @@ struct Area {
 };
 
 /**
+ * Leaves out the parts of a stop that Nominatim lists as places of their own (a platform, a stop position, the stop of a tram or a bus on the street) when the answers also have a place of
+ * that name close by that is no such part (the station, the building): a station called Westbahnhof is the station, not its four platforms, which would crowd it out of the list.
+ */
+void RemoveStopDetails(std::vector<Hit>* hits);
+
+/**
+ * The area around a position, as a box of about @p radiusKm in each direction, without a country: where the user is, roughly (the position that Basho tells), is where a search for a name
+ * looks first (a bias of the search, not a restriction: the places of that name elsewhere are still found).
+ */
+Area AreaAround(const Position& position, double radiusKm);
+
+/**
  * The search that places what a file says of where it is: the city (else the region, else the country) with the region and country that are named. A country as a code (`AT`) is no name
  * to search for: it restricts the search. Empty if there is nothing to look up (the file names no city or region, and a country that is a code or none).
  */

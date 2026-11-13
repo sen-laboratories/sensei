@@ -18,6 +18,8 @@
 #include <Url.h>
 #include <fs_attr.h>
 
+#include <location/LocationClient.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +42,7 @@
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.place-enricher";
 // what the services are told that we are (Nominatim and Wikimedia want a program that says what it is and where to find it)
-static const char* kUserAgent = "SEN-SUESS/0.1 (Haiku; https://sen-labs.org)";
+static const char* kUserAgent = "SEN-Spaces/0.1 (Haiku; https://sen-labs.org)";
 // the answers are kept for a week; a thumbnail of 256 pixels is enough for the icon sizes of the file manager
 static const long kCacheSeconds = 7 * 24 * 3600;
 static const int kThumbnailWidth = 256;
@@ -60,6 +62,10 @@ App::App()
 	fPositionGiven(false),
 	fNeedsConsent(false),
 	fOverwrite(true),
+	fStreetOnly(false),
+	fNearTried(false),
+	fHasNear(false),
+	fNearRadius(0),
 	fAuto(false),
 	fExitCode(0)
 {
@@ -156,7 +162,7 @@ App::PrintUsage(const char* error)
 		<< "  -p, --position     look up a file that is no place and has a position and no name by that position (sends the position to OpenStreetMap)\n"
 		<< "  -l, --language <l> the language of the names (de, en, ...); the default is the language of the system\n"
 		<< "      --debug        print what is done\n\n"
-		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/suess.settings.\n";
+		<< "Settings: the Settings window of SEN (Plugins, Enrich), kept in ~/config/settings/sen/spaces.settings.\n";
 }
 
 
@@ -267,7 +273,7 @@ App::Pulse()
 void
 App::ShowError(const char* message)
 {
-	sensei::Notify("SEN SUESS", "Place not enriched", message, false);
+	sensei::Notify("SEN Spaces", "Place not enriched", message, false);
 	printf("%s\n", message);
 }
 
@@ -355,8 +361,45 @@ Describe(const place::Hit& hit, float score, const std::string& distance)
 }
 
 
+bool
+App::FindNearUser(place::Position* position, double* radiusKilometres)
+{
+	if (!fNearTried) {
+		fNearTried = true;
+		fHasNear = false;
+		// (the client starts the server if it does not run, as it is made to; the settings of the server and the permission of this program say how much it tells, and if Basho is not
+		// installed there is no position: nothing is looked for near the user then)
+		if (fSettings.nearMe) {
+			LocationClient client;
+			BMessage fix;
+			double latitude = 0, longitude = 0;
+			const status_t got = client.GetCurrent(&fix, 2000000, false, "city");
+			if (got != B_OK)
+				printf("Basho tells nothing of where the user is: %s%s%s.\n", strerror(got), fix.HasString("error") ? " - " : "", fix.GetString("error", ""));
+			else if (fix.FindDouble("latitude", &latitude) != B_OK || fix.FindDouble("longitude", &longitude) != B_OK)
+				printf("Basho tells no position (level %s).\n", fix.GetString("granularity", "?"));
+			if (got == B_OK && fix.FindDouble("latitude", &latitude) == B_OK && fix.FindDouble("longitude", &longitude) == B_OK) {
+				// (an address of the internet is placed to a city: the radius says how far off it may be; the area to search is twice that, at least 30 km)
+				float accuracy = 0;
+				fix.FindFloat("accuracy", &accuracy);
+				fNear.latitude = latitude;
+				fNear.longitude = longitude;
+				fNearRadius = std::min(150.0, std::max(30.0, 2.0 * accuracy / 1000.0));
+				fHasNear = true;
+				printf("the user is near %s (%.2f, %.2f), looking within %.0f km first.\n", fix.GetString("city", "?"), latitude, longitude, fNearRadius);
+			}
+		}
+	}
+	if (fHasNear) {
+		*position = fNear;
+		*radiusKilometres = fNearRadius;
+	}
+	return fHasNear;
+}
+
+
 status_t
-App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen)
+App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen, double nearKilometres)
 {
 	struct Entry {
 		size_t	index;
@@ -386,7 +429,7 @@ App::ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted,
 		if (!pool[i].fits)
 			continue;
 		matching++;
-		if (near != NULL && pool[i].kilometres <= 5.0) {
+		if (near != NULL && pool[i].kilometres <= nearKilometres) {
 			nearMatching++;
 			nearest = i;
 		}
@@ -506,8 +549,33 @@ App::FindArea(BNode& node, const std::string& language, place::Area* area)
 
 
 status_t
+App::FindByQuery(const std::string& query, place::Hit* hit)
+{
+	fWanted = query;
+	// (nothing says where it is: where the user is, roughly, is where the search looks first, and the nearest of the places of that name is the best)
+	place::Position user;
+	double radius = 0;
+	const bool hasUser = FindNearUser(&user, &radius);
+	std::string body;
+	status_t result = Get(hasUser ? place::SearchUrl(query, fLanguage, fSettings.boundary, 12, place::kBoundaryTolerance, place::AreaAround(user, radius))
+		: place::SearchUrl(query, fLanguage, fSettings.boundary), kNominatim, &body);
+	if (result != B_OK)
+		return result;
+	std::vector<place::Hit> hits;
+	if (!place::ParseHits(body, &hits))
+		return B_ERROR;
+	place::RemoveStopDetails(&hits);
+	if (hits.empty())
+		return B_ENTRY_NOT_FOUND;
+	return ChoosePlace(hits, query, hasUser ? &user : NULL, 0, hit, radius);
+}
+
+
+status_t
 App::FindPlace(const entry_ref& file, place::Hit* hit)
 {
+	if (!fQuery.empty())
+		return FindByQuery(fQuery, hit);
 	BNode node(&file);
 	BString text;
 	const std::string language = fLanguage;
@@ -538,11 +606,52 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	// where the file says that it is (its city, region and country): the search stays there. Not asked for a file that is looked up by its position alone.
 	place::Area area;
 	const bool byPositionAlone = hasPosition && !hasTitle && !place::LooksLikeName(name);
-	const bool hasArea = !byPositionAlone && FindArea(node, language, &area);
+	bool hasArea = !byPositionAlone && FindArea(node, language, &area);
+
+	// nothing in the file says where it is (no position, no city): where the user is, roughly, is where the search looks first, and ranks the answers (a Westbahnhof in Wien, not the one in
+	// Budapest that has the name in German, too)
+	place::Position user;
+	double userRadius = 0;
+	bool hasUser = false;
+	if (!hasArea && !hasPosition && !byPositionAlone && (hasUser = FindNearUser(&user, &userRadius))) {
+		area = place::AreaAround(user, userRadius);
+		hasArea = true;
+	}
 
 	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
 	BString address;
 	if (!hasPosition && node.ReadAttrString(sen::onto::spatial::attr::kAddress, &address) == B_OK && !address.IsEmpty()) {
+		// a name and an address (a hairdresser in a street): the place of that name in that street first; the street alone is what is left when OpenStreetMap does not know the place.
+		// The name is the title of the file, else the name of the file itself ("Ti Amo", but not IMG_0001.jpg)
+		BString title;
+		if (hasTitle)
+			node.ReadAttrString(sen::onto::spatial::attr::kTitle, &title);
+		else if (place::LooksLikeName(name))
+			title = name.c_str();
+		{
+			title.Trim();
+			if (!title.IsEmpty() && title != address) {
+				BString both(title);
+				both << ", " << address;
+				fWanted = title.String();
+				fNamedPlace = title.String();
+				std::string namedBody;
+				status_t named = Get(hasArea ? place::SearchUrl(both.String(), language, fSettings.boundary, 3, place::kBoundaryTolerance, area)
+					: place::SearchUrl(both.String(), language, fSettings.boundary, 3), kNominatim, &namedBody);
+				if (named != B_OK)
+					return named;
+				std::vector<place::Hit> namedHits;
+				if (place::ParseHits(namedBody, &namedHits)) {
+					if (hasArea)
+						place::KeepInArea(&namedHits, area);
+					if (!namedHits.empty()) {
+						*hit = namedHits[0];
+						return B_OK;
+					}
+				}
+				fStreetOnly = true;		// (told to the user at the end if the street is what the answer is)
+			}
+		}
 		fWanted = address.String();
 		std::string addressBody;
 		const std::string addressUrl = hasArea ? place::SearchUrl(address.String(), language, fSettings.boundary, 3, place::kBoundaryTolerance, area)
@@ -576,13 +685,14 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	if (name.empty())
 		return B_ENTRY_NOT_FOUND;
 	std::string body;
-	const std::string searchUrl = hasArea ? place::SearchUrl(name, language, fSettings.boundary, 8, place::kBoundaryTolerance, area) : place::SearchUrl(name, language, fSettings.boundary);
+	const std::string searchUrl = hasArea ? place::SearchUrl(name, language, fSettings.boundary, hasUser ? 12 : 8, place::kBoundaryTolerance, area) : place::SearchUrl(name, language, fSettings.boundary);
 	status_t result = Get(searchUrl, kNominatim, &body);
 	if (result != B_OK)
 		return result;
 	std::vector<place::Hit> hits;
 	if (!place::ParseHits(body, &hits))
 		return B_ERROR;
+	place::RemoveStopDetails(&hits);
 	if (hasArea) {
 		// (never a place of another country than the file says: what the search ranks first may be one that has the name in another language)
 		const size_t before = hits.size();
@@ -605,7 +715,7 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	// the position decides; a title is what the user said, and it is not set aside
 	const double kMaxFileNameKilometres = 25.0;
 	result = hits.empty() ? B_ENTRY_NOT_FOUND
-		: ChoosePlace(hits, name, hasPosition ? &position : NULL, hasPosition && !hasTitle ? kMaxFileNameKilometres : 0, hit);
+		: ChoosePlace(hits, name, hasPosition ? &position : (hasUser ? &user : NULL), hasPosition && !hasTitle ? kMaxFileNameKilometres : 0, hit, hasUser ? userRadius : 5.0);
 	if (result == B_ENTRY_NOT_FOUND && hasPosition && !hasTitle) {
 		if (mayUsePosition)
 			return FindByPosition(position, hit);
@@ -666,7 +776,7 @@ FindNearbyPlaces(const place::Position& position, const std::vector<entry_ref>& 
 
 
 status_t
-App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description)
+App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby, const std::string& label)
 {
 	BMessenger server(sen::kServerSignature);
 	if (!server.IsValid())
@@ -703,15 +813,17 @@ App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string
 
 	// the places that are near the position as well: the places on this computer, not what OpenStreetMap has around (one request is made for the place; a search of the surroundings is not what its public service is for)
 	std::vector<entry_ref> places(1, placeRef);
-	place::Position position;
-	BNode fileNode(&file);
-	if (!ReadDouble(fileNode, sen::onto::spatial::attr::kLatitude, &position.latitude) || !ReadDouble(fileNode, sen::onto::spatial::attr::kLongitude, &position.longitude)) {
-		position.latitude = hit.latitude;
-		position.longitude = hit.longitude;
+	if (withNearby) {
+		place::Position position;
+		BNode fileNode(&file);
+		if (!ReadDouble(fileNode, sen::onto::spatial::attr::kLatitude, &position.latitude) || !ReadDouble(fileNode, sen::onto::spatial::attr::kLongitude, &position.longitude)) {
+			position.latitude = hit.latitude;
+			position.longitude = hit.longitude;
+		}
+		std::vector<entry_ref> except(places);
+		except.push_back(file);
+		FindNearbyPlaces(position, except, &places);
 	}
-	std::vector<entry_ref> except(places);
-	except.push_back(file);
-	FindNearbyPlaces(position, except, &places);
 
 	status_t status = B_OK;
 	for (const entry_ref& target : places) {
@@ -719,6 +831,12 @@ App::RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string
 		add.AddString(sen::key::kRelationType, sen::onto::spatial::mime::kLocatedNear);
 		add.AddRef(sen::key::kSourceRef, &file);
 		add.AddRef(sen::key::kTargetRef, &target);
+		// a text that was looked up (the location of a person) is the label of the relation to its place: that is how the form finds the place again, and opens it instead of looking it up again
+		if (!label.empty() && target == placeRef) {
+			BMessage properties;
+			properties.AddString(sen::attr::kRelationLabel, label.c_str());
+			add.AddMessage(sen::key::kRelationProperties, &properties);
+		}
 		result = server.SendMessage(&add, &answer, 10000000, 10000000);
 		if (result == B_OK && answer.GetInt32(sen::key::kStatus, 0) >= 400) {
 			printf("the SEN server: %s\n", answer.GetString(sen::key::kDetail, "no relation"));
@@ -756,9 +874,13 @@ App::Enrich(BMessage* message, BMessage* reply)
 	// the action decides what is replaced ("wipe": Enrich (Overwrite), the Shift key of the menu); the command line wins over the settings for one run
 	fOverwrite = message->GetBool("wipe", true);
 	fAuto = message->GetBool("auto", !fSettings.choose);
+	// (a text to look up, which is not what the file is: the location of a person, from its form)
+	fQuery = message->GetString("query", "");
+	fStreetOnly = false;
+	fNamedPlace.clear();
 
 	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
-		sensei::NotifyStarted("SEN SUESS", "Enriching place", ref.name);
+		sensei::NotifyStarted("SEN Spaces", "Enriching place", ref.name);
 
 	delete fHttp;
 	fHttp = new BaseEnricher(&ref, fMapper);
@@ -781,6 +903,8 @@ App::Enrich(BMessage* message, BMessage* reply)
 		BString text;
 		if (fWanted.empty())
 			text << "OpenStreetMap knows no place at the position of the file.";
+		else if (!fQuery.empty())
+			text << "OpenStreetMap has no place called \"" << fWanted.c_str() << "\".";
 		else if (fNeedsConsent && !place::LooksLikeName(fWanted))
 			text << "The file has a position but no name to search for. Turn on \"Use GPS location for lookup\" in the settings of SEN to look it up by that: the position is then sent to OpenStreetMap."
 				" (Or set the title of the file, dc:title.)";
@@ -817,7 +941,42 @@ App::Enrich(BMessage* message, BMessage* reply)
 			printf("could not get %s from Wikidata, skipping the description and the picture.\n", hit.wikidataId.c_str());
 	}
 
-	result = place::WritePlace(ref, hit, entity.description, fSettings.boundary, fOverwrite);
+	// a text that was looked up (the location of a person): the place is made as a file of its own and the file is related to it, nothing of the place is written to the file
+	if (!fQuery.empty()) {
+		status_t related = RelatePlace(ref, hit, entity.description, false, fQuery);
+		if (related == B_NOT_INITIALIZED)
+			ShowError("The SEN server is not running: the place cannot be related to the file.");
+		else if (related != B_OK)
+			ShowError("Could not relate the file to the place.");
+		else if (!fAuto) {
+			const std::string kind = KindOf(hit);
+			sensei::Notify("SEN Spaces", "Place linked", (hit.name + (kind.empty() ? "" : " - " + kind)).c_str(), true, &ref);
+		}
+		reply->AddString(sen::key::kDetail, hit.name.c_str());
+		return related;
+	}
+
+	// a named place that OpenStreetMap does not know, in a street that it does: the position and the town are the street's, the rest (its name, kind, outline, link, postcode: it has several) is not the place's
+	place::Hit written = hit;
+	fStreetOnly = fStreetOnly && hit.category == "highway";
+	if (fStreetOnly) {
+		written.name = fNamedPlace;		// (the name that the file has: the title is set if it had none, and never the name of the street)
+		written.category.clear();
+		written.type.clear();
+		written.addressType.clear();
+		written.hasBox = false;
+		written.wkt.clear();
+		written.osmType.clear();
+		written.osmId = 0;
+		written.wikidataId.clear();
+		written.wikipedia.clear();
+		written.website.clear();
+		written.otherNames.clear();
+		written.postcode.clear();
+		entity = place::Entity();
+		haveEntity = false;
+	}
+	result = place::WritePlace(ref, written, entity.description, fSettings.boundary, fOverwrite);
 	if (result != B_OK) {
 		ShowError("Failed to write the metadata to the file.");
 		return result;
@@ -857,6 +1016,16 @@ App::Enrich(BMessage* message, BMessage* reply)
 		}
 	}
 
+	if (fStreetOnly) {
+		BString only;
+		only << "Only the street was found: " << hit.road.c_str() << ". OpenStreetMap does not know \"" << written.name.c_str() << "\" there; the position is the street's. Add the house number to the address to place it exactly.";
+		printf("%s\n", only.String());
+		if (!fAuto)
+			sensei::Notify("SEN Spaces", "Place enriched", only.String(), true, &ref);
+		reply->AddString(sen::key::kDetail, only.String());
+		return B_OK;
+	}
+
 	BString summary;
 	summary << hit.name.c_str();
 	const std::string kind = KindOf(hit);
@@ -866,7 +1035,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 		summary << " - " << pictured.c_str();
 	printf("%s\n", summary.String());
 	if (!fAuto)
-		sensei::Notify("SEN SUESS", "Place enriched", summary.String(), true, &ref);
+		sensei::Notify("SEN Spaces", "Place enriched", summary.String(), true, &ref);
 	reply->AddString(sen::key::kDetail, summary.String());
 	return B_OK;
 }

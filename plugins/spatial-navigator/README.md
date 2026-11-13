@@ -30,9 +30,11 @@ which no one can read, so a larger place has none. The answer is the nearest to 
 Wikipedia article: a church, a museum) counts as three times nearer than a shop, so that the sights of a square come before its shops. The *Search radius* is 50 m to 1.5 km, 250 m by default. The *Map style* is the default style of the map of a place in Shoji (OpenTopoMap, the standard map, Humanitarian or CyclOSM: public servers, no key); a view of the map can switch to another style with the secondary mouse button. What OpenStreetMap said is kept for 24 hours (*Keep answers for*, 1 to 168 hours: places are not remapped that often); a folder of what is nearby that is opened later asks again, and is answered from the kept answer until it is that old. The relation
 is *remote*: the views of relation folders (*All related*) do not ask for it until you enter its folder, only opening it does.
 
+A place that has **no position yet** (one that was made with an address only) has nothing near it to find. With the setting *Enrich automatically on demand* (settings of SEN, *Plugins > Enrich*, on by default) the navigator has Spaces look up the address first and works the relation out afterwards; switched off, a notification says that the place has no position, so that an empty folder is not taken for "nothing is there".
+
 A thing that has a file of the type Place (by its OpenStreetMap link, `schema:sameAs`) is that file. One that has not is **made in the Library** (`~/Library/<context>/Places`) with its name (in the language
 of the system if the thing has it), its OpenStreetMap link (and the Wikidata link, if it has one), position, **kind** (`supermarket`, `cafe`, `place of worship`, from the tags `amenity`, `shop`, `tourism`...,
-and the tag as `schema:additionalType`), web site and address; the first twelve of them that have a Wikidata item are enriched in the background by SUESS, which finds their **picture** (the photo, the coat of arms) and outline; for the others, enrich the ones you want (OpenStreetMap has no picture of its own). Two things of one name
+and the tag as `schema:additionalType`), web site and address; the first twelve of them that have a Wikidata item are enriched in the background by Spaces, which finds their **picture** (the photo, the coat of arms) and outline; for the others, enrich the ones you want (OpenStreetMap has no picture of its own). Two things of one name
 (a supermarket chain) are told apart by the number at OpenStreetMap in the name of the file. The source of the relation (`prov:wasAttributedTo`) is the Overpass API.
 
 **What a relation says about itself.** A place that the shapes were compared for has the property **Kind** (`SEN:REL:Kind`), the name of the relation in words (`non-tangential proper part`, `tangential proper part`, `externally connected`,
@@ -51,11 +53,11 @@ city cross a little because they are simplified, and the shapes would say *overl
 
 * **The outlines and positions of the places that exist** (the files of the type Place and Location, on every volume with queries): of every place whose bounding box meets the one of this place the geometry
   engine **GEOS** (`libgeos_c`, the C API; the only new dependency) gives the DE-9IM matrix of the two geometries, and eight patterns map it to the relation. The outline is the attribute `geo:asWKT`
-  that SUESS keeps, else the position (`schema:latitude`, `schema:longitude`) is a point. A point can be within or equal to a place, it cannot touch or overlap one.
+  that Spaces keeps, else the position (`schema:latitude`, `schema:longitude`) is a point. A point can be within or equal to a place, it cannot touch or overlap one.
 * **Wikidata**, for *within*: the places that contain this one ("located in", all of the chain: **Stephansdom** is in **Innere Stadt**, **Vienna** and **Austria**), from its Wikidata link (`schema:sameAs`)
   with **one request** to the query service. A place of that chain that exists as a file (by its Wikidata link) is a target. One that does not is **made in the Library** of the current context
   (`~/Library/<context>/Places`) with its name, link, position, short description and **type** (`country`, `city`, `district`...; the kinds that are told are a short list, in this order of preference:
-  country, city, state, county, municipality, district, town, village, region, continent), so that it can be opened; it can be enriched with SUESS like any place. The answer is kept for a month.
+  country, city, state, county, municipality, district, town, village, region, continent), so that it can be opened; it can be enriched with Spaces like any place. The answer is kept for a month.
 
 * **OpenStreetMap through the Overpass API**, for *nearby* (the server is chosen in the settings, see below): one request for the box (`nwr[name](south,west,north,east); out center;`; note that Overpass takes south, west, north, east, and
   Nominatim south, north, west, east), kept for a day. The public server works out an answer for half a minute when it is busy, so the first time takes long; the SEN server waits 90 seconds for a

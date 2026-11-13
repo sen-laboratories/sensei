@@ -16,7 +16,7 @@ resource app_version {
 
 	internal = 1,
 
-	short_info = "SEN SUESS (Place Enricher)",
+	short_info = "SEN Spaces (Place Enricher)",
 	long_info  = "Looks a place up at OpenStreetMap (Nominatim): name, other names, kind of place, position, bounding box, outline and address, with a picture from Wikidata. Data (c) OpenStreetMap contributors (ODbL)."
 };
 

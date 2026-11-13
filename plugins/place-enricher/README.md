@@ -2,10 +2,10 @@
 SPDX-License-Identifier: MIT
 SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 -->
-# SUESS, the SEN place enricher
+# Spaces, the SEN place enricher
 
-*SUESS* is *Semantic Urban & Environmental Spaces for SEN*, and a bow to Eduard Suess, the Viennese geologist who described the biosphere in *The Face of the Earth*. The folder and the
-signature keep the name of what the plugin does (`place-enricher`) like the other plugins; SUESS is its name for people.
+*SEN Spaces* is the place enricher of SEN. The folder and the signature keep the name of what the plugin does (`place-enricher`) like the other plugins; Spaces is its name for people (it was
+called SUESS before the seventh beta, and reads its settings from the old file `suess.settings` once).
 
 Looks a place up at [OpenStreetMap](https://www.openstreetmap.org) (its search service Nominatim) and writes what it finds to the file: the name and the other names, what kind of place it is,
 the position, the bounding box, the outline, the address, the links where else the place is known, a short description and a **picture** from Wikidata. Choose **Enrich** on a file of the type
@@ -14,7 +14,7 @@ the position, the bounding box, the outline, the address, the links where else t
 > Data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), Open Database License (ODbL). The descriptions come from [Wikidata](https://www.wikidata.org) (CC0), the
 > pictures from [Wikimedia Commons](https://commons.wikimedia.org), each with the license of its author (it is written to the file, see below).
 
-**No key is needed.** The public services of OpenStreetMap and Wikimedia are free; this is how they ask to be used, and the plugin does it: it names itself (`SEN-SUESS/0.1 (Haiku; https://sen-labs.org)`),
+**No key is needed.** The public services of OpenStreetMap and Wikimedia are free; this is how they ask to be used, and the plugin does it: it names itself (`SEN-Spaces/0.1 (Haiku; https://sen-labs.org)`),
 asks Nominatim **at most once a second** (also when several instances run), **keeps every answer for a week** (`~/config/cache/sen/place-enricher`) so that nothing is asked twice, and has no
 autocomplete. It sends the **name of the place** and nothing else that is yours. The one thing that could be yours is the **GPS location of a photo**: that is sent only if you switch on *Use GPS location for lookup* (below), and a location that only ranks the answers is never sent.
 
@@ -35,6 +35,12 @@ autocomplete. It sends the **name of the place** and nothing else that is yours.
      Wien is; "IMG 0001" is not an office called "IMG"). Nothing that does not fit is written.
    * The name of a **file** is a guess, and the position tells whether it is right: with a position and no title only the places within **25 km** of it fit, and if there is none the position
      decides (2, with its permission). A **title** is what you said, and is not set aside: a photo of the Stephansdom that was taken at home is still the Stephansdom.
+
+## Looking up a text (the location of a person)
+
+A form can ask the plugin for a **text** that is not what the file is: the *Location* label of a person in Shoji is a link, and a click starts the plugin with the file and `query` (the text of the
+field). The place of that name is searched (and chosen, if several fit, as for any file), made as a **Place** file of its own if there is none yet (with the picture and the description, by the
+enrichment of the new place), and the person is **related** to it (*Located near*). Nothing of the place is written to the person, and the places that are near it are not related.
 
 ## What is written
 
@@ -68,13 +74,14 @@ author**, and the picture itself. A picture that asks to name its author (CC BY,
 
 ## Settings
 
-The Settings window of SEN shows them (*Plugins*, *Enrich*, *SEN SUESS*); they are kept in `~/config/settings/sen/suess.settings` (lines of `key = value`). Whether to ask which place is meant, is a
+The Settings window of SEN shows them (*Plugins*, *Enrich*, *SEN Spaces*); they are kept in `~/config/settings/sen/spaces.settings` (lines of `key = value`). Whether to ask which place is meant, is a
 setting that all plugins share.
 
 | Key | Default | |
 |---|---|---|
 | `language` | the system's | the language of names and descriptions (`de`, `en`, `pt`...) |
 | `lookup_by_position` | `no` | **Use GPS location for lookup**: look up a photo or another file that is no place by its GPS location when it has no title or name of a place; the location is sent to OpenStreetMap |
+| `near_me` | `yes` | **Prefer places near me**: Spaces asks Basho (the location server) where the computer roughly is and looks there first (see *Near you*); nothing happens if Basho is not installed or does not tell |
 | `picture` | `yes` | the picture of the place as the thumbnail (two more requests) |
 | `boundary` | `yes` | keep the outline of the place |
 
@@ -86,18 +93,34 @@ SenPlaceEnricher [-a|--auto] [-w|--wipe] [-l|--language de] [-p|--position] [--d
 
 ## Where a Location or a photo is located
 
-A file that is **no Place** (a Location, a photo with a position, anything else that SUESS looked up) is *located near* the place that was found. When the lookup has worked, SUESS stores the relation
+A file that is **no Place** (a Location, a photo with a position, anything else that Spaces looked up) is *located near* the place that was found. When the lookup has worked, Spaces stores the relation
 **located near** (`relation/x-vnd.sen-labs.relation.spatial.located-near`) from the file to that place, the same relation that you can make by hand, and to **the places on this computer that are near the position**
 (within 250 metres and no larger than 2 km across: a district or a city that contains the position is reached through the place, as a place is *within* it), so there can be several. The file of the **Place** that was
 found is the one that has the link to OpenStreetMap (or Wikidata) of the place, else it is made in the Library (name, kind, position, outline, address, as for any place) and enriched later in the background (the picture,
 the description); a building that has no name gets its address as the name (`Anton-Langer-Gasse 66`). The position of a Location is its own and is always used; the GPS position of a photo only with *Use GPS location for lookup*.
 A Place that is looked up is not related to anything: its data are the place's.
 
+## Near you (Basho)
+
+A name that says nothing of where (a station called "Westbahnhof") has many places in OpenStreetMap, and the first one that Nominatim ranks may be in another country (the Budapest station has the German name, too).
+If the file has no position, no city and no address that says where, Spaces asks **Basho**, the location server, where the computer is *roughly* (the city, and only as fine as you allow it there: the settings of
+Basho and its permission for Spaces), and then
+
+- searches with the **area around it** (a box of at least 30 km around the city, the *viewbox* of Nominatim: a bias, not a restriction: places of that name elsewhere are still found) so that the places near you are among
+  the answers; only that box, never the position, goes to OpenStreetMap;
+- **ranks the answers by distance** (the distances are shown in the list), takes a single place of that name in the area without asking, and with `--auto` the nearest that has the name;
+- leaves out the **platforms and stops** of a station when the station itself is there, so that they do not crowd it out.
+
+Turn it off with the setting *Prefer places near me*. A file that has a position, a city or an address uses that, as before. The program is linked to `liblocation.a` of the package `basho_devel` (build only);
+Basho itself is not required: without it nothing is looked up near you.
+
 ## Looking up an address
 
 A file that has an **address** (`schema:address`, e.g. `Anton-Langer-Gasse 66, 1130 Wien`) and **no position** is looked up by the address: the best answer of the search is the house or the street, and what Nominatim
 says is written to the file: the **position** (the file had none), the bounding box, the kind of place (`apartments`, `building`; as an IRI `Tag:building=apartments`), the link to OpenStreetMap (its object type and id),
-the address parts. A file that has a position uses it; one that has both is looked up by the position. Then, as for any lookup, a Location or photo is located near the place.
+the address parts. A file that has a position uses it; one that has both is looked up by the position.
+A file that has a **title and an address** (a hairdresser in a street) is searched as "title, address" first. If OpenStreetMap does not know that place, only the street is found: the file then gets the position and
+the town of the street and keeps its own title, and nothing else of the street (not its kind, outline, link or postcode); the notification says that only the street was found, and that the house number in the address would place it exactly. Then, as for any lookup, a Location or photo is located near the place.
 
 ## What it does not do
 

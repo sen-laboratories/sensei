@@ -37,7 +37,7 @@ struct Target {
  *   Calculus (the relation of A to B is the DE-9IM matrix of their geometries, worked out with GEOS and mapped, see SpatialRelations.h). Only the places whose bounding boxes meet are asked.
  * - for `within`, from Wikidata: the places that contain the place ("located in", all of the chain: Stephansdom is in Innere Stadt, Vienna and Austria) from its Wikidata link, one request.
  *   A place of that chain that exists as a file (by its Wikidata link) is a target; one that does not is made in the Library (name, link, position, short description) so that it can be opened.
- *   The files that this makes can be enriched with SUESS like any place.
+ *   The files that this makes can be enriched with Spaces like any place.
  * - for `nearby`, from OpenStreetMap (Overpass API): the named things in the area of the place (its box, at least 500 m across, at most 3 km), the nearest 100. A thing that exists
  *   as a file (by its OpenStreetMap link) is a target; one that does not is made in the Library with its name, link, position, kind and address. The notable ones come first, then the nearest, as
  *   many as the settings say. Of the places that are made the first twelve that have a Wikidata item are enriched in the background (their picture).
@@ -49,7 +49,7 @@ public:
 	~Resolver();
 
 	/**
-	 * The places that this Resolver made in the Library and that SUESS is to enrich: the parents that were missing (a name, a link, a position and a type, no picture, outline or address),
+	 * The places that this Resolver made in the Library and that Spaces is to enrich: the parents that were missing (a name, a link, a position and a type, no picture, outline or address),
 	 * and the first few points of interest that have a Wikidata item (for their picture).
 	 */
 	const std::vector<entry_ref>&	Made() const { return fMade; }
@@ -69,6 +69,9 @@ private:
 	bool				_WikidataContains(const std::string& a, const std::string& b);
 	status_t			_MakePlace(const entry_ref& beside, const Ancestor& ancestor, entry_ref* made);
 	/** the named things in the area of the place, nearest first as many as the settings say, as targets; the files that are not there yet are made. B_ERROR if Overpass could not be asked: that is not the same as nothing being there */
+	/** The place has no position (and nothing else that its relation can start from): with the setting *Enrich automatically on demand* it is enriched now (Spaces looks up its address) and
+	 *  read again, else the user is told that it has none. True if it has a position afterwards. */
+	bool				_NeedsPosition(const entry_ref& file, PlaceData* place);
 	status_t			_AddPointsOfInterest(const PlaceData& place, const std::map<std::string, entry_ref>& byOsm, std::vector<Target>* targets);
 	/** the named things in the box (kept for a day on disk); false if Overpass could not be asked */
 	bool				_Pois(const Box& area, std::vector<Poi>* pois);

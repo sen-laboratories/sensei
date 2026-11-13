@@ -5,7 +5,7 @@
 #pragma once
 
 /**
- * The separator of the values of a list attribute (other names, links) is not SUESS's to choose: the attribute info of the type says it (the ontology: the slot has `is_list`, and a comma
+ * The separator of the values of a list attribute (other names, links) is not for Spaces to choose: the attribute info of the type says it (the ontology: the slot has `is_list`, and a comma
  * unless it says another character), and Shoji, Akita and the other plugins read it from there. 
  */
 

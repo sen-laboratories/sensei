@@ -19,7 +19,7 @@
 class MappingUtil;
 
 /**
- * SUESS (Semantic Urban & Environmental Spaces for SEN), the place enricher: looks a place up at OpenStreetMap Nominatim (by the name of the file or its title, by the link to OpenStreetMap
+ * Spaces, the place enricher: looks a place up at OpenStreetMap Nominatim (by the name of the file or its title, by the link to OpenStreetMap
  * that an earlier run wrote, or, if the user allows it, by the position of the file), writes its attributes (name, other names, kind of place, position, bounding box, outline, address)
  * to the file, and takes a picture of the place from Wikidata and Wikimedia Commons as its thumbnail.
  *
@@ -60,6 +60,8 @@ private:
 	 * Location file (the position is the place's own), and for any other file only if the user allows it (the setting, or --position).
 	 */
 	status_t		FindPlace(const entry_ref& file, place::Hit* hit);
+	/** the place of that name (the text of a field of the file: the location of a person), not the place that the file is or says; nothing is asked of the file */
+	status_t		FindByQuery(const std::string& query, place::Hit* hit);
 	/**
 	 * Takes the place that is meant out of the answers of a search: @p near is the position that the file has (NULL: none), which ranks the places by how near they are and, if @p
 	 * maxKilometres is more than 0, leaves out those that are farther away. The user chooses if more than one fits (the nearest and best first, with the distance), unless exactly one fits and
@@ -72,14 +74,25 @@ private:
 	 * in Wien is not the one in Budapest, which has the name in German, too). False if the file says nothing of where it is, or nothing was found: the search then has no area.
 	 */
 	bool			FindArea(BNode& node, const std::string& language, place::Area* area);
-	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen);
+	/**
+	 * Where the user is, roughly, from Basho (the location server), if the setting allows it, Basho runs and the user lets this program know it: the position, and how far off it may be
+	 * (kilometres, the radius of the area to search). Asked once per run. False: no position (nothing is sent anywhere then).
+	 */
+	bool			FindNearUser(place::Position* position, double* radiusKilometres);
+	/**
+	 * Chooses among the answers (or asks). @p near ranks them by their distance, @p maxKilometres leaves out those that are farther from it (0: none), @p nearKilometres is how close a place
+	 * must be to count as "the one that is near" (a single place of that name that is within it is taken without asking): 5 km for the position of a file, the radius of the fix for the user.
+	 */
+	status_t		ChoosePlace(const std::vector<place::Hit>& hits, const std::string& wanted, const place::Position* near, double maxKilometres, place::Hit* chosen, double nearKilometres = 5.0);
 	/**
 	 * What a Location, a photo or another file that is no Place is "located near": the Place that Nominatim found for it, and the Places on this computer that are near its position (within 250 metres,
 	 * and no larger than 2 km across: a district or a city that contains it is reached through the place). The Place that was found is the file of a Place that has its link to OpenStreetMap
 	 * (or Wikidata), else it is made in the Library with what Nominatim says and enriched later (picture, outline) in the background. The relations `located near` are stored, the same as ones
 	 * that the user makes by hand.
 	 */
-	status_t		RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description);
+	/** @param withNearby also relate the file to the places that are near it on this computer (a photo is; a person that lives in a place is related to that place only)
+	 * @param label the label of the relation to the place that was found (the text that was looked up) */
+	status_t		RelatePlace(const entry_ref& file, const place::Hit& hit, const std::string& description, bool withNearby = true, const std::string& label = std::string());
 	void			ShowError(const char* message);
 	void			PrintUsage(const char* error = NULL);
 	/** the settings as they are now (the file, the settings of SEN that all plugins share): the instance may have been started before the user changed them; what the command line gave is kept */
@@ -94,11 +107,18 @@ private:
 	sensei::RateLimiter*		fLimiter;
 	std::string				fLanguage;			///< what is asked for: the setting, else the language of the system
 	std::string				fWanted;
+	std::string				fQuery;			///< the message gave a text to look up (`query`): the place of that name is made and related to the file, the file itself is not written
 	bool					fDebug;
 	bool					fLanguageGiven;
 	bool					fPositionGiven;		///< the command line allows the lookup by position (--position)
 	bool					fNeedsConsent;		///< the file has a position that was not used because the user has not allowed it (to say so)
 	bool					fOverwrite;
+	bool					fNearTried;			///< Basho was asked for where the user is (once per run)
+	bool					fHasNear;
+	place::Position			fNear;
+	double					fNearRadius;
+	std::string				fNamedPlace;		///< the name of the place that is looked up with its address (the title, else the name of the file)
+	bool					fStreetOnly;		///< the file has a name and an address, and only the street was found: what the street has of its own is not written to the file
 	bool					fAuto;
 	int32					fExitCode;
 };

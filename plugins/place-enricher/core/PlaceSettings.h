@@ -9,7 +9,7 @@
 namespace place {
 
 /**
- * The settings of SUESS, the place enricher: lines of `key = value` in `~/config/settings/sen/suess.settings` (`#` starts a comment), changed in the settings window of SEN. The options of
+ * The settings of Spaces, the place enricher: lines of `key = value` in `~/config/settings/sen/spaces.settings` (`#` starts a comment), changed in the settings window of SEN. The options of
  * the command line win over them for one run. Plain C++.
  */
 struct Settings {
@@ -21,6 +21,12 @@ struct Settings {
 	 * always looked up by it (the position is the place's own, not where the user was), and a position that only ranks the answers of a search by name is never sent.
 	 */
 	bool lookupByPosition = false;
+	/**
+	 * Look for the places that are near the user first: the application asks Basho (the location server) where the computer is, roughly (the city, as far as the user allows it there), ranks
+	 * the answers by their distance from it, and sends the area around it (a box of some tens of kilometres, not the position) to OpenStreetMap as the area to search first. For a name that
+	 * says nothing of where (a station called "Westbahnhof"), a file with no position of its own and no city. Nothing happens if Basho is not there or the user does not allow it.
+	 */
+	bool nearMe = true;
 	/** a picture of the place as the thumbnail: the photo, coat of arms, flag or map that Wikidata names, with its credit (two more requests, to Wikidata and Wikimedia Commons) */
 	bool picture = true;
 	/** keep the outline of the place (simplified) as `geo:asWKT`: what tells where places are in relation to each other (within, touches, overlaps...) */

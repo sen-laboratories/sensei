@@ -16,6 +16,7 @@ sensei
     ├── movie-enricher        enrich
     ├── paperboy              enrich, identify
     ├── pdf-extractor         extract
+    ├── person-enricher       enrich
     ├── personal-relation-navigatornavigate
     ├── place-enricher        enrich
     ├── reference-navigator   navigate
@@ -35,12 +36,13 @@ sensei
 | `movie-enricher` (SEN Akari (Movie Enricher)) | `sen_plugin_movie_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.movie`, `video` | - | `application/x-vnd.sen-plugin.sen-labs.movie-enricher` |
 | `paperboy` (SEN Paperboy) | `sen_plugin_paperboy` 0.1.0 | enrich, identify | `application/pdf`, `application/epub+zip` | `relation/x-vnd.sen-labs.relation.citation` | `application/x-vnd.sen-plugin.sen-labs.paperboy` |
 | `pdf-extractor` (SEN PDF Extractor) | `sen_plugin_pdf_extractor` 0.2.0 | extract | `application/pdf` | `relation/x-vnd.sen-labs.relation.docref` | `application/x-vnd.sen-plugin.sen-labs.pdf-extractor` |
-| `personal-relation-navigator` (SENSEI Personal Relation Navigator) | `sen_plugin_personal_relation_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.person`, `relation/x-vnd.sen-labs.relation.person.acquaintance`, `relation/x-vnd.sen-labs.relation.person.friend`, `relation/x-vnd.sen-labs.relation.person.close-friend`, `relation/x-vnd.sen-labs.relation.person.partner`, `relation/x-vnd.sen-labs.relation.person.parent`, `relation/x-vnd.sen-labs.relation.person.sibling`, `relation/x-vnd.sen-labs.relation.person.relative`, `relation/x-vnd.sen-labs.relation.person.colleague`, `relation/x-vnd.sen-labs.relation.person.superior`, `relation/x-vnd.sen-labs.relation.person.mentor`, `relation/x-vnd.sen-labs.relation.person.collaborator`, `relation/x-vnd.sen-labs.relation.person.client`, `relation/x-vnd.sen-labs.relation.person.employment`, `relation/x-vnd.sen-labs.relation.person.membership` | - | `application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator` |
-| `place-enricher` (SEN SUESS (Place Enricher)) | `sen_plugin_place_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.place`, `entity/x-vnd.sen-labs.entity.location` | - | `application/x-vnd.sen-plugin.sen-labs.place-enricher` |
+| `person-enricher` (SEN Robin (Person Enricher)) | `sen_plugin_person_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.person`, `application/x-person` | - | `application/x-vnd.sen-plugin.sen-labs.person-enricher` |
+| `personal-relation-navigator` (SENSEI Personal Relation Navigator) | `sen_plugin_personal_relation_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.person`, `relation/x-vnd.sen-labs.relation.person.acquaintance`, `relation/x-vnd.sen-labs.relation.person.friend`, `relation/x-vnd.sen-labs.relation.person.close-friend`, `relation/x-vnd.sen-labs.relation.person.partner`, `relation/x-vnd.sen-labs.relation.person.parent`, `relation/x-vnd.sen-labs.relation.person.sibling`, `relation/x-vnd.sen-labs.relation.person.relative`, `relation/x-vnd.sen-labs.relation.person.colleague`, `relation/x-vnd.sen-labs.relation.person.superior`, `relation/x-vnd.sen-labs.relation.person.mentor`, `relation/x-vnd.sen-labs.relation.person.collaborator`, `relation/x-vnd.sen-labs.relation.person.client`, `relation/x-vnd.sen-labs.relation.person.employment`, `relation/x-vnd.sen-labs.relation.person.membership`, `relation/x-vnd.sen-labs.relation.person.status` | - | `application/x-vnd.sen-plugin.sen-labs.personal-relation-navigator` |
+| `place-enricher` (SEN Spaces (Place Enricher)) | `sen_plugin_place_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.place`, `entity/x-vnd.sen-labs.entity.location` | - | `application/x-vnd.sen-plugin.sen-labs.place-enricher` |
 | `reference-navigator` (SENSEI Reference Navigator) | `sen_plugin_reference_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.reference`, `relation/x-vnd.sen-labs.relation.dependency`, `relation/x-vnd.sen-labs.relation.contains`, `meta/x-vnd.sen-labs.meta-mime-attribute` | - | `application/x-vnd.sen-plugin.sen-labs.reference-navigator` |
 | `relation-navigator` (SENSEI Relation Navigator) | `sen_plugin_relation_navigator` 0.1.0 | navigate | `relation` | - | `application/x-vnd.sen-plugin.sen-labs.relation-navigator` |
 | `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0 | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
-| `spatial-navigator` (SEN Spatial Navigator) | `sen_plugin_spatial_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.spatial.within`, `relation/x-vnd.sen-labs.relation.spatial.covered-by`, `relation/x-vnd.sen-labs.relation.spatial.touch`, `relation/x-vnd.sen-labs.relation.spatial.overlap`, `relation/x-vnd.sen-labs.relation.spatial.equal` | - | `application/x-vnd.sen-plugin.sen-labs.spatial-navigator` |
+| `spatial-navigator` (SEN Spatial Navigator) | `sen_plugin_spatial_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.spatial.within`, `relation/x-vnd.sen-labs.relation.spatial.covered-by`, `relation/x-vnd.sen-labs.relation.spatial.touch`, `relation/x-vnd.sen-labs.relation.spatial.overlap`, `relation/x-vnd.sen-labs.relation.spatial.equal`, `relation/x-vnd.sen-labs.relation.spatial.nearby` | - | `application/x-vnd.sen-plugin.sen-labs.spatial-navigator` |
 | `text-reference-navigator` (SENSEI Text Reference Navigator) | `sen_plugin_text_reference_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.textref`, `relation/x-vnd.sen-labs.relation.sourcecode.include` | - | `application/x-vnd.sen-plugin.sen-labs.text-reference-navigator` |
 
 **authorship-navigator**: SEN module to open the author of a book (the target of an Authorship relation) with the application of the person.
@@ -58,6 +60,8 @@ sensei
 **paperboy**: Finds scientific papers, looks up their metadata and free copies (DOI, arXiv ID or title), makes people of the authors (ORCID, Wikidata) and extracts cited papers.\nSources: OpenAlex, Unpaywall, arXiv, Semantic Scholar, DBLP; no keys needed.
 
 **pdf-extractor**: SEN module to extract structure outline from PDFs.
+
+**person-enricher**: Robin - Enriching People: Enriches person entities with public photos, profile information, verified links, and live microfeeds from Gravatar, Libravatar, GitHub, Fediverse, and Wikidata.
 
 **personal-relation-navigator**: SEN module to open the person or organization that a personal relation (knows, friend, colleague, employment...) ends at with its application.
 

@@ -6,6 +6,7 @@
 #include "PlaceSettingsForm.h"
 
 #include <Directory.h>
+#include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
@@ -22,7 +23,9 @@ namespace place {
 
 namespace {
 
-const char* const kSettingsFile = "sen/suess.settings";
+const char* const kSettingsFile = "sen/spaces.settings";
+// (until beta 6 the plugin was called SUESS: its settings are moved to the new file the first time that they are read or written)
+const char* const kLegacySettingsFile = "sen/suess.settings";
 
 enum FieldType {
 	kBool,
@@ -39,10 +42,11 @@ struct Field {
 };
 
 const Field kFields[] = {
-	{"language", kText, "Language", "The language of the names and descriptions of places. The first entry is the language of the system."},
-	{"lookup_by_position", kBool, "Use GPS location for lookup", "Look up a photo or another file by its GPS location (the attributes schema:latitude and schema:longitude) when it has no title or name of a place to search for. OFF by default: the location of your file is then sent to the Nominatim service of OpenStreetMap. A Place or Location file with a location and no name is always looked up by it, and a location that only ranks the answers of a search by name is never sent."},
-	{"picture", kBool, "Picture of the place", "Use a picture that Wikidata names (a photo, the coat of arms, the flag, a map) as the thumbnail, with its license and author. Two more requests, to Wikidata and Wikimedia Commons."},
-	{"boundary", kBool, "Keep the outline of the place", "The simplified outline is what tells where places are in relation to each other (within, touches, overlaps). A large outline takes room in the file."},
+	{"language", kText, "Language", "The language of names and descriptions. The first entry is the system's."},
+	{"lookup_by_position", kBool, "Use GPS location for lookup", "A photo or other file with a GPS position and no title is looked up by it: the position is sent to OpenStreetMap. Off by default."},
+	{"near_me", kBool, "Prefer places near me", "Looks near you first: Basho tells the city, and an area around it (never your position) is sent to OpenStreetMap."},
+	{"picture", kBool, "Picture of the place", "A picture from Wikidata as the thumbnail, with its license (two more requests)."},
+	{"boundary", kBool, "Keep the outline of the place", "The simplified outline tells how places relate. It takes room in the file."},
 };
 
 const struct {
@@ -57,7 +61,22 @@ const struct {
 bool
 SettingsPath(BPath* path)
 {
-	return find_directory(B_USER_SETTINGS_DIRECTORY, path, true) == B_OK && path->Append(kSettingsFile) == B_OK;
+	if (find_directory(B_USER_SETTINGS_DIRECTORY, path, true) != B_OK || path->Append(kSettingsFile) != B_OK)
+		return false;
+	// the file of the settings under its old name is the same file: it is renamed (the comments of the user stay)
+	BEntry current(path->Path());
+	if (!current.Exists()) {
+		BPath legacy;
+		if (find_directory(B_USER_SETTINGS_DIRECTORY, &legacy) == B_OK && legacy.Append(kLegacySettingsFile) == B_OK) {
+			BEntry old(legacy.Path());
+			BPath folder;
+			if (old.Exists() && path->GetParent(&folder) == B_OK) {
+				BDirectory directory(folder.Path());
+				old.MoveTo(&directory, path->Leaf());
+			}
+		}
+	}
+	return true;
 }
 
 
@@ -82,6 +101,7 @@ ToMessage(const Settings& s, BMessage* message)
 	message->MakeEmpty();
 	message->AddString("language", s.language.c_str());
 	message->AddBool("lookup_by_position", s.lookupByPosition);
+	message->AddBool("near_me", s.nearMe);
 	message->AddBool("picture", s.picture);
 	message->AddBool("boundary", s.boundary);
 }
