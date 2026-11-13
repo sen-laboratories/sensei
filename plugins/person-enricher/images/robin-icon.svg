@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" version="1.1">
+  <!-- Robin: the archer of the project logo, simplified for an icon: the round badge, the helmet with its crest, the bow with the drawn arrow -->
+  <path fill="#2e4636" d="M32,1 C49.1,1 63,14.9 63,32 C63,49.1 49.1,63 32,63 C14.9,63 1,49.1 1,32 C1,14.9 14.9,1 32,1 Z"/>
+  <path fill="#7d9c76" d="M32,4 C47.5,4 60,16.5 60,32 C60,47.5 47.5,60 32,60 C16.5,60 4,47.5 4,32 C4,16.5 16.5,4 32,4 Z"/>
+  <path fill="#b8552f" d="M42,8 C60,20 60,44 42,56 C51.5,44 51.5,20 42,8 Z"/>
+  <path fill="#f4ecd0" d="M42,8 L43,8.9 L25.2,31.6 L24,30.8 Z"/>
+  <path fill="#f4ecd0" d="M24,30.8 L25.2,31.6 L43,55.2 L42,56 Z"/>
+  <path fill="#8a4b2b" d="M14,52 C14,45 18,40 24,39 C30,40 34,45 34,52 C30,56 18,56 14,52 Z"/>
+  <path fill="#8a4b2b" d="M30,38 L47,30 L48,33 L33,43 Z"/>
+  <path fill="#e0b48a" d="M16,24 L32,24 L32,30 C32,34 28,37 24,37 C20,37 16,34 16,30 Z"/>
+  <path fill="#2e4636" d="M13,24 C13,15 19,10.5 24,10.5 C29,10.5 35,15 35,24 Z"/>
+  <path fill="#2e4636" d="M11,23.5 L37,23.5 L37,26.5 L11,26.5 Z"/>
+  <path fill="#e0b040" d="M24,12 L19,7 L21.6,13 Z"/>
+  <path fill="#e0b040" d="M24,12 L29,7 L26.4,13 Z"/>
+  <path fill="#f4ecd0" d="M16,30.4 L56,30.4 L56,31.6 L16,31.6 Z"/>
+  <path fill="#f4ecd0" d="M56,28.3 L61,31 L56,33.7 Z"/>
+</svg>
