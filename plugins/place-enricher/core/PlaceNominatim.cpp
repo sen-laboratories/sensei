@@ -424,9 +424,16 @@ SearchUrl(const std::string& query, const std::string& language, bool boundary, 
 void
 KeepInArea(std::vector<Hit>* hits, const Area& area)
 {
-	if (area.countryCode.empty())
+	const bool inBox = area.strict && area.hasBox;
+	if (area.countryCode.empty() && !inBox)
 		return;
-	hits->erase(std::remove_if(hits->begin(), hits->end(), [&area](const Hit& hit) { return !hit.countryCode.empty() && hit.countryCode != area.countryCode; }), hits->end());
+	const double marginLatitude = std::max(0.01, (area.north - area.south) * 0.1), marginLongitude = std::max(0.01, (area.east - area.west) * 0.1);
+	hits->erase(std::remove_if(hits->begin(), hits->end(), [&](const Hit& hit) {
+		if (!area.countryCode.empty() && !hit.countryCode.empty() && hit.countryCode != area.countryCode)
+			return true;
+		return inBox && (hit.latitude < area.south - marginLatitude || hit.latitude > area.north + marginLatitude
+			|| hit.longitude < area.west - marginLongitude || hit.longitude > area.east + marginLongitude);
+	}), hits->end());
 }
 
 

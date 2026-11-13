@@ -14,7 +14,7 @@ resource app_version {
 	   3 = gamma		4 = golden master	5 = final */
 	variety = 2,
 
-	internal = 7,
+	internal = 8,
 
 	short_info = "SEN Spaces (Place Enricher)",
 	long_info  = "Looks a place up at OpenStreetMap (Nominatim): name, other names, kind of place, position, bounding box, outline and address, with a picture from Wikidata. Data (c) OpenStreetMap contributors (ODbL)."

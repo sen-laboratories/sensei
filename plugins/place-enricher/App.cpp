@@ -63,6 +63,8 @@ App::App()
 	fNeedsConsent(false),
 	fOverwrite(true),
 	fStreetOnly(false),
+	fAreaOnly(false),
+	fHasAreaHit(false),
 	fNearTried(false),
 	fHasNear(false),
 	fNearRadius(0),
@@ -531,6 +533,9 @@ App::FindArea(BNode& node, const std::string& language, place::Area* area)
 	node.ReadAttrString(attr::kLocality, &locality);
 	node.ReadAttrString(attr::kRegion, &region);
 	node.ReadAttrString(attr::kCountry, &country);
+	locality.Trim();
+	region.Trim();
+	fHasAreaHit = false;
 
 	std::vector<place::Hit> hits;
 	const std::string url = place::AreaUrl(locality.String(), region.String(), country.String(), language);
@@ -541,6 +546,11 @@ App::FindArea(BNode& node, const std::string& language, place::Area* area)
 			place::ParseHits(body, &hits);
 	}
 	const bool found = place::AreaFrom(hits, country.String(), area);
+	// what the file says about its city or region is binding (a name only refines the search in it); a country alone only restricts
+	area->strict = found && area->hasBox && (!locality.IsEmpty() || !region.IsEmpty());
+	fHasAreaHit = found && !hits.empty() && area->strict;
+	if (fHasAreaHit)
+		fAreaHit = hits[0];
 	if (found)
 		printf("the file says that it is in %s%s%s: searching %s.\n", locality.String(), locality.IsEmpty() ? "" : ", ", area->countryCode.empty() ? "?" : area->countryCode.c_str(),
 			area->countryCode.empty() ? "near it" : "in that country");
@@ -618,6 +628,24 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 		hasArea = true;
 	}
 
+	// The city (region, country) that the file names comes first: what the name or the address finds is searched in it, and if OpenStreetMap does not know the name there (an apartment, a
+	// room, "Home") the city itself is the place, with the name of the file. Only for a file that has no position of its own.
+	auto cityOnly = [&](place::Hit* answer) {
+		if (!fHasAreaHit || hasPosition)
+			return false;
+		BString title;
+		if (hasTitle)
+			node.ReadAttrString(sen::onto::spatial::attr::kTitle, &title);
+		else
+			title = name.c_str();
+		title.Trim();
+		fNamedPlace = title.String();
+		fAreaOnly = true;
+		*answer = fAreaHit;
+		printf("OpenStreetMap does not know \"%s\" in %s: the place is the city.\n", title.String(), fAreaHit.name.c_str());
+		return true;
+	};
+
 	// an address and no position: the address is what is asked for (the position is what the file lacks, and what the lookup gives it); the best answer of the search is the house or the street
 	BString address;
 	if (!hasPosition && node.ReadAttrString(sen::onto::spatial::attr::kAddress, &address) == B_OK && !address.IsEmpty()) {
@@ -665,7 +693,7 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 		if (hasArea)
 			place::KeepInArea(&addressHits, area);
 		if (addressHits.empty())
-			return B_ENTRY_NOT_FOUND;
+			return cityOnly(hit) ? B_OK : B_ENTRY_NOT_FOUND;
 		*hit = addressHits[0];
 		return B_OK;
 	}
@@ -683,7 +711,7 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 	}
 
 	if (name.empty())
-		return B_ENTRY_NOT_FOUND;
+		return cityOnly(hit) ? B_OK : B_ENTRY_NOT_FOUND;
 	std::string body;
 	const std::string searchUrl = hasArea ? place::SearchUrl(name, language, fSettings.boundary, hasUser ? 12 : 8, place::kBoundaryTolerance, area) : place::SearchUrl(name, language, fSettings.boundary);
 	status_t result = Get(searchUrl, kNominatim, &body);
@@ -694,11 +722,11 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 		return B_ERROR;
 	place::RemoveStopDetails(&hits);
 	if (hasArea) {
-		// (never a place of another country than the file says: what the search ranks first may be one that has the name in another language)
+		// (never a place of another country, or outside of the city that the file names: what the search ranks first may be one that has the name in another language)
 		const size_t before = hits.size();
 		place::KeepInArea(&hits, area);
 		if (hits.size() != before)
-			printf("%zu of %zu places are in another country than the file says (%s): left out.\n", before - hits.size(), before, area.countryCode.c_str());
+			printf("%zu of %zu places are in another country or city than the file says (%s): left out.\n", before - hits.size(), before, area.countryCode.c_str());
 	}
 
 	// a place that was made from Wikidata (by the spatial navigator, for a place that contains another one) has the link to Wikidata and none to OpenStreetMap: of the answers for its name
@@ -721,6 +749,8 @@ App::FindPlace(const entry_ref& file, place::Hit* hit)
 			return FindByPosition(position, hit);
 		fNeedsConsent = true;
 	}
+	if (result == B_ENTRY_NOT_FOUND && cityOnly(hit))
+		return B_OK;
 	return result;
 }
 
@@ -877,6 +907,8 @@ App::Enrich(BMessage* message, BMessage* reply)
 	// (a text to look up, which is not what the file is: the location of a person, from its form)
 	fQuery = message->GetString("query", "");
 	fStreetOnly = false;
+	fAreaOnly = false;
+	fHasAreaHit = false;
 	fNamedPlace.clear();
 
 	if (!fAuto)		// (the lookup takes a while: say that it has begun; a script that asked for --auto is not told, as at the end)
@@ -934,7 +966,7 @@ App::Enrich(BMessage* message, BMessage* reply)
 	// what Wikidata says: the short description of the place in the language of the user, and the picture that it names (a failure of Wikidata does not undo the place)
 	place::Entity entity;
 	bool haveEntity = false;
-	if (!hit.wikidataId.empty() && fSettings.picture) {
+	if (!hit.wikidataId.empty() && fSettings.picture && !fAreaOnly) {
 		std::string body;
 		haveEntity = Get(place::EntityUrl(hit.wikidataId, fLanguage), kWikimedia, &body) == B_OK && place::ParseEntity(body, hit.wikidataId, fLanguage, &entity);
 		if (!haveEntity)
@@ -959,7 +991,14 @@ App::Enrich(BMessage* message, BMessage* reply)
 	// a named place that OpenStreetMap does not know, in a street that it does: the position and the town are the street's, the rest (its name, kind, outline, link, postcode: it has several) is not the place's
 	place::Hit written = hit;
 	fStreetOnly = fStreetOnly && hit.category == "highway";
-	if (fStreetOnly) {
+	if (fStreetOnly || fAreaOnly) {
+		// (a city that stands for a place that OpenStreetMap does not know: its position and the names of the city, region and country; not its road, outline or links)
+		if (fAreaOnly) {
+			if (written.locality.empty() && (hit.addressType == "city" || hit.addressType == "town" || hit.addressType == "village" || hit.addressType == "municipality"))
+				written.locality = hit.name;
+			written.road.clear();
+			written.houseNumber.clear();
+		}
 		written.name = fNamedPlace;		// (the name that the file has: the title is set if it had none, and never the name of the street)
 		written.category.clear();
 		written.type.clear();
@@ -1014,6 +1053,16 @@ App::Enrich(BMessage* message, BMessage* reply)
 			if (related != B_OK && related != B_NOT_INITIALIZED)
 				printf("could not relate %s to the place %s: %s\n", ref.name, hit.name.c_str(), strerror(related));
 		}
+	}
+
+	if (fAreaOnly) {
+		BString only;
+		only << "Only the city was found: " << hit.name.c_str() << ". OpenStreetMap does not know \"" << written.name.c_str() << "\" there; the position is the city's. Add the address to place it exactly.";
+		printf("%s\n", only.String());
+		if (!fAuto)
+			sensei::Notify("SEN Spaces", "Place enriched", only.String(), true, &ref);
+		reply->AddString(sen::key::kDetail, only.String());
+		return B_OK;
 	}
 
 	if (fStreetOnly) {

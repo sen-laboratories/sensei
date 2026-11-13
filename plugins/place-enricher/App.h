@@ -119,6 +119,9 @@ private:
 	double					fNearRadius;
 	std::string				fNamedPlace;		///< the name of the place that is looked up with its address (the title, else the name of the file)
 	bool					fStreetOnly;		///< the file has a name and an address, and only the street was found: what the street has of its own is not written to the file
+	bool					fAreaOnly;			///< the file names its city (region, country) and OpenStreetMap does not know the name there: the city is the answer, with the name of the file
+	bool					fHasAreaHit;
+	place::Hit				fAreaHit;			///< the place that the city, region or country of the file is (FindArea)
 	bool					fAuto;
 	int32					fExitCode;
 };
