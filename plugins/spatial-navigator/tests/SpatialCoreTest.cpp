@@ -352,6 +352,22 @@ TestSettings()
 	CHECK(mirrors.size() == 6 && std::string(mirrors.back().id) == "custom");		// (the last choice is the custom mirror)
 	CHECK(KeyEnabledWhen() == "overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true");
 
+	// what the test of a server says: the status as the text, the state for the icon, the detail in a few lines
+	CHECK(HttpStatusText(200) == "200 OK" && HttpStatusText(503) == "503 Service Unavailable" && HttpStatusText(418) == "HTTP 418");
+	const ServerTest works = JudgeServerTest("geo.example.org", 200, false, "", true, 12, 0.43, 20, "");
+	CHECK(works.text == "200 OK" && works.state == "info" && works.detail == "geo.example.org\nAnswered in 0.4 s (12 places in the test area).");
+	const ServerTest notOverpass = JudgeServerTest("example.org", 200, false, "", false, 0, 0.2, 20, "");
+	CHECK(notOverpass.state == "warning" && notOverpass.text == "200 OK, not Overpass");
+	const ServerTest refused = JudgeServerTest("h", 403, false, "", false, 0, 1.0, 20, "A remark.");
+	CHECK(refused.text == "403 Forbidden" && refused.state == "warning" && refused.detail == "h\nStatus 403 Forbidden after 1.0 s.\nThe key is missing, wrong or not for this server.\nA remark.");
+	CHECK(JudgeServerTest("h", 400, false, "", false, 0, 1.0, 20, "").state == "warning" && JudgeServerTest("h", 429, false, "", false, 0, 1.0, 20, "").state == "warning");
+	const ServerTest down = JudgeServerTest("h", 502, false, "", false, 0, 0.1, 20, "");
+	CHECK(down.text == "502 Bad Gateway" && down.state == "error" && down.detail.find("overloaded or down") != std::string::npos);
+	const ServerTest silent = JudgeServerTest("h", 0, true, "", false, 0, 20.0, 20, "");
+	CHECK(silent.text == "No answer" && silent.state == "error" && silent.detail == "h\nNo answer in 20 s.\nThe server is down, or the address is wrong.");
+	const ServerTest gone = JudgeServerTest("h", 0, false, "Host not found", false, 0, 0.1, 20, "");
+	CHECK(gone.text == "Not reachable" && gone.state == "error" && gone.detail.find("Host not found") != std::string::npos);
+
 	// the servers with a key in the path: the address has {key}; without a key the public server answers
 	Settings keyed;
 	ParseSettings("overpass_mirror = overpass-ch", &keyed);

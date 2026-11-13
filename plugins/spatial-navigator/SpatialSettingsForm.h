@@ -22,13 +22,12 @@ public:
 	virtual status_t	Apply(const BMessage& changes, std::vector<std::string>* refused);
 
 private:
-	std::string			fTestResult;		///< what the last press of "Test the server" found (shown next to the button, never stored)
+	ServerTest			fTest;				///< what the last press of "Test the server" found (shown next to the button, never stored)
 };
 
 /**
- * Asks the Overpass server of the settings (the mirror, with its key, as the navigator does) a small question about the centre of Wien, and says in a sentence what came of it: that it works
- * and how long it took, or why not (busy, refused, no such address, no answer, not an Overpass server).
+ * Asks the Overpass server of the settings (the mirror, with its key, as the navigator does) a small question about the centre of Wien, and says what came of it (see JudgeServerTest): the HTTP status as the short text, the icon of its state, the detail for the tool tip.
  */
-std::string TestOverpassServer(const Settings& settings);
+ServerTest TestOverpassServer(const Settings& settings);
 
 }	// namespace spatial

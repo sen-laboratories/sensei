@@ -34,6 +34,8 @@ const char* const kSettingsFile = "sen/spatial-navigator.settings";
 // the button that tests the server, and the field next to it that says what came of it (neither is stored)
 const char* const kTestButton = "test_overpass";
 const char* const kTestResult = "test_result";
+const char* const kTestState = "test_state";
+const char* const kTestDetail = "test_detail";
 const char* const kTestUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
 const bigtime_t kTestTimeout = 20 * 1000000LL;
 
@@ -114,7 +116,7 @@ HostOf(const std::string& address)
 }	// namespace
 
 
-std::string
+ServerTest
 TestOverpassServer(const Settings& settings)
 {
 	const std::string chosen = OverpassEndpoint(settings);
@@ -122,16 +124,23 @@ TestOverpassServer(const Settings& settings)
 	const std::string key = OverpassKey(settings);
 	const std::string endpoint = WithKey(chosen, key);
 	std::string authorization;
-	std::string remark;
+	std::string extra;
 	if (!key.empty() && chosen.find("{key}") == std::string::npos) {
 		if (endpoint.compare(0, 8, "https://") == 0)
 			authorization = "Bearer " + key;
 		else
-			remark = " The key is not sent: the address is not https.";
+			extra = "The key is not sent: the address is not https.";
 	}
 	// (a custom mirror that is not complete, or a server that wants a key and has none: the navigator asks the public server then, and the test says so)
 	if (settings.overpassMirror != "default" && chosen == kDefaultOverpassUrl)
-		remark += " (The chosen mirror is not complete: the public server is used.)";
+		extra += std::string(extra.empty() ? "" : "\n") + "The chosen mirror is not complete: the public server is used.";
+	// an address that is only a host: the interpreter of an Overpass server is at a path of its own, mostly /api/interpreter
+	{
+		const size_t scheme = chosen.find("://");
+		const size_t slash = chosen.find('/', scheme == std::string::npos ? 0 : scheme + 3);
+		if (settings.overpassMirror == "custom" && (slash == std::string::npos || slash + 1 >= chosen.size()))
+			extra += std::string(extra.empty() ? "" : "\n") + "The address has no path: the interpreter is usually at .../api/interpreter.";
+	}
 
 	// the same kind of question as the navigator asks, for a small box in the middle of Wien
 	Box box;
@@ -144,49 +153,18 @@ TestOverpassServer(const Settings& settings)
 	const bigtime_t started = system_time();
 	const status_t result = sensei::SocketGet(request, kTestUserAgent, "application/json", &body, &status, kTestTimeout, authorization);
 	const double seconds = (system_time() - started) / 1000000.0;
-	char took[32];
-	snprintf(took, sizeof(took), "%.1f s", seconds);
 
-	// an address that is only a host: the interpreter of an Overpass server is at a path of its own, mostly /api/interpreter
-	std::string hint;
-	{
-		const size_t scheme = chosen.find("://");
-		const size_t slash = chosen.find('/', scheme == std::string::npos ? 0 : scheme + 3);
-		if (settings.overpassMirror == "custom" && (slash == std::string::npos || slash + 1 >= chosen.size()))
-			hint = " The address has no path: the interpreter of an Overpass server is usually at .../api/interpreter.";
+	bool overpass = false;
+	size_t places = 0;
+	if (result == B_OK) {
+		std::vector<Poi> found;
+		overpass = ParsePois(body, "", &found);
+		places = found.size();
+		if (status == 0)
+			status = 200;
 	}
-
-	std::string text;
-	switch (result) {
-		case B_OK:
-		{
-			std::vector<Poi> found;
-			if (!ParsePois(body, "", &found))
-				text = host + " answered, but not like an Overpass server: check the address." + hint;
-			else
-				text = "Works: " + host + " answered in " + took + " (" + std::to_string(found.size()) + " places in the test area).";
-			break;
-		}
-		case B_NOT_ALLOWED:
-			text = host + " refused the question (status " + std::to_string(status) + "): the key is missing, wrong or not for this server.";
-			break;
-		case B_BUSY:
-			text = host + " is busy or limits the questions (status " + std::to_string(status) + "): try again later, or choose another server.";
-			break;
-		case B_ENTRY_NOT_FOUND:
-			text = host + " has no such address (status 404): check the address of the mirror." + hint;
-			break;
-		case B_TIMED_OUT:
-		case B_WOULD_BLOCK:		// (what a socket that waited too long says)
-			text = host + " did not answer in " + std::to_string((int) (kTestTimeout / 1000000)) + " s.";
-			break;
-		default:
-			if (status == 502 || status == 504)
-				text = host + " is not available right now (status " + std::to_string(status) + "): it is overloaded or down. Try again later, or choose another server.";
-			else
-				text = "Could not ask " + host + (status != 0 ? " (status " + std::to_string(status) + ")" : std::string(": ") + strerror(result)) + "." + hint;
-	}
-	return text + remark;
+	const bool timedOut = result == B_TIMED_OUT || result == B_WOULD_BLOCK;	// (a socket that waited too long says "would block")
+	return JudgeServerTest(host, status, timedOut, status == 0 && !timedOut ? strerror(result) : std::string(), overpass, places, seconds, (int) (kTestTimeout / 1000000), extra);
 }
 
 
@@ -205,7 +183,9 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	ToMessage(current, settings);
 	ToMessage(Settings(), defaults);
 	settings->AddBool(kTestButton, false);		// (a button: never stored)
-	settings->AddString(kTestResult, fTestResult.empty() ? "Not tested yet." : fTestResult.c_str());
+	settings->AddString(kTestResult, fTest.text.empty() ? "Not tested yet." : fTest.text.c_str());
+	settings->AddString(kTestState, fTest.state.c_str());
+	settings->AddString(kTestDetail, fTest.detail.c_str());
 
 	schema->MakeEmpty();
 	schema->AddInt32(form::kSchemaVersion, 1);
@@ -259,12 +239,22 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		"Change the settings first: they are used as they are shown.");
 	test.AddInt32(form::kAttrOrder, order++);
 	schema->AddMessage(kTestButton, &test);
+	// the status of the test: the HTTP status as a short text, with the icon of its state in front (info: it works, warning: another status than success, error: down or not reachable) and the
+	// detail as the tool tip; the fields of the state and of the detail are not shown
 	BMessage result;
 	result.AddString(form::kAttrLabel, "Test result");
 	result.AddString(form::kAttrHelp, "What the last test found.");
 	result.AddBool(form::kAttrReadOnly, true);
+	result.AddString(form::kAttrStateField, kTestState);
+	result.AddString(form::kAttrDetailField, kTestDetail);
 	result.AddInt32(form::kAttrOrder, order++);
 	schema->AddMessage(kTestResult, &result);
+	for (const char* hidden : {kTestState, kTestDetail}) {
+		BMessage invisible;
+		invisible.AddBool(form::kAttrHidden, true);
+		invisible.AddInt32(form::kAttrOrder, order++);
+		schema->AddMessage(hidden, &invisible);
+	}
 }
 
 
@@ -281,10 +271,10 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			// (the button: the server of the settings as they are in the file now; the answer is shown next to it)
 			Settings current;
 			LoadSettings(&current);
-			fTestResult = TestOverpassServer(current);
+			fTest = TestOverpassServer(current);
 			continue;
 		}
-		if (key == kTestResult)
+		if (key == kTestResult || key == kTestState || key == kTestDetail)
 			continue;
 		const Field* field = nullptr;
 		for (const Field& each : kFields) {

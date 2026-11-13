@@ -5,6 +5,7 @@
 
 #include "SpatialSettings.h"
 
+#include <cstdio>
 #include <cstdlib>
 
 #include "../../../common/SettingsText.h"
@@ -162,6 +163,81 @@ OverpassEndpoint(const Settings& settings)
 	if (url.find("{key}") != std::string::npos && OverpassKey(settings).empty())
 		return kDefaultOverpassUrl;
 	return url;
+}
+
+
+std::string
+HttpStatusText(int code)
+{
+	const char* name = NULL;
+	switch (code) {
+		case 200: name = "OK"; break;
+		case 204: name = "No Content"; break;
+		case 301: name = "Moved Permanently"; break;
+		case 302: name = "Found"; break;
+		case 400: name = "Bad Request"; break;
+		case 401: name = "Unauthorized"; break;
+		case 403: name = "Forbidden"; break;
+		case 404: name = "Not Found"; break;
+		case 405: name = "Method Not Allowed"; break;
+		case 408: name = "Request Timeout"; break;
+		case 414: name = "URI Too Long"; break;
+		case 429: name = "Too Many Requests"; break;
+		case 500: name = "Internal Server Error"; break;
+		case 502: name = "Bad Gateway"; break;
+		case 503: name = "Service Unavailable"; break;
+		case 504: name = "Gateway Timeout"; break;
+	}
+	return name != NULL ? std::to_string(code) + " " + name : "HTTP " + std::to_string(code);
+}
+
+
+ServerTest
+JudgeServerTest(const std::string& host, int httpStatus, bool timedOut, const std::string& networkError, bool overpass, size_t places, double seconds, int timeoutSeconds,
+	const std::string& extra)
+{
+	char took[32];
+	snprintf(took, sizeof(took), "%.1f s", seconds);
+	ServerTest test;
+	std::string explanation;
+	if (httpStatus >= 200 && httpStatus < 300) {
+		test.text = HttpStatusText(httpStatus);
+		if (overpass) {
+			test.state = "info";
+			explanation = std::string("Answered in ") + took + " (" + std::to_string(places) + " places in the test area).";
+		} else {
+			test.state = "warning";
+			test.text += ", not Overpass";
+			explanation = std::string("Answered in ") + took + ", but not like an Overpass server: check the address.";
+		}
+	} else if (httpStatus > 0) {
+		test.text = HttpStatusText(httpStatus);
+		test.state = httpStatus >= 500 ? "error" : "warning";
+		explanation = "Status " + HttpStatusText(httpStatus) + " after " + took + ".";
+		if (httpStatus >= 500)
+			explanation += "\nThe server is overloaded or down. Try again later, or choose another server.";
+		else if (httpStatus == 401 || httpStatus == 403)
+			explanation += "\nThe key is missing, wrong or not for this server.";
+		else if (httpStatus == 404)
+			explanation += "\nNo such address: check the address of the mirror.";
+		else if (httpStatus == 400)
+			explanation += "\nThe server did not understand the question: check the address of the mirror.";
+		else if (httpStatus == 429)
+			explanation += "\nToo many questions: try again later, or choose another server.";
+	} else {
+		test.state = "error";
+		if (timedOut) {
+			test.text = "No answer";
+			explanation = "No answer in " + std::to_string(timeoutSeconds) + " s.\nThe server is down, or the address is wrong.";
+		} else {
+			test.text = "Not reachable";
+			explanation = "Could not connect" + (networkError.empty() ? std::string() : ": " + networkError) + ".\nCheck the address and the network.";
+		}
+	}
+	test.detail = host + "\n" + explanation;
+	if (!extra.empty())
+		test.detail += "\n" + extra;
+	return test;
 }
 
 

@@ -67,6 +67,27 @@ std::string OverpassKey(const Settings& settings);
  */
 std::string KeyEnabledWhen();
 
+/** The name of an HTTP status in a word or two: 200 OK, 403 Forbidden, 503 Service Unavailable; `HTTP 418` for one that is not known. */
+std::string HttpStatusText(int code);
+
+/**
+ * What the test of an Overpass server found, for the line next to the button of the settings: a short text (the HTTP status: `200 OK`, `403 Forbidden`; `No answer` if there was none),
+ * the state for the icon (`info` it works, `warning` the server answered with something else than success, `error` it is down: a 5xx status, or not reachable at all) and the detail
+ * of several short lines for the tool tip.
+ */
+struct ServerTest {
+	std::string	text;
+	std::string	state;
+	std::string	detail;
+};
+
+/**
+ * Judges the answer of a server to the test question. @p httpStatus is 0 if no HTTP answer came (then @p timedOut or @p networkError say why); @p overpass whether the body of a 2xx answer is
+ * that of an Overpass server (with @p places things in it); @p extra is more for the detail (a hint about the address, a remark about the key).
+ */
+ServerTest JudgeServerTest(const std::string& host, int httpStatus, bool timedOut, const std::string& networkError, bool overpass, size_t places, double seconds, int timeoutSeconds,
+	const std::string& extra);
+
 /** The ranges of the numbers of the settings. */
 const int kMinRadius = 50, kMaxRadius = 1500, kMinLimit = 5, kMaxLimit = 200, kMinCacheHours = 1, kMaxCacheHours = 168;
 
