@@ -10,10 +10,17 @@
 #include <FindDirectory.h>
 #include <Path.h>
 
+#include <OS.h>
+
+#include <stdio.h>
+
 #include <sen/SenMessagePath.h>
 #include <sen/SenSettingsForm.h>
 
 #include "../../common/SettingsText.h"
+#include "../../common/SocketHttp.h"
+#include "SpatialOverpass.h"
+#include "SpatialRelations.h"
 
 namespace form = sen::settings::form;
 namespace st = sensei::settingstext;
@@ -23,6 +30,12 @@ namespace spatial {
 namespace {
 
 const char* const kSettingsFile = "sen/spatial-navigator.settings";
+
+// the button that tests the server, and the field next to it that says what came of it (neither is stored)
+const char* const kTestButton = "test_overpass";
+const char* const kTestResult = "test_result";
+const char* const kTestUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
+const bigtime_t kTestTimeout = 20 * 1000000LL;
 
 /** One setting: the key of the file (the name of the field), and what the form shows. */
 struct Field {
@@ -88,7 +101,93 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddString("overpass_key", s.overpassKey.c_str());
 }
 
+/** the host of an address, for the messages (not the whole address: it may have the key in it) */
+std::string
+HostOf(const std::string& address)
+{
+	size_t start = address.find("://");
+	start = start == std::string::npos ? 0 : start + 3;
+	const size_t end = address.find_first_of("/?:", start);
+	return address.substr(start, end == std::string::npos ? std::string::npos : end - start);
+}
+
 }	// namespace
+
+
+std::string
+TestOverpassServer(const Settings& settings)
+{
+	const std::string chosen = OverpassEndpoint(settings);
+	const std::string host = HostOf(chosen);
+	const std::string key = OverpassKey(settings);
+	const std::string endpoint = WithKey(chosen, key);
+	std::string authorization;
+	std::string remark;
+	if (!key.empty() && chosen.find("{key}") == std::string::npos) {
+		if (endpoint.compare(0, 8, "https://") == 0)
+			authorization = "Bearer " + key;
+		else
+			remark = " The key is not sent: the address is not https.";
+	}
+	// (a custom mirror that is not complete, or a server that wants a key and has none: the navigator asks the public server then, and the test says so)
+	if (settings.overpassMirror != "default" && chosen == kDefaultOverpassUrl)
+		remark += " (The chosen mirror is not complete: the public server is used.)";
+
+	// the same kind of question as the navigator asks, for a small box in the middle of Wien
+	Box box;
+	box.south = 48.2080; box.north = 48.2090; box.west = 16.3730; box.east = 16.3745;
+	box.valid = true;
+	const std::string request = PoisUrl(box, endpoint);
+
+	std::string body;
+	int status = 0;
+	const bigtime_t started = system_time();
+	const status_t result = sensei::SocketGet(request, kTestUserAgent, "application/json", &body, &status, kTestTimeout, authorization);
+	const double seconds = (system_time() - started) / 1000000.0;
+	char took[32];
+	snprintf(took, sizeof(took), "%.1f s", seconds);
+
+	// an address that is only a host: the interpreter of an Overpass server is at a path of its own, mostly /api/interpreter
+	std::string hint;
+	{
+		const size_t scheme = chosen.find("://");
+		const size_t slash = chosen.find('/', scheme == std::string::npos ? 0 : scheme + 3);
+		if (settings.overpassMirror == "custom" && (slash == std::string::npos || slash + 1 >= chosen.size()))
+			hint = " The address has no path: the interpreter of an Overpass server is usually at .../api/interpreter.";
+	}
+
+	std::string text;
+	switch (result) {
+		case B_OK:
+		{
+			std::vector<Poi> found;
+			if (!ParsePois(body, "", &found))
+				text = host + " answered, but not like an Overpass server: check the address." + hint;
+			else
+				text = "Works: " + host + " answered in " + took + " (" + std::to_string(found.size()) + " places in the test area).";
+			break;
+		}
+		case B_NOT_ALLOWED:
+			text = host + " refused the question (status " + std::to_string(status) + "): the key is missing, wrong or not for this server.";
+			break;
+		case B_BUSY:
+			text = host + " is busy or limits the questions (status " + std::to_string(status) + "): try again later, or choose another server.";
+			break;
+		case B_ENTRY_NOT_FOUND:
+			text = host + " has no such address (status 404): check the address of the mirror." + hint;
+			break;
+		case B_TIMED_OUT:
+		case B_WOULD_BLOCK:		// (what a socket that waited too long says)
+			text = host + " did not answer in " + std::to_string((int) (kTestTimeout / 1000000)) + " s.";
+			break;
+		default:
+			if (status == 502 || status == 504)
+				text = host + " is not available right now (status " + std::to_string(status) + "): it is overloaded or down. Try again later, or choose another server.";
+			else
+				text = "Could not ask " + host + (status != 0 ? " (status " + std::to_string(status) + ")" : std::string(": ") + strerror(result)) + "." + hint;
+	}
+	return text + remark;
+}
 
 
 void
@@ -105,6 +204,8 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	LoadSettings(&current);
 	ToMessage(current, settings);
 	ToMessage(Settings(), defaults);
+	settings->AddBool(kTestButton, false);		// (a button: never stored)
+	settings->AddString(kTestResult, fTestResult.empty() ? "Not tested yet." : fTestResult.c_str());
 
 	schema->MakeEmpty();
 	schema->AddInt32(form::kSchemaVersion, 1);
@@ -148,6 +249,22 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		}
 		schema->AddMessage(field.key, &attributes);
 	}
+
+	// a button under the settings of the server: does it work? (the answer is shown next to it)
+	BMessage test;
+	test.AddString(form::kAttrLabel, "Test the server");
+	test.AddString(form::kAttrKind, form::kKindButton);
+	test.AddString(form::kAttrShows, kTestResult);
+	test.AddString(form::kAttrHelp, "Asks the server that is chosen above (with its key) a small question about the centre of Wien, and tells whether it answers and how fast. "
+		"Change the settings first: they are used as they are shown.");
+	test.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage(kTestButton, &test);
+	BMessage result;
+	result.AddString(form::kAttrLabel, "Test result");
+	result.AddString(form::kAttrHelp, "What the last test found.");
+	result.AddBool(form::kAttrReadOnly, true);
+	result.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage(kTestResult, &result);
 }
 
 
@@ -160,6 +277,15 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 	char* name = nullptr;
 	for (int32 i = 0; changes.GetInfo(B_ANY_TYPE, i, &name, nullptr, nullptr) == B_OK; i++) {
 		const std::string key = name;
+		if (key == kTestButton) {
+			// (the button: the server of the settings as they are in the file now; the answer is shown next to it)
+			Settings current;
+			LoadSettings(&current);
+			fTestResult = TestOverpassServer(current);
+			continue;
+		}
+		if (key == kTestResult)
+			continue;
 		const Field* field = nullptr;
 		for (const Field& each : kFields) {
 			if (key == each.key)
