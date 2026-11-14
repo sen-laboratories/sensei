@@ -23,6 +23,7 @@ sensei
     ├── relation-navigator    navigate
     ├── sourcecode-extractor  extract, identify
     ├── spatial-navigator     navigate
+    ├── temporal-navigator    navigate
     └── text-reference-navigatornavigate
 ```
 
@@ -43,6 +44,7 @@ sensei
 | `relation-navigator` (SENSEI Relation Navigator) | `sen_plugin_relation_navigator` 0.1.0 | navigate | `relation` | - | `application/x-vnd.sen-plugin.sen-labs.relation-navigator` |
 | `sourcecode-extractor` (SEN SourceCode Extractor) | `sen_plugin_sourcecode_extractor` 0.4.0 | extract, identify | `text/x-source-code` | `relation/x-vnd.sen-labs.relation.sourcecode.include` | `application/x-vnd.sen-plugin.sen-labs.sourcecode-extractor` |
 | `spatial-navigator` (SEN Spatial Navigator) | `sen_plugin_spatial_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.spatial.within`, `relation/x-vnd.sen-labs.relation.spatial.covered-by`, `relation/x-vnd.sen-labs.relation.spatial.touch`, `relation/x-vnd.sen-labs.relation.spatial.overlap`, `relation/x-vnd.sen-labs.relation.spatial.equal`, `relation/x-vnd.sen-labs.relation.spatial.nearby` | - | `application/x-vnd.sen-plugin.sen-labs.spatial-navigator` |
+| `temporal-navigator` (SEN Temporal Navigator) | `sen_plugin_temporal_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.temporal.before`, `relation/x-vnd.sen-labs.relation.temporal.meets`, `relation/x-vnd.sen-labs.relation.temporal.overlaps`, `relation/x-vnd.sen-labs.relation.temporal.during`, `relation/x-vnd.sen-labs.relation.temporal.equals` | - | `application/x-vnd.sen-plugin.sen-labs.temporal-navigator` |
 | `text-reference-navigator` (SENSEI Text Reference Navigator) | `sen_plugin_text_reference_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.textref`, `relation/x-vnd.sen-labs.relation.sourcecode.include` | - | `application/x-vnd.sen-plugin.sen-labs.text-reference-navigator` |
 
 **authorship-navigator**: SEN module to open the author of a book (the target of an Authorship relation) with the application of the person.
@@ -74,5 +76,7 @@ sensei
 **sourcecode-extractor**: SEN module to identify the language of source code files (sets their semantic type) and to extract their references to other files: includes, imports and modules (C, C++, Go, Java, JavaScript, Python, Rust, TypeScript).
 
 **spatial-navigator**: Works out the spatial relations between places when they are opened: within and contains, covered by and covers, touches, overlaps, equal to. From the outlines and positions of the places (RCC-8, with GEOS) and from Wikidata (located in).
+
+**temporal-navigator**: Works out the temporal relations between events and other timed files when they are opened: before and after, meets and met by, overlaps and overlapped by, during and contains, equals. From their start, end and duration, exact or not (Allen's interval algebra).
 
 **text-reference-navigator**: SEN module to open the targets of TextReference relations (a line, a column, a selection of a text) in the editor, with the places mapped to its arguments.
