@@ -52,7 +52,7 @@ Relation Compare(const Interval& a, const Interval& b);
 /** the relation of B to A */
 Relation Inverse(Relation relation);
 
-/** the relation type that offers it (`relation/x-vnd.sen-labs.relation.temporal.before` for before and after...), empty for those that no type offers */
+/** the relation type that offers it (`relation/x-vnd.sen-labs.relation.temporal.between` for before and after...), empty for those that no type offers */
 std::string TypeOf(Relation relation);
 
 /** in words, as it is seen from A: `before`, `met by`, `overlapped by`... */

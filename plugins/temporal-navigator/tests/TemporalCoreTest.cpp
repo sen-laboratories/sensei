@@ -49,7 +49,7 @@ static void TestInstants()
 static void TestTypesAndDirections()
 {
 	// five types, two directions each: the label is that of the direction
-	CHECK(TypeOf(Relation::kBefore) == TypeOf(Relation::kAfter) && TypeOf(Relation::kBefore).find("temporal.before") != std::string::npos);
+	CHECK(TypeOf(Relation::kBefore) == TypeOf(Relation::kAfter) && TypeOf(Relation::kBefore).find("temporal.between") != std::string::npos);
 	CHECK(TypeOf(Relation::kMeets) == TypeOf(Relation::kMetBy) && TypeOf(Relation::kOverlaps) == TypeOf(Relation::kOverlappedBy));
 	CHECK(TypeOf(Relation::kDuring) == TypeOf(Relation::kContains) && TypeOf(Relation::kEquals).find("temporal.equals") != std::string::npos);
 	CHECK(TypeOf(Relation::kStarts).empty() && TypeOf(Relation::kFinishedBy).empty() && TypeOf(Relation::kNone).empty());

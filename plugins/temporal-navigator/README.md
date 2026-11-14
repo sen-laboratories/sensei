@@ -7,6 +7,7 @@ SPDX-FileCopyrightText: 2026 SEN Labs e.U.
 Works out the **temporal relations between events** (and any other file that has a time) when you open them: *before* and *after*, *meets* and *met by*, *overlaps* and *overlapped by*,
 *during* and *contains*, *equals*. Open the relation at an event (*Open related*, group *Temporal*): the files that it is related to in that way are the answer, each with the label of its
 direction (`before` for what comes later, `after` for what came earlier), in the order of time.
+The relation of *before* and *after* is called **Between** (one gap lies between the two); the files in its folder say *before* or *after*, as seen from the event that was opened.
 
 The relations are **not stored**. The SEN server asks this plugin (`sensei::cmd::kResolve`, see `Sensei.h` of sento) when the relation is opened, so what you see is right at that moment, also
 after you corrected a time. The relation types are those of the ontology *SEN Temporal* (`dynamic`); they are the relations of **Allen's interval algebra**, the names of W3C OWL-Time
@@ -14,7 +15,7 @@ after you corrected a time. The relation types are those of the ontology *SEN Te
 
 | Relation | Seen from the event | Seen from the other one | Allen |
 |---|---|---|---|
-| before | before | after | b, bi |
+| between (before and after) | before | after | b, bi |
 | meets | meets | met by | m, mi |
 | overlaps | overlaps | overlapped by | o, oi |
 | during | during | contains | d, di |
@@ -35,4 +36,4 @@ From the command line (for a test): `SenTemporalNavigator <relation type> <file>
 
 The tests of the core (Allen's relations, the interval of a file) run everywhere: `sh tests/run.sh`.
 
-Icon: the calendar page of the Event (`images/temporal-navigator-icon.svg`).
+Icon: "Calendar" by zuMi (MIT license), the icon of the Event, too (`images/calendar-zumi.svg` is its SVG). The folder of the relations is `images/temporal-relation.svg`.

@@ -61,7 +61,7 @@ TypeOf(Relation relation)
 	switch (relation) {
 		case Relation::kBefore:
 		case Relation::kAfter:
-			return "relation/x-vnd.sen-labs.relation.temporal.before";
+			return "relation/x-vnd.sen-labs.relation.temporal.between";
 		case Relation::kMeets:
 		case Relation::kMetBy:
 			return "relation/x-vnd.sen-labs.relation.temporal.meets";
