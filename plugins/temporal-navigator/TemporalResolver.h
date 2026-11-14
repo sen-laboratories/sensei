@@ -23,7 +23,7 @@ struct Target {
 /** The time that a file says of itself (`schema:startDate`, `schema:endDate`, `schema:duration`, the text of a time that is not exact). False if it says none. */
 bool ReadTimeAttributes(const entry_ref& file, TimeAttributes* attributes);
 
-/** The events (a query of the type on every volume), the ones in the trash left out. At most @p limit. */
+/** The files that have a start (a query of the index on every volume), the ones in the trash left out. At most @p limit. */
 status_t FindTimedFiles(std::vector<entry_ref>* refs, size_t limit = 20000);
 
 class Resolver {

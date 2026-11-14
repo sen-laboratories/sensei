@@ -27,8 +27,9 @@ the start and the end; else the start and the duration; else, for a start that i
 end of a period is the moment that the next one begins, so two days in a row **meet**. A time that is not exact (`1994-05~`, `202X`, in the Extended Date/Time Format, see `SenEdtf.h`) counts
 with its **widest extent**, so that a relation is never claimed that the time does not allow. Times of day without a zone are the local time of the person who typed them.
 
-The files are found with a query of the type *Event* on every volume (BFS cannot index a time, so a query cannot ask for a date); those in the Trash are left out. The offer is for events for now:
-the relation types name the type *Event* as their source and target, and a file of another type that has a start is not found yet.
+The files are found with a query of the index of `schema:startDate` on every volume (BFS indexes a time as the 64-bit integer that holds it, so the times must be written as `time_t`); those in
+the Trash are left out. Any file that has a start is found, whatever its type; the offer of the relation ("Open related") is for events for now: the relation types name the type *Event* as
+their source and target.
 
 From the command line (for a test): `SenTemporalNavigator <relation type> <file>`, e.g. `SenTemporalNavigator relation/x-vnd.sen-labs.relation.temporal.overlaps ~/Events/Meeting`.
 

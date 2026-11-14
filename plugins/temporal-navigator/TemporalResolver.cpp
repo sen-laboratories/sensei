@@ -102,12 +102,12 @@ FindTimedFiles(std::vector<entry_ref>* refs, size_t limit)
 	while (roster.GetNextVolume(&volume) == B_OK && refs->size() < limit) {
 		if (!volume.KnowsQuery())
 			continue;
-		// the events (by their type, which is indexed: BFS cannot index a time, so the start cannot be asked for); a file of another type that has a time is not found yet
+		// every file that has a start (the attribute is indexed, as the 64-bit integer that holds a time): an event, or any other file that says when it is. A time can be before 1970.
 		BQuery query;
 		query.SetVolume(&volume);
-		query.PushAttr("BEOS:TYPE");
-		query.PushString(sen::onto::temporal::mime::kEvent);
-		query.PushOp(B_EQ);
+		query.PushAttr(sen::onto::temporal::attr::kStartDate);
+		query.PushInt64(-(1LL << 60));
+		query.PushOp(B_GE);
 		if (query.Fetch() != B_OK)
 			continue;
 		entry_ref ref;
