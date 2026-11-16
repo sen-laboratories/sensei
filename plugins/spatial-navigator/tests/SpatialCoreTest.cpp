@@ -306,35 +306,102 @@ static void
 TestSettings()
 {
 	using namespace spatial;
-	// the default is the public server; the mirrors and the custom one are chosen by their id
+	// with no setting the list is the public server, then the mirrors that need no key, in the order of the list; the servers that need a key and the custom one are off
 	Settings settings;
-	CHECK(OverpassEndpoint(settings) == "https://overpass-api.de/api/interpreter" && OverpassKey(settings).empty());
-	ParseSettings("# a comment\noverpass_mirror = vk-maps\n", &settings);
-	CHECK(OverpassEndpoint(settings) == "https://maps.mail.ru/osm/tools/overpass/api/interpreter");
-	ParseSettings("overpass_mirror = private-coffee", &settings);
-	CHECK(OverpassEndpoint(settings) == "https://overpass.private.coffee/api/interpreter");
-	// the last choice is the custom one; with no address it is the default; the key belongs to it alone
-	ParseSettings("overpass_mirror = custom\noverpass_key = secret123", &settings);
-	CHECK(OverpassEndpoint(settings) == kDefaultOverpassUrl && OverpassKey(settings).empty());		// (the key is for a server that requires one: the flag is not set)
-	ParseSettings("overpass_custom_key = yes", &settings);
-	CHECK(OverpassKey(settings) == "secret123");
-	ParseSettings("overpass_url = https://overpass.example.org/api/interpreter", &settings);
-	CHECK(OverpassEndpoint(settings) == "https://overpass.example.org/api/interpreter");
-	ParseSettings("overpass_mirror = vk-maps", &settings);
-	CHECK(OverpassKey(settings).empty());
-	// a mirror that the test found not working is not asked while it is the chosen one; the public server always is; another address or a test that works ends it
+	{
+		const std::vector<Server> servers = ActiveServers(settings);
+		CHECK(servers.size() == 3 && servers[0].id == "default" && servers[0].isPublic && servers[0].endpoint == kDefaultOverpassUrl);
+		CHECK(servers[1].id == "private-coffee" && servers[1].endpoint == "https://overpass.private.coffee/api/interpreter");
+		CHECK(servers[2].id == "vk-maps" && servers[2].endpoint == "https://maps.mail.ru/osm/tools/overpass/api/interpreter" && servers[2].key.empty());
+		CHECK(ServerOrder(settings).size() == Mirrors().size() && !ServerIsOn(settings, "nextgis") && !ServerIsOn(settings, "custom") && ServerIsOn(settings, "vk-maps"));
+	}
+	// the setting names the order and switches off with a -; what it does not name follows, as the list has it; a name that is none of the list is left out
+	{
+		Settings listed;
+		ParseSettings("# a comment\noverpass_servers = vk-maps -default bogus private-coffee\n", &listed);
+		const std::vector<std::string> order = ServerOrder(listed);
+		CHECK(order.size() == Mirrors().size() && order[0] == "vk-maps" && order[1] == "default" && order[2] == "private-coffee" && order[3] == "nextgis");
+		CHECK(ServerIsOn(listed, "vk-maps") && !ServerIsOn(listed, "default") && ServerIsOn(listed, "private-coffee"));
+		const std::vector<Server> servers = ActiveServers(listed);
+		CHECK(servers.size() == 2 && servers[0].id == "vk-maps" && servers[1].id == "private-coffee");
+		std::vector<std::string> on;
+		for (const std::string& id : order) {
+			if (ServerIsOn(listed, id))
+				on.push_back(id);
+		}
+		CHECK(ServersText(order, on) == "vk-maps -default private-coffee -nextgis -overpass-ch -custom" || ServersText(order, on).find("vk-maps -default private-coffee") == 0);
+		Settings again;
+		ParseSettings("overpass_servers = " + ServersText(order, on), &again);
+		CHECK(ServerOrder(again) == order && ServerIsOn(again, "custom") == ServerIsOn(listed, "custom"));
+		// nothing is on: the public server (the user is not left with no way to ask)
+		Settings none;
+		ParseSettings("overpass_servers = -default -private-coffee -vk-maps", &none);
+		CHECK(ActiveServers(none).size() == 1 && ActiveServers(none)[0].id == "default");
+	}
+	// a file from before the list: the mirror that was chosen is the only one that is on, with its key
+	{
+		Settings old;
+		ParseSettings("overpass_mirror = vk-maps\n", &old);
+		CHECK(ActiveServers(old).size() == 1 && ActiveServers(old)[0].id == "vk-maps");
+		Settings oldKeyed;
+		ParseSettings("overpass_mirror = overpass-ch\noverpass_key = secret123\n", &oldKeyed);
+		CHECK(ActiveServers(oldKeyed).size() == 1 && ActiveServers(oldKeyed)[0].id == "overpass-ch" && ActiveServers(oldKeyed)[0].key == "secret123");
+		// (the list in the file wins, wherever the old line is)
+		Settings both;
+		ParseSettings("overpass_servers = default\noverpass_mirror = vk-maps\n", &both);
+		CHECK(ActiveServers(both)[0].id == "default" && ServerOrder(both)[0] == "default");
+	}
+	// a server with a key: it is asked only with its key, and each has its own
+	{
+		Settings keyed;
+		ParseSettings("overpass_servers = nextgis overpass-ch default -private-coffee -vk-maps -custom\n", &keyed);
+		CHECK(ServerIsOn(keyed, "nextgis") && ActiveServers(keyed).size() == 1 && ActiveServers(keyed)[0].id == "default");		// (no key: left out)
+		ParseSettings("overpass_key_overpass_ch = abc\n", &keyed);
+		CHECK(KeySettingName("overpass-ch") == "overpass_key_overpass_ch" && KeyOf(keyed, "overpass-ch") == "abc" && KeyOf(keyed, "nextgis").empty());
+		std::vector<Server> servers = ActiveServers(keyed);
+		CHECK(servers.size() == 2 && servers[0].id == "overpass-ch" && servers[0].key == "abc" && servers[0].endpoint == "https://api.overpass.ch/v1/{key}/interpreter");
+		CHECK(WithKey(servers[0].endpoint, servers[0].key) == "https://api.overpass.ch/v1/abc/interpreter");
+		ParseSettings("overpass_key_nextgis = xyz\n", &keyed);
+		servers = ActiveServers(keyed);
+		CHECK(servers.size() == 3 && servers[0].id == "nextgis" && servers[0].key == "xyz" && servers[1].id == "overpass-ch" && servers[1].key == "abc");
+		ParseSettings("overpass_key_overpass_ch =\n", &keyed);
+		CHECK(KeyOf(keyed, "overpass-ch").empty() && ActiveServers(keyed).size() == 2);
+		CHECK(ValidateSetting("overpass_key_nextgis", "abc") && !ValidateSetting("overpass_key_nextgis", "a b") && ValidateSetting("overpass_key_overpass_ch", ""));
+		CHECK(!ValidateSetting("overpass_key", "abc"));		// (a key is the key of a server: it has the name of one)
+	}
+	// the custom mirror: with an address (and a key if the flag says so), as a row of the list
+	{
+		Settings custom;
+		ParseSettings("overpass_servers = custom default -private-coffee -vk-maps\noverpass_url = https://overpass.example.org/api/interpreter\n", &custom);
+		CHECK(ActiveServers(custom).size() == 2 && ActiveServers(custom)[0].id == "custom" && ActiveServers(custom)[0].endpoint == "https://overpass.example.org/api/interpreter");
+		ParseSettings("overpass_url = https://overpass.geofabrik.de/{key}/api/interpreter", &custom);
+		CHECK(ActiveServers(custom).size() == 1);				// (a place for the key and no key)
+		ParseSettings("overpass_key_custom = g3o", &custom);
+		CHECK(ActiveServers(custom).size() == 2 && WithKey(ActiveServers(custom)[0].endpoint, ActiveServers(custom)[0].key) == "https://overpass.geofabrik.de/g3o/api/interpreter");
+		ParseSettings("overpass_url =\n", &custom);
+		CHECK(ActiveServers(custom).size() == 1 && ActiveServers(custom)[0].id == "default");		// (no address: left out)
+		ParseSettings("overpass_url = https://overpass.example.org/api/interpreter\noverpass_custom_key = yes", &custom);
+		CHECK(ActiveServers(custom)[0].key == "g3o");
+		ParseSettings("overpass_custom_key = no", &custom);
+		CHECK(ActiveServers(custom)[0].key.empty());
+		CHECK(ValidateSetting("overpass_custom_key", "yes") && !ValidateSetting("overpass_custom_key", "maybe"));
+	}
+	// when some are on and none is complete there is none, and the user is told: the public server is not asked behind the back of the settings
+	{
+		Settings incomplete;
+		ParseSettings("overpass_servers = -default -private-coffee -vk-maps nextgis", &incomplete);
+		CHECK(ActiveServers(incomplete).empty());
+		CHECK(std::string(kMirrorNotWorking) == "Your configured OSM mirror is not working, please check settings.");
+	}
+	// a server that the test found not working is skipped (not the public one: it is often only busy); the test itself still asks it
 	{
 		Settings failed;
-		CHECK(!IsOwnMirror(failed) && !MirrorMarkedFailed(failed));
-		ParseSettings("overpass_mirror = private-coffee\noverpass_failed = https://overpass.private.coffee/api/interpreter", &failed);
-		CHECK(IsOwnMirror(failed) && MirrorMarkedFailed(failed));
-		ParseSettings("overpass_mirror = vk-maps", &failed);
-		CHECK(IsOwnMirror(failed) && !MirrorMarkedFailed(failed));			// (the other address: not marked)
-		ParseSettings("overpass_mirror = default\noverpass_failed = https://overpass-api.de/api/interpreter", &failed);
-		CHECK(!IsOwnMirror(failed) && !MirrorMarkedFailed(failed));			// (the public server is never switched off)
+		ParseSettings("overpass_servers = private-coffee default -vk-maps\noverpass_failed = https://overpass.private.coffee/api/interpreter", &failed);
+		CHECK(ActiveServers(failed).size() == 1 && ActiveServers(failed)[0].id == "default" && ActiveServers(failed, true).size() == 2);
+		ParseSettings("overpass_failed = https://overpass-api.de/api/interpreter", &failed);
+		CHECK(ActiveServers(failed).size() == 2);
 		ParseSettings("overpass_failed =", &failed);
 		CHECK(failed.overpassFailed.empty());
-		CHECK(std::string(kMirrorNotWorking) == "Your configured OSM mirror is not working, please check settings.");
 	}
 	// the numbers: radius and the most points of interest, in their ranges
 	Settings numbers;
@@ -359,12 +426,15 @@ TestSettings()
 	ParseSettings("map_style = voyager", &numbers);
 	CHECK(numbers.mapStyle == "hot");		// (a style that is not offered: what was there stays)
 	CHECK(ValidateSetting("map_style", "cyclosm") && !ValidateSetting("map_style", "voyager"));
-	// what is not valid is ignored: an unknown mirror, an address that is none
-	ParseSettings("overpass_mirror = nowhere\noverpass_url = ftp://x\n", &settings);
-	CHECK(settings.overpassMirror == "vk-maps" && settings.overpassUrl == "https://overpass.example.org/api/interpreter");
+	// what is not valid is ignored: an address that is none
+	Settings address;
+	ParseSettings("overpass_url = https://overpass.example.org/api/interpreter\n", &address);
+	ParseSettings("overpass_url = ftp://x\n", &address);
+	CHECK(address.overpassUrl == "https://overpass.example.org/api/interpreter");
 	const std::vector<Mirror>& mirrors = Mirrors();
-	CHECK(mirrors.size() == 6 && std::string(mirrors.back().id) == "custom");		// (the last choice is the custom mirror)
-	CHECK(KeyEnabledWhen() == "overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true");
+	CHECK(mirrors.size() == 6 && std::string(mirrors.back().id) == "custom");		// (the last one is the custom mirror)
+	for (const Mirror& mirror : mirrors)
+		CHECK(std::string(mirror.name).size() > 3 && std::string(mirror.info).size() > 10);		// (the list shows a name and a description)
 
 	// what the test of a server says: the status as the text, the state for the icon, the detail in a few lines
 	CHECK(HttpStatusText(200) == "200 OK" && HttpStatusText(503) == "503 Service Unavailable" && HttpStatusText(418) == "HTTP 418");
@@ -382,33 +452,12 @@ TestSettings()
 	const ServerTest gone = JudgeServerTest("h", 0, false, "Host not found", false, 0, 0.1, 20, "");
 	CHECK(gone.text == "Not reachable" && gone.state == "error" && gone.detail.find("Host not found") != std::string::npos);
 
-	// the servers with a key in the path: the address has {key}; without a key the public server answers
-	Settings keyed;
-	ParseSettings("overpass_mirror = overpass-ch", &keyed);
-	CHECK(OverpassEndpoint(keyed) == kDefaultOverpassUrl && OverpassKey(keyed).empty());
-	ParseSettings("overpass_key = abc", &keyed);
-	CHECK(OverpassEndpoint(keyed) == "https://api.overpass.ch/v1/{key}/interpreter" && OverpassKey(keyed) == "abc");
-	CHECK(WithKey(OverpassEndpoint(keyed), OverpassKey(keyed)) == "https://api.overpass.ch/v1/abc/interpreter");
-	ParseSettings("overpass_mirror = nextgis", &keyed);
-	CHECK(WithKey(OverpassEndpoint(keyed), OverpassKey(keyed)) == "https://overpass.nextgis.com/abc/api/interpreter");
-	// (a custom address with {key} and no key is the public server as well; one without a place for the key does not need it)
-	Settings custom;
-	ParseSettings("overpass_mirror = custom\noverpass_url = https://overpass.geofabrik.de/{key}/api/interpreter", &custom);
-	CHECK(OverpassEndpoint(custom) == kDefaultOverpassUrl);
-	ParseSettings("overpass_custom_key = yes\noverpass_key = g3o", &custom);
-	CHECK(WithKey(OverpassEndpoint(custom), OverpassKey(custom)) == "https://overpass.geofabrik.de/g3o/api/interpreter");
-	ParseSettings("overpass_custom_key = no", &custom);
-	CHECK(OverpassKey(custom).empty() && OverpassEndpoint(custom) == kDefaultOverpassUrl);
-	CHECK(ValidateSetting("overpass_custom_key", "yes") && !ValidateSetting("overpass_custom_key", "maybe"));
-	ParseSettings("overpass_url = http://localhost:12345/api/interpreter", &custom);
-	CHECK(OverpassEndpoint(custom) == "http://localhost:12345/api/interpreter");
-
 	std::string why;
-	CHECK(ValidateSetting("overpass_mirror", "custom") && ValidateSetting("overpass_mirror", "default"));
-	CHECK(!ValidateSetting("overpass_mirror", "other", &why) && !why.empty());
+	CHECK(ValidateSetting("overpass_servers", "custom -default") && ValidateSetting("overpass_servers", ""));
+	CHECK(!ValidateSetting("overpass_servers", "default other", &why) && !why.empty());
 	CHECK(ValidateSetting("overpass_url", "") && ValidateSetting("overpass_url", "http://localhost:8080/api/interpreter"));
 	CHECK(!ValidateSetting("overpass_url", "overpass.example.org") && !ValidateSetting("overpass_url", "https://a b"));
-	CHECK(!ValidateSetting("overpass_url", "https://example.org/#x") && !ValidateSetting("overpass_key", "a b") && ValidateSetting("overpass_key", ""));
+	CHECK(!ValidateSetting("overpass_url", "https://example.org/#x"));
 	CHECK(!ValidateSetting("nothing", "x"));
 
 	// the question goes to the interpreter that is chosen; the key can be in the address

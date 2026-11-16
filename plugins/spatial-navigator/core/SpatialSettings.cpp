@@ -5,6 +5,7 @@
 
 #include "SpatialSettings.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -20,15 +21,16 @@ const std::vector<Mirror>&
 Mirrors()
 {
 	static const std::vector<Mirror> mirrors = {
-		{"default", "overpass-api.de (default)", kDefaultOverpassUrl, false},
-		{"private-coffee", "Private.coffee (no limit, no registration)", "https://overpass.private.coffee/api/interpreter", false},
-		{"vk-maps", "VK Maps (no limit, no registration)", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", false},
-		{"nextgis", "NextGIS (free, API key)", "https://overpass.nextgis.com/{key}/api/interpreter", true},
-		{"overpass-ch", "Overpass.ch (free tier, API key)", "https://api.overpass.ch/v1/{key}/interpreter", true},
-		{"custom", "Custom mirror", "", false},
+		{"default", "overpass-api.de", "The public server of the OpenStreetMap community: often busy.", kDefaultOverpassUrl, false},
+		{"private-coffee", "Private.coffee", "A public mirror, no limit, no registration.", "https://overpass.private.coffee/api/interpreter", false},
+		{"vk-maps", "VK Maps", "A public mirror, no limit, no registration.", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", false},
+		{"nextgis", "NextGIS", "Free with an API key (nextgis.com).", "https://overpass.nextgis.com/{key}/api/interpreter", true},
+		{"overpass-ch", "Overpass.ch", "Free tier with an API key (overpass.ch).", "https://api.overpass.ch/v1/{key}/interpreter", true},
+		{"custom", "Custom mirror", "Your own server: its address is set below.", "", false},
 	};
 	return mirrors;
 }
+
 
 namespace {
 
@@ -67,6 +69,84 @@ IsAddress(const std::string& v)
 	return true;
 }
 
+/** `private-coffee` or `-private-coffee` (off): the id, if it is a server of the list */
+bool
+ServerToken(const std::string& token, std::string* id, bool* off)
+{
+	*off = !token.empty() && token[0] == '-';
+	*id = *off ? token.substr(1) : token;
+	return IsMirrorId(*id);
+}
+
+void
+ParseServers(const std::string& value, Settings* settings)
+{
+	settings->serverOrder.clear();
+	settings->serverOff.clear();
+	settings->serversNamed = false;
+	size_t at = 0;
+	while (at < value.size()) {
+		const size_t end = value.find_first_of(" \t", at);
+		const std::string token = value.substr(at, end == std::string::npos ? std::string::npos : end - at);
+		at = end == std::string::npos ? value.size() : end + 1;
+		std::string id;
+		bool off = false;
+		if (token.empty() || !ServerToken(token, &id, &off))
+			continue;		// (a name that is none of the list is left out: a typo must not switch the others off)
+		if (std::find(settings->serverOrder.begin(), settings->serverOrder.end(), id) != settings->serverOrder.end())
+			continue;
+		settings->serverOrder.push_back(id);
+		if (off)
+			settings->serverOff.push_back(id);
+		settings->serversNamed = true;
+	}
+}
+
+void
+SetKey(Settings* settings, const std::string& id, const std::string& key)
+{
+	for (auto it = settings->keys.begin(); it != settings->keys.end(); ++it) {
+		if (it->first == id) {
+			if (key.empty())
+				settings->keys.erase(it);
+			else
+				it->second = key;
+			return;
+		}
+	}
+	if (!key.empty())
+		settings->keys.push_back({id, key});
+}
+
+/** the id of the server that a name of a setting `overpass_key_<id>` is the key of; empty if it is none */
+std::string
+KeyOwner(const std::string& name)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (!KeySettingName(mirror.id).empty() && name == KeySettingName(mirror.id))
+			return mirror.id;
+	}
+	return std::string();
+}
+
+/** a file from before the list: the mirror that was chosen is the only one that is on, with the key that there was */
+void
+ApplyLegacy(Settings* settings)
+{
+	if (settings->serversNamed || !IsMirrorId(settings->legacyMirror))
+		return;
+	settings->serverOrder.assign(1, settings->legacyMirror);
+	settings->serverOff.clear();
+	for (const Mirror& mirror : Mirrors()) {
+		if (settings->legacyMirror != mirror.id) {
+			settings->serverOrder.push_back(mirror.id);
+			settings->serverOff.push_back(mirror.id);
+		}
+	}
+	if (!settings->legacyKey.empty() && KeyOf(*settings, settings->legacyMirror).empty())
+		SetKey(settings, settings->legacyMirror, settings->legacyKey);
+}
+
 }	// namespace
 
 
@@ -76,9 +156,12 @@ ParseSettings(const std::string& text, Settings* settings)
 	for (const auto& pair : st::Pairs(text)) {
 		const std::string& key = pair.first;
 		const std::string value = st::Trim(pair.second);
-		if (key == "overpass_mirror") {
+		if (key == "overpass_servers") {
+			ParseServers(value, settings);
+		} else if (key == "overpass_mirror") {
+			// (from before the list)
 			if (IsMirrorId(value))
-				settings->overpassMirror = value;
+				settings->legacyMirror = value;
 		} else if (key == "overpass_url") {
 			if (value.empty() || IsAddress(value))
 				settings->overpassUrl = value;
@@ -94,11 +177,14 @@ ParseSettings(const std::string& text, Settings* settings)
 		} else if (key == "overpass_custom_key") {
 			settings->customRequiresKey = st::ParseBool(value, settings->customRequiresKey);
 		} else if (key == "overpass_key") {
-			settings->overpassKey = value;
+			settings->legacyKey = value;
 		} else if (key == "overpass_failed") {
 			settings->overpassFailed = value;
+		} else if (!KeyOwner(key).empty()) {
+			SetKey(settings, KeyOwner(key), value);
 		}
 	}
+	ApplyLegacy(settings);
 }
 
 
@@ -114,8 +200,19 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 	const std::string v = st::Trim(value);
 	if (v.find_first_of("#\n\r") != std::string::npos)
 		return fail("a # or a line break cannot be stored in the settings file");
-	if (key == "overpass_mirror")
-		return IsMirrorId(v) ? true : fail("one of the mirrors of the list");
+	if (key == "overpass_servers") {
+		size_t at = 0;
+		while (at < v.size()) {
+			const size_t end = v.find_first_of(" \t", at);
+			const std::string token = v.substr(at, end == std::string::npos ? std::string::npos : end - at);
+			at = end == std::string::npos ? v.size() : end + 1;
+			std::string id;
+			bool off = false;
+			if (!token.empty() && !ServerToken(token, &id, &off))
+				return fail("servers of the list, with a - in front of those that are off");
+		}
+		return true;
+	}
 	if (key == "overpass_url")
 		return v.empty() || IsAddress(v) ? true : fail("an address like https://example.org/api/interpreter");
 	int number = 0;
@@ -129,59 +226,121 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return ParseNumber(v, kMinCacheHours, kMaxCacheHours, &number) ? true : fail("a number of hours from 1 to 168");
 	if (key == "overpass_custom_key")
 		return st::IsBool(v) ? true : fail("yes or no");
-	if (key == "overpass_key")
+	if (!KeyOwner(key).empty())
 		return v.find_first_of(" \t") == std::string::npos ? true : fail("a key has no blank");
 	return fail("no such setting");
 }
 
 
 std::string
-OverpassKey(const Settings& settings)
+KeySettingName(const std::string& id)
 {
-	for (const Mirror& mirror : Mirrors()) {
-		if (settings.overpassMirror == mirror.id) {
-			const bool required = mirror.requiresKey || (settings.overpassMirror == "custom" && settings.customRequiresKey);
-			return required ? settings.overpassKey : std::string();
-		}
+	if (!IsMirrorId(id))
+		return std::string();
+	std::string name = id;
+	std::replace(name.begin(), name.end(), '-', '_');
+	return "overpass_key_" + name;
+}
+
+
+std::string
+KeyOf(const Settings& settings, const std::string& id)
+{
+	for (const auto& entry : settings.keys) {
+		if (entry.first == id)
+			return entry.second;
 	}
 	return std::string();
 }
 
 
-std::string
-OverpassEndpoint(const Settings& settings)
+std::vector<std::string>
+ServerOrder(const Settings& settings)
 {
-	std::string url = kDefaultOverpassUrl;
-	if (settings.overpassMirror == "custom") {
-		if (!settings.overpassUrl.empty())
-			url = settings.overpassUrl;
-	} else {
-		for (const Mirror& mirror : Mirrors()) {
-			if (settings.overpassMirror == mirror.id && mirror.url[0] != '\0')
-				url = mirror.url;
-		}
+	std::vector<std::string> order;
+	for (const std::string& id : settings.serverOrder) {
+		if (IsMirrorId(id) && std::find(order.begin(), order.end(), id) == order.end())
+			order.push_back(id);
 	}
-	// (an address with a place for the key, and no key: the public server answers)
-	if (url.find("{key}") != std::string::npos && OverpassKey(settings).empty())
-		return kDefaultOverpassUrl;
-	return url;
+	for (const Mirror& mirror : Mirrors()) {
+		if (std::find(order.begin(), order.end(), std::string(mirror.id)) == order.end())
+			order.push_back(mirror.id);
+	}
+	return order;
+}
+
+
+bool
+ServerIsOn(const Settings& settings, const std::string& id)
+{
+	if (std::find(settings.serverOrder.begin(), settings.serverOrder.end(), id) != settings.serverOrder.end())
+		return std::find(settings.serverOff.begin(), settings.serverOff.end(), id) == settings.serverOff.end();
+	for (const Mirror& mirror : Mirrors()) {
+		if (id == mirror.id)
+			return !mirror.requiresKey && id != "custom";
+	}
+	return false;
+}
+
+
+std::string
+ServersText(const std::vector<std::string>& order, const std::vector<std::string>& on)
+{
+	std::string text;
+	for (const std::string& id : order) {
+		if (!text.empty())
+			text += ' ';
+		if (std::find(on.begin(), on.end(), id) == on.end())
+			text += '-';
+		text += id;
+	}
+	return text;
 }
 
 
 const char* const kMirrorNotWorking = "Your configured OSM mirror is not working, please check settings.";
 
 
-bool
-IsOwnMirror(const Settings& settings)
+std::vector<Server>
+ActiveServers(const Settings& settings, bool ignoreFailed)
 {
-	return OverpassEndpoint(settings) != kDefaultOverpassUrl;
-}
-
-
-bool
-MirrorMarkedFailed(const Settings& settings)
-{
-	return IsOwnMirror(settings) && !settings.overpassFailed.empty() && settings.overpassFailed == OverpassEndpoint(settings);
+	std::vector<Server> found;
+	bool anyOn = false;
+	for (const std::string& id : ServerOrder(settings)) {
+		if (!ServerIsOn(settings, id))
+			continue;
+		anyOn = true;
+		for (const Mirror& mirror : Mirrors()) {
+			if (id != mirror.id)
+				continue;
+			const std::string endpoint = id == "custom" ? settings.overpassUrl : std::string(mirror.url);
+			if (endpoint.empty())
+				break;
+			const bool needsKey = mirror.requiresKey || (id == "custom" && settings.customRequiresKey) || endpoint.find("{key}") != std::string::npos;
+			const std::string key = needsKey ? KeyOf(settings, id) : std::string();
+			if (needsKey && key.empty())
+				break;
+			if (!ignoreFailed && id != "default" && !settings.overpassFailed.empty() && settings.overpassFailed == endpoint)
+				break;
+			Server server;
+			server.id = id;
+			server.name = mirror.name;
+			server.endpoint = endpoint;
+			server.key = key;
+			server.isPublic = id == "default";
+			found.push_back(server);
+			break;
+		}
+	}
+	if (!anyOn) {
+		Server server;
+		server.id = "default";
+		server.name = Mirrors()[0].name;
+		server.endpoint = kDefaultOverpassUrl;
+		server.isPublic = true;
+		found.push_back(server);
+	}
+	return found;
 }
 
 
@@ -257,18 +416,6 @@ JudgeServerTest(const std::string& host, int httpStatus, bool timedOut, const st
 	if (!extra.empty())
 		test.detail += "\n" + extra;
 	return test;
-}
-
-
-std::string
-KeyEnabledWhen()
-{
-	std::string when;
-	for (const Mirror& mirror : Mirrors()) {
-		if (mirror.requiresKey)
-			when += (when.empty() ? "" : "|") + std::string("overpass_mirror=") + mirror.id;
-	}
-	return when + (when.empty() ? "" : "|") + "overpass_mirror=custom&overpass_custom_key=true";
 }
 
 }	// namespace spatial

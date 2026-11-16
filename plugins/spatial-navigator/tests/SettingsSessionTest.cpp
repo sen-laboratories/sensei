@@ -132,10 +132,15 @@ int main(int argc, char** argv)
 	CHECK(receiver->reply.FindMessage(form::kFieldSettings, &settings) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldSchema, &schema) == B_OK);
 	CHECK(receiver->reply.FindMessage(form::kFieldDefaults, &defaults) == B_OK);
-	CHECK(strcmp(settings.GetString("overpass_mirror", ""), "vk-maps") == 0);
-	CHECK(strcmp(defaults.GetString("overpass_mirror", ""), "default") == 0);
+	// a file from before the list (`overpass_mirror = vk-maps`): the list has that server first, and it is the only one that is on
+	BMessage rowFirst, rowSecond, defaultFirst;
+	CHECK(settings.FindMessage("overpass_servers", 0, &rowFirst) == B_OK && strcmp(rowFirst.GetString("id", ""), "vk-maps") == 0 && rowFirst.GetBool("enabled", false));
+	CHECK(settings.FindMessage("overpass_servers", 1, &rowSecond) == B_OK && strcmp(rowSecond.GetString("id", ""), "default") == 0 && !rowSecond.GetBool("enabled", true));
+	CHECK(strcmp(rowFirst.GetString("name", ""), "VK Maps") == 0 && strlen(rowFirst.GetString("info", "")) > 10);
+	CHECK(defaults.FindMessage("overpass_servers", 0, &defaultFirst) == B_OK && strcmp(defaultFirst.GetString("id", ""), "default") == 0 && defaultFirst.GetBool("enabled", false));
+	CHECK(!settings.HasMessage("overpass_servers", 6));
 
-	// the mirror is a menu of the servers with the custom mirror as the last choice; the address and the key are enabled for that choice only, the key is a secret
+	// the servers are a table (a switch, the name, the description; the rows can be moved); the key is a secret field that follows the selected row; the address of the custom mirror stays
 	BMessage radius, limit;
 	CHECK(schema.FindMessage("poi_radius", &radius) == B_OK && radius.GetDouble(form::kAttrMin, 0) == 50 && radius.GetDouble(form::kAttrMax, 0) == 1500);
 	CHECK(schema.FindMessage("poi_limit", &limit) == B_OK && limit.GetDouble(form::kAttrMin, 0) == 5 && limit.GetDouble(form::kAttrMax, 0) == 200);
@@ -147,39 +152,51 @@ int main(int argc, char** argv)
 	CHECK(schema.FindMessage("map_style", &mapStyle) == B_OK && strcmp(mapStyle.GetString(form::kAttrKind, ""), form::kKindChoice) == 0);
 	CHECK(strcmp(mapStyle.GetString(form::kAttrChoices, 0, ""), "topo") == 0 && mapStyle.HasString(form::kAttrChoices, 3) && !mapStyle.HasString(form::kAttrChoices, 4));
 	CHECK(strcmp(settings.GetString("map_style", ""), "topo") == 0);
-	BMessage mirror, url, key;
-	CHECK(schema.FindMessage("overpass_mirror", &mirror) == B_OK && strcmp(mirror.GetString(form::kAttrKind, ""), form::kKindChoice) == 0);
-	CHECK(mirror.CountNames(B_STRING_TYPE) > 0 && strcmp(mirror.GetString(form::kAttrChoices, 0, ""), "default") == 0);
-	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 1, ""), "private-coffee") == 0 && strcmp(mirror.GetString(form::kAttrChoices, 2, ""), "vk-maps") == 0);
-	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 3, ""), "nextgis") == 0 && strcmp(mirror.GetString(form::kAttrChoices, 4, ""), "overpass-ch") == 0);
-	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 5, ""), form::kChoiceSeparator) == 0);			// (a line between the servers and the custom mirror)
-	CHECK(strcmp(mirror.GetString(form::kAttrChoices, 6, ""), "custom") == 0 && strcmp(mirror.GetString(form::kAttrChoiceLabels, 6, ""), "Custom mirror") == 0);
-	CHECK(!mirror.HasString(form::kAttrChoices, 7));
-	CHECK(schema.FindMessage("overpass_url", &url) == B_OK && strcmp(url.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=custom") == 0);
-	CHECK(schema.FindMessage("overpass_key", &key) == B_OK && strcmp(key.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true") == 0
-		&& strcmp(key.GetString(form::kAttrKind, ""), form::kKindSecret) == 0);
+	BMessage servers, enabledColumn, idColumn, keyColumn, url, key;
+	CHECK(schema.FindMessage("overpass_servers", &servers) == B_OK && strcmp(servers.GetString(form::kAttrKind, ""), form::kKindTable) == 0 && servers.GetBool(form::kAttrReorderable, false));
+	CHECK(schema.FindMessage("overpass_servers.enabled", &enabledColumn) == B_OK && schema.FindMessage("overpass_servers.id", &idColumn) == B_OK && idColumn.GetBool(form::kAttrHidden, false));
+	CHECK(schema.FindMessage("overpass_servers.key", &keyColumn) == B_OK && keyColumn.GetBool(form::kAttrHidden, false));
+	CHECK(schema.FindMessage("overpass_url", &url) == B_OK && !url.HasString(form::kAttrEnabledWhen));
+	CHECK(schema.FindMessage("overpass_key", &key) == B_OK && strcmp(key.GetString(form::kAttrKind, ""), form::kKindSecret) == 0
+		&& strcmp(key.GetString(form::kAttrFollowsTable, ""), "overpass_servers") == 0 && strcmp(key.GetString(form::kAttrFollowsColumn, ""), "key") == 0);
 	BMessage flag;
-	CHECK(schema.FindMessage("overpass_custom_key", &flag) == B_OK && strcmp(flag.GetString(form::kAttrEnabledWhen, ""), "overpass_mirror=custom") == 0);
+	CHECK(schema.FindMessage("overpass_custom_key", &flag) == B_OK && !flag.HasString(form::kAttrEnabledWhen));
 	CHECK(settings.HasBool("overpass_custom_key") && !settings.GetBool("overpass_custom_key", true));
 
+	// the cells of the list: the key of the first row (VK Maps), the switch of the second (the public server), and the other fields
 	BMessage change;
-	change.AddString("overpass_mirror", "custom");
+	change.AddString("overpass_servers_00.key", "k3y");
+	change.AddBool("overpass_servers_01.enabled", true);
 	change.AddString("overpass_url", "https://overpass.example.org/api/interpreter");
 	change.AddInt32("poi_radius", 400);
 	change.AddBool("overpass_custom_key", true);
-	change.AddString("overpass_key", "k3y");
 	BMessage set(sensei::cmd::kSettingsSet), answer;
 	set.AddMessage(form::kFieldSettings, &change);
 	CHECK(receiver->session.SendMessage(&set, &answer, 5000000, 5000000) == B_OK);
 	CHECK(answer.GetInt32(form::kFieldResult, -1) == B_OK);
 	std::string file = ReadFile(path);
 	CHECK(file.find("# my settings\n") != std::string::npos && file.find("unknown = kept\n") != std::string::npos);
-	CHECK(file.find("overpass_mirror = custom\n") != std::string::npos && file.find("overpass_url = https://overpass.example.org/api/interpreter\n") != std::string::npos);
-	CHECK(file.find("poi_radius = 400\n") != std::string::npos);
-	CHECK(file.find("overpass_key = k3y\n") != std::string::npos && file.find("overpass_custom_key = yes\n") != std::string::npos);
+	CHECK(file.find("overpass_servers = vk-maps default -private-coffee -nextgis -overpass-ch -custom\n") != std::string::npos);
+	CHECK(file.find("overpass_key_vk_maps = k3y\n") != std::string::npos && file.find("overpass_url = https://overpass.example.org/api/interpreter\n") != std::string::npos);
+	CHECK(file.find("poi_radius = 400\n") != std::string::npos && file.find("overpass_custom_key = yes\n") != std::string::npos);
+
+	// a row moved (the whole table, in the new order): the order is written, the switches stay
+	BMessage moved;
+	for (const char* id : {"default", "vk-maps", "private-coffee", "nextgis", "overpass-ch", "custom"}) {
+		BMessage row;
+		row.AddString("id", id);
+		row.AddBool("enabled", strcmp(id, "default") == 0 || strcmp(id, "vk-maps") == 0);
+		moved.AddMessage("overpass_servers", &row);
+	}
+	BMessage setMoved(sensei::cmd::kSettingsSet);
+	setMoved.AddMessage(form::kFieldSettings, &moved);
+	answer.MakeEmpty();
+	CHECK(receiver->session.SendMessage(&setMoved, &answer, 5000000, 5000000) == B_OK && answer.GetInt32(form::kFieldResult, -1) == B_OK);
+	file = ReadFile(path);
+	CHECK(file.find("overpass_servers = default vk-maps -private-coffee -nextgis -overpass-ch -custom\n") != std::string::npos);
 
 	BMessage bad;
-	bad.AddString("overpass_mirror", "nowhere");
+	bad.AddString("overpass_servers_09.enabled", "true");
 	bad.AddString("overpass_url", "not an address");
 	BMessage setBad(sensei::cmd::kSettingsSet);
 	setBad.AddMessage(form::kFieldSettings, &bad);
@@ -187,9 +204,9 @@ int main(int argc, char** argv)
 	CHECK(receiver->session.SendMessage(&setBad, &answer, 5000000, 5000000) == B_OK);
 	CHECK(answer.GetInt32(form::kFieldResult, B_OK) != B_OK);
 	const std::string detail = answer.GetString(sen::key::kDetail, "");
-	CHECK(detail.find("overpass_mirror") != std::string::npos && detail.find("overpass_url") != std::string::npos);
-	BMessage now;
-	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK && strcmp(now.GetString("overpass_mirror", ""), "custom") == 0);
+	CHECK(detail.find("overpass_servers_09") != std::string::npos && detail.find("overpass_url") != std::string::npos);
+	BMessage now, firstNow;
+	CHECK(answer.FindMessage(form::kFieldSettings, &now) == B_OK && now.FindMessage("overpass_servers", 0, &firstNow) == B_OK && strcmp(firstNow.GetString("id", ""), "default") == 0);
 
 	BMessenger session = receiver->session;
 	session.SendMessage(sensei::cmd::kSettingsClose);

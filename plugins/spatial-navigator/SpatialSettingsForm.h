@@ -13,8 +13,8 @@ namespace spatial {
 void LoadSettings(Settings* settings);
 
 /**
- * The settings of the spatial navigator for the settings window of SEN (see common/SettingsSession.h): the mirror of the Overpass API in a menu (the servers of the list and `Custom
- * mirror`), and for the custom one an address and a key, which are enabled only while it is chosen (`enabled_when` of the schema).
+ * The settings of the spatial navigator for the settings window of SEN (see common/SettingsSession.h): the list of the Overpass servers (a switch, a name and a
+ * description for each, in the order that they are asked; the rows can be moved), the key of the row that is selected, and the address of the custom mirror.
  */
 class SettingsProvider : public sensei::SettingsProvider {
 public:
@@ -26,7 +26,7 @@ private:
 };
 
 /**
- * Asks the Overpass server of the settings (the mirror, with its key, as the navigator does) a small question about the centre of Wien, and says what came of it (see JudgeServerTest): the HTTP status as the short text, the icon of its state, the detail for the tool tip.
+ * Asks the first Overpass server of the list that is on and complete (with its key, as the navigator does) a small question about the centre of Wien, and says what came of it (see JudgeServerTest): the HTTP status as the short text, the icon of its state, the detail for the tool tip.
  */
 ServerTest TestOverpassServer(const Settings& settings);
 

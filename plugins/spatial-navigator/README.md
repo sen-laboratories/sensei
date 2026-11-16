@@ -65,25 +65,35 @@ city cross a little because they are simplified, and the shapes would say *overl
 
 ## Settings
 
-In the settings window of SEN, under the spatial navigator: **Overpass server**, the server that is asked for what is nearby. The public server (`overpass-api.de`, the default) is often busy
-(half a minute for an answer is common), so there are mirrors that give the same data with other limits:
+In the settings window of SEN, under the spatial navigator: **Overpass servers**, the servers that are asked for what is nearby. The public server (`overpass-api.de`, the default) is often busy
+(half a minute for an answer is common, and now and then it does not answer at all), so there are mirrors that give the same data with other limits. They are a list like the lookup services of
+the location server: a switch, the name and a description for each, in the order in which they are asked; **drag a row to move it**. The first that answers wins, the others are not asked.
 
-| Choice | Address | Key |
+| Server | Address | Key |
 |---|---|---|
-| overpass-api.de | `https://overpass-api.de/api/interpreter` | no. The default; under 10,000 queries a day, often busy |
-| Private.coffee | `https://overpass.private.coffee/api/interpreter` | no. No limit |
-| VK Maps | `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | no. No limit |
-| NextGIS | `https://overpass.nextgis.com/{key}/api/interpreter` | **required** (free, sign up). No limit |
-| Overpass.ch | `https://api.overpass.ch/v1/{key}/interpreter` | **required** (free tier of 10,000 requests a month, 30 a minute; paid plans) |
-| Custom mirror | the address you type | the flag *The custom mirror requires an API key* says |
+| overpass-api.de | `https://overpass-api.de/api/interpreter` | no. On at first; under 10,000 queries a day, often busy |
+| Private.coffee | `https://overpass.private.coffee/api/interpreter` | no. No limit. On at first |
+| VK Maps | `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | no. No limit. On at first |
+| NextGIS | `https://overpass.nextgis.com/{key}/api/interpreter` | **required** (free, sign up). No limit. Off at first |
+| Overpass.ch | `https://api.overpass.ch/v1/{key}/interpreter` | **required** (free tier of 10,000 requests a month, 30 a minute; paid plans). Off at first |
+| Custom mirror | the address you type under the list | the flag *The custom mirror requires an API key* says. Off at first |
 
 The list is the public instances of the [OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) that have no other limits than their capacity and cover the
 world; others (Geofabrik, Tracestrack, Overspan: paid; Europe or one country only: dresel.systems, overpass.osm.ch) and a server of your own (`http://localhost:12345/api/interpreter`) are a custom mirror.
+The question that goes out is the same for every server, and so is the answer that is kept (for a day), whichever server gave it. Switch off the servers that you do not want to send your questions
+to. When the first server is busy or does not answer in time (30 seconds for the public one, 20 for another first, 25 for the ones that follow), the next one is asked; the log says which one answered.
+When no server of the list can be asked (all are off but one that is not complete, or each failed its test) the navigator tells you: *Your configured OSM mirror is not working, please check settings.*
 
-**The API key** is entered in a field that is enabled only for a server that *requires* one: NextGIS and Overpass.ch, or the custom mirror when you tick *The custom mirror requires an API key*. For the
-servers of the table it is put in the address in place of `{key}`. For a custom mirror the same: write `{key}` in its address (`https://overpass.geofabrik.de/{key}/api/interpreter`), or leave it out and the key
-is sent as `Authorization: Bearer <key>`, and only over https. A server that requires a key and has none is not asked: the public server answers instead. The key is kept as typed in
-`~/config/settings/sen/spatial-navigator.settings` (no `#`, which starts a comment there). The answer of a question is kept for a day whichever server gave it.
+**The API key** is a field under the list that shows the key of the **selected row** (it is disabled while none is selected), so each server has its own. It is for the servers that *require* one: NextGIS and
+Overpass.ch, or the custom mirror when you tick *The custom mirror requires an API key*. For the servers of the table it is put in the address in place of `{key}`. For a custom mirror the same: write `{key}`
+in its address (`https://overpass.geofabrik.de/{key}/api/interpreter`), or leave it out and the key is sent as `Authorization: Bearer <key>`, and only over https. A server that requires a key and has none is
+left out of the list until it has one. The keys are kept as typed in `~/config/settings/sen/spatial-navigator.settings` (`overpass_key_nextgis`, ..., no `#`, which starts a comment there).
+
+**Test the server** asks the first server of the list that is on a small question and shows the answer. A mirror (not the public server) that fails the test is left out until a test of it works, so
+the navigator does not wait for it; the next server of the list is asked instead.
+
+The setting is one line, as for the location server: `overpass_servers = vk-maps default -private-coffee -nextgis -overpass-ch -custom` (the order; a `-` in front of a server that is off). A file from before the
+list, with `overpass_mirror = vk-maps` and `overpass_key`, is read as that server alone.
 
 ## Dependencies
 

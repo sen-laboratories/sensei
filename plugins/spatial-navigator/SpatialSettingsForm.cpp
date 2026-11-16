@@ -13,6 +13,11 @@
 #include <OS.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <algorithm>
+#include <vector>
 
 #include <sen/SenMessagePath.h>
 #include <sen/SenSettingsForm.h>
@@ -36,6 +41,10 @@ const char* const kTestButton = "test_overpass";
 const char* const kTestResult = "test_result";
 const char* const kTestState = "test_state";
 const char* const kTestDetail = "test_detail";
+
+// the table of the servers, and the field of the key that shows the cell `key` of the selected row
+const char* const kServers = "overpass_servers";
+const char* const kKeyField = "overpass_key";
 const char* const kTestUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
 const bigtime_t kTestTimeout = 20 * 1000000LL;
 
@@ -55,14 +64,10 @@ const Field kFields[] = {
 		"How long an answer is kept before the server is asked again (1 to 168)."},
 	{"map_style", "Map style",
 		"The default map style in Shoji. A map can choose its own (secondary mouse button)."},
-	{"overpass_mirror", "Overpass server",
-		"The server that is asked for what is nearby. The public one is often busy; the mirrors have other limits."},
 	{"overpass_url", "Custom mirror URL",
-		"The interpreter of the mirror, like https://host/api/interpreter. {key} marks where a key goes."},
+		"The interpreter of the custom mirror, like https://host/api/interpreter. {key} marks where its key goes."},
 	{"overpass_custom_key", "The custom mirror requires an API key",
 		"Tick this if the custom mirror wants a key."},
-	{"overpass_key", "API key",
-		"For servers that need one: replaces {key} in the address, else sent as a bearer token (https only)."},
 };
 
 bool
@@ -95,10 +100,50 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddInt32("poi_limit", s.poiLimit);
 	message->AddInt32("poi_cache_hours", s.poiCacheHours);
 	message->AddString("map_style", s.mapStyle.c_str());
-	message->AddString("overpass_mirror", s.overpassMirror.c_str());
 	message->AddString("overpass_url", s.overpassUrl.c_str());
 	message->AddBool("overpass_custom_key", s.customRequiresKey);
-	message->AddString("overpass_key", s.overpassKey.c_str());
+	// the list of the servers: a row for each, in the order that they are asked; the key of a server is a field of its row (the field of the key follows the selected row)
+	for (const std::string& id : ServerOrder(s)) {
+		for (const Mirror& mirror : Mirrors()) {
+			if (id != mirror.id)
+				continue;
+			BMessage row;
+			row.AddBool("enabled", ServerIsOn(s, id));
+			row.AddString("name", mirror.name);
+			row.AddString("info", mirror.info);
+			row.AddString("id", mirror.id);
+			row.AddString("key", KeyOf(s, id).c_str());
+			message->AddMessage(kServers, &row);
+		}
+	}
+	message->AddString(kKeyField, "");		// (shows the key of the selected row: never stored)
+}
+
+/** The cell of the table that a path key names: `overpass_servers_03.enabled` (row 3, column `enabled`), or `overpass_servers.enabled` when there is a single row. */
+bool
+ParseCellKey(const std::string& name, const char* table, int32* row, std::string* column)
+{
+	const size_t length = strlen(table);
+	if (name.compare(0, length, table) != 0)
+		return false;
+	size_t at = length;
+	*row = 0;
+	if (at < name.size() && name[at] == '_') {
+		at++;
+		const size_t digits = name.find('.', at);
+		if (digits == std::string::npos || digits == at || digits - at > 9)
+			return false;
+		for (size_t i = at; i < digits; i++) {
+			if (name[i] < '0' || name[i] > '9')
+				return false;
+		}
+		*row = (int32)strtol(name.substr(at, digits - at).c_str(), NULL, 10);
+		at = digits;
+	}
+	if (at >= name.size() || name[at] != '.' || at + 1 >= name.size())
+		return false;
+	*column = name.substr(at + 1);
+	return true;
 }
 
 /** the host of an address, for the messages (not the whole address: it may have the key in it) */
@@ -117,27 +162,34 @@ HostOf(const std::string& address)
 ServerTest
 TestOverpassServer(const Settings& settings)
 {
-	const std::string chosen = OverpassEndpoint(settings);
+	// the first server of the list that is on and complete (also one that an earlier test found not working: it is asked again)
+	const std::vector<Server> servers = ActiveServers(settings, true);
+	if (servers.empty()) {
+		ServerTest nothing;
+		nothing.text = "Nothing to test";
+		nothing.state = "warning";
+		nothing.detail = "No server of the list is on and complete.\nA custom mirror needs its address, a server with a key needs the key.";
+		return nothing;
+	}
+	const Server& first = servers[0];
+	const std::string chosen = first.endpoint;
 	const std::string host = HostOf(chosen);
-	const std::string key = OverpassKey(settings);
+	const std::string key = first.key;
 	const std::string endpoint = WithKey(chosen, key);
 	std::string authorization;
-	std::string extra;
+	std::string extra = "Tested: " + first.name + (servers.size() > 1 ? ", the first of the list. The others follow it when it does not answer." : ".");
 	if (!key.empty() && chosen.find("{key}") == std::string::npos) {
 		if (endpoint.compare(0, 8, "https://") == 0)
 			authorization = "Bearer " + key;
 		else
-			extra = "The key is not sent: the address is not https.";
+			extra += "\nThe key is not sent: the address is not https.";
 	}
-	// (a custom mirror that is not complete, or a server that wants a key and has none: the navigator asks the public server then, and the test says so)
-	if (settings.overpassMirror != "default" && chosen == kDefaultOverpassUrl)
-		extra += std::string(extra.empty() ? "" : "\n") + "The chosen mirror is not complete: the public server is used.";
 	// an address that is only a host: the interpreter of an Overpass server is at a path of its own, mostly /api/interpreter
 	{
 		const size_t scheme = chosen.find("://");
 		const size_t slash = chosen.find('/', scheme == std::string::npos ? 0 : scheme + 3);
-		if (settings.overpassMirror == "custom" && (slash == std::string::npos || slash + 1 >= chosen.size()))
-			extra += std::string(extra.empty() ? "" : "\n") + "The address has no path: the interpreter is usually at .../api/interpreter.";
+		if (first.id == "custom" && (slash == std::string::npos || slash + 1 >= chosen.size()))
+			extra += "\nThe address has no path: the interpreter is usually at .../api/interpreter.";
 	}
 
 	// the same kind of question as the navigator asks, for a small box in the middle of Wien
@@ -189,16 +241,17 @@ WriteKeys(const std::vector<std::pair<std::string, std::string>>& keys)
 
 
 /**
- * A mirror of the user's choice that fails the test is switched off: the navigator does not ask it (and wait for it) but tells the user to look at the settings, until a test works (or
- * the address is another). The public server is only tested, never switched off: it is often just busy.
+ * A mirror that fails the test is switched off: the navigator does not ask it (and wait for it) and goes on with the next of the list, and tells the user to look at the settings if there is
+ * none, until a test works (or the address is another). The public server is only tested, never switched off: it is often just busy.
  */
 void
 RememberVerdict(const Settings& tested, ServerTest* test)
 {
-	if (!IsOwnMirror(tested))
+	const std::vector<Server> servers = ActiveServers(tested, true);
+	if (servers.empty() || servers[0].isPublic)
 		return;
 	const bool works = test->state == "info";
-	WriteKeys({{"overpass_failed", works ? std::string() : OverpassEndpoint(tested)}});
+	WriteKeys({{"overpass_failed", works ? std::string() : servers[0].endpoint}});
 	if (!works)
 		test->detail += "\nThis mirror is not used until a test works.";
 }
@@ -229,6 +282,40 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	schema->AddInt32(form::kSchemaVersion, 1);
 	int32 order = 0;
 	for (const Field& field : kFields) {
+		if (std::string(field.key) == "overpass_url") {
+			// the servers: a switch, the name and the description of each, in the order that they are asked (as the services of the location server); under it the key of the row
+			// that is selected, which has no field of its own in the table, and then what the custom mirror needs
+			BMessage servers;
+			servers.AddString(form::kAttrLabel, "Overpass servers");
+			servers.AddString(form::kAttrHelp, "Asked in this order until one answers. Drag a row to move it. A server that needs a key is skipped until it has one.");
+			servers.AddString(form::kAttrKind, form::kKindTable);
+			servers.AddBool(form::kAttrReorderable, true);
+			servers.AddInt32(form::kAttrOrder, order++);
+			schema->AddMessage(kServers, &servers);
+			const struct { const char* column; const char* label; bool readOnly; bool hidden; } columns[] = {
+				{"enabled", "Use", false, false}, {"name", "Server", true, false}, {"info", "Description", true, false}, {"id", "", true, true}, {"key", "", true, true},
+			};
+			int32 columnOrder = 0;
+			for (const auto& column : columns) {
+				BMessage attributes;
+				if (column.label[0] != '\0')
+					attributes.AddString(form::kAttrLabel, column.label);
+				if (column.readOnly)
+					attributes.AddBool(form::kAttrReadOnly, true);
+				if (column.hidden)
+					attributes.AddBool(form::kAttrHidden, true);
+				attributes.AddInt32(form::kAttrOrder, columnOrder++);
+				schema->AddMessage((std::string(kServers) + "." + column.column).c_str(), &attributes);
+			}
+			BMessage keyField;
+			keyField.AddString(form::kAttrLabel, "API key");
+			keyField.AddString(form::kAttrHelp, "The key of the server that is selected in the list, if it needs one (NextGIS, Overpass.ch, a custom mirror that asks for one). Optional for the others.");
+			keyField.AddString(form::kAttrKind, form::kKindSecret);
+			keyField.AddString(form::kAttrFollowsTable, kServers);
+			keyField.AddString(form::kAttrFollowsColumn, "key");
+			keyField.AddInt32(form::kAttrOrder, order++);
+			schema->AddMessage(kKeyField, &keyField);
+		}
 		BMessage attributes;
 		attributes.AddString(form::kAttrLabel, field.label);
 		attributes.AddString(form::kAttrHelp, field.help);
@@ -246,24 +333,6 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 				attributes.AddString(form::kAttrChoices, style.id);
 				attributes.AddString(form::kAttrChoiceLabels, style.label);
 			}
-		} else if (key == "overpass_mirror") {
-			attributes.AddString(form::kAttrKind, form::kKindChoice);
-			for (const Mirror& mirror : Mirrors()) {
-				// (the servers of the list, then a line, then the choice of one's own)
-				if (std::string(mirror.id) == "custom") {
-					attributes.AddString(form::kAttrChoices, form::kChoiceSeparator);
-					attributes.AddString(form::kAttrChoiceLabels, "");
-				}
-				attributes.AddString(form::kAttrChoices, mirror.id);
-				attributes.AddString(form::kAttrChoiceLabels, mirror.label);
-			}
-		} else {
-			// (the address and the key belong to the custom mirror: the fields can be edited while it is chosen)
-			// the address belongs to the custom mirror alone; the key to it and to the servers that want one
-			// the address and the flag belong to the custom mirror alone; the key is for a server that requires one
-			attributes.AddString(form::kAttrEnabledWhen, key == "overpass_key" ? KeyEnabledWhen().c_str() : "overpass_mirror=custom");
-			if (key == "overpass_key")
-				attributes.AddString(form::kAttrKind, form::kKindSecret);
 		}
 		schema->AddMessage(field.key, &attributes);
 	}
@@ -301,19 +370,107 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 	std::vector<std::pair<std::string, std::string>> valid;
 	status_t first = B_OK;
 
+	// the list of the servers as it is now; changed by a cell or by the whole table, and written once (the order, and the ones that are on)
+	Settings current;
+	LoadSettings(&current);
+	std::vector<std::string> order = ServerOrder(current);
+	std::vector<std::string> on;
+	for (const std::string& id : order) {
+		if (ServerIsOn(current, id))
+			on.push_back(id);
+	}
+	std::vector<std::pair<std::string, std::string>> keys;
+	bool listChanged = false;
+
 	char* name = nullptr;
 	for (int32 i = 0; changes.GetInfo(B_ANY_TYPE, i, &name, nullptr, nullptr) == B_OK; i++) {
 		const std::string key = name;
 		if (key == kTestButton) {
-			// (the button: the server of the settings as they are in the file now; the answer is shown next to it)
-			Settings current;
-			LoadSettings(&current);
+			// (the button: the first server of the list, as the settings are in the file now; the answer is shown next to it)
 			fTest = TestOverpassServer(current);
 			RememberVerdict(current, &fTest);
 			continue;
 		}
-		if (key == kTestResult || key == kTestState || key == kTestDetail)
+		if (key == kTestResult || key == kTestState || key == kTestDetail || key == kKeyField)
 			continue;
+		if (key.compare(0, strlen(kServers), kServers) == 0) {
+			// the list of the servers: the whole table (Revert, Defaults, a row moved), or a cell of a row (`overpass_servers_02.enabled`, `.key`); the row is the place in the list as
+			// it was described
+			type_code type = 0;
+			int32 count = 0;
+			changes.GetInfo(name, &type, &count);
+			if (key == kServers && type == B_MESSAGE_TYPE) {
+				order.clear();
+				on.clear();
+				for (int32 v = 0; v < count; v++) {
+					BMessage row;
+					const std::string id = changes.FindMessage(name, v, &row) == B_OK ? row.GetString("id", "") : std::string();
+					if (KeySettingName(id).empty() || std::find(order.begin(), order.end(), id) != order.end()) {
+						refused->push_back(key);
+						if (first == B_OK)
+							first = B_BAD_VALUE;
+						continue;
+					}
+					order.push_back(id);
+					if (row.GetBool("enabled", false))
+						on.push_back(id);
+					const char* newKey = NULL;
+					if (row.FindString("key", &newKey) == B_OK && newKey != NULL)
+						keys.push_back({KeySettingName(id), st::Trim(newKey)});
+				}
+				// (what the table did not name keeps its place after the others)
+				for (const std::string& id : ServerOrder(current)) {
+					if (std::find(order.begin(), order.end(), id) == order.end()) {
+						order.push_back(id);
+						if (ServerIsOn(current, id))
+							on.push_back(id);
+					}
+				}
+				listChanged = true;
+				continue;
+			}
+			int32 row = 0;
+			std::string column;
+			const std::vector<std::string> before = ServerOrder(current);
+			if (!ParseCellKey(key, kServers, &row, &column) || row < 0 || row >= (int32)before.size()) {
+				refused->push_back(key);
+				if (first == B_OK)
+					first = B_NAME_NOT_FOUND;
+				continue;
+			}
+			const std::string id = before[row];
+			if (column == "enabled") {
+				bool want = false;
+				if (changes.FindBool(name, &want) != B_OK) {
+					refused->push_back(key);
+					if (first == B_OK)
+						first = B_BAD_VALUE;
+					continue;
+				}
+				on.erase(std::remove(on.begin(), on.end(), id), on.end());
+				if (want)
+					on.push_back(id);
+				listChanged = true;
+			} else if (column == "key") {
+				// (a cell is a field of the message, named by its path: the text is the string itself)
+				std::string newKey, why;
+				const char* typed = NULL;
+				if (changes.FindString(name, &typed) == B_OK && typed != NULL)
+					newKey = typed;
+				if (typed == NULL || !ValidateSetting(KeySettingName(id), newKey, &why)) {
+					refused->push_back(why.empty() ? key : key + " (" + why + ")");
+					if (first == B_OK)
+						first = B_BAD_VALUE;
+					continue;
+				}
+				keys.push_back({KeySettingName(id), st::Trim(newKey)});
+			} else {
+				refused->push_back(key);
+				if (first == B_OK)
+					first = B_NAME_NOT_FOUND;
+			}
+			continue;
+		}
 		const Field* field = nullptr;
 		for (const Field& each : kFields) {
 			if (key == each.key)
@@ -330,6 +487,9 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			text = st::ParseBool(text, false) ? "yes" : "no";
 		valid.push_back({key, st::Trim(text)});
 	}
+	if (listChanged)
+		valid.push_back({"overpass_servers", ServersText(order, on)});
+	valid.insert(valid.end(), keys.begin(), keys.end());
 	if (valid.empty())
 		return first;
 
