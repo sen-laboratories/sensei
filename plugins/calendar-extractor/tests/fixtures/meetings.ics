@@ -1,0 +1,47 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+BEGIN:VEVENT
+UID:meet-1
+SUMMARY:Design review
+DTSTART:20261117T130000Z
+DTEND:20261117T140000Z
+X-GOOGLE-CONFERENCE:https://meet.google.com/abc-defg-hij
+DESCRIPTION:Notes: https://docs.example.org/notes\nFallback dial-in: https://zoom.us/j/555
+LOCATION:Room 4\, Main Street 1
+END:VEVENT
+BEGIN:VEVENT
+UID:teams-1
+SUMMARY:Customer call
+DTSTART:20261118T090000Z
+DTEND:20261118T093000Z
+LOCATION:Microsoft Teams Meeting
+X-MICROSOFT-SKYPETEAMSMEETINGURL:https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc
+X-ALT-DESC;FMTTYPE=text/html:<html><body><p>Hello <b>all</b>,</p><p>Join <a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc">the meeting</a>.</p></body></html>
+DESCRIPTION:Hello all\,\nJoin the meeting.
+END:VEVENT
+BEGIN:VEVENT
+UID:zoom-1
+SUMMARY:Zoom only
+DTSTART:20261119T090000Z
+DTEND:20261119T100000Z
+LOCATION:https://us02web.zoom.us/j/84721?pwd=abc
+DESCRIPTION:Join: https://us02web.zoom.us/j/84721?pwd=abc
+URL:https://example.org/event
+END:VEVENT
+BEGIN:VEVENT
+UID:other-1
+SUMMARY:Own server
+DTSTART:20261120T090000Z
+DTEND:20261120T100000Z
+CONFERENCE;VALUE=URI;FEATURE=AUDIO,VIDEO:https://conf.example.org/room/7
+END:VEVENT
+BEGIN:VEVENT
+UID:plain-1
+SUMMARY:Lunch
+DTSTART:20261121T110000Z
+DTEND:20261121T120000Z
+LOCATION:Karlsplatz
+STATUS:CANCELLED
+END:VEVENT
+END:VCALENDAR

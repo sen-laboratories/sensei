@@ -31,6 +31,8 @@ struct Person {
 
 struct Event {
 	std::string					uid, summary, description, location, url;
+	std::string					htmlDescription;		///< X-ALT-DESC with FMTTYPE=text/html (Outlook), if there is one
+	std::vector<std::string>	conferenceUrls;			///< the links of the conference properties (CONFERENCE of RFC 7986, X-GOOGLE-CONFERENCE, X-MICROSOFT-...): in the order of the file
 	std::string					status;			///< CONFIRMED, TENTATIVE, CANCELLED
 	std::string					transparency;	///< OPAQUE or TRANSPARENT
 	std::string					classification;	///< PUBLIC, PRIVATE, CONFIDENTIAL
@@ -110,6 +112,9 @@ struct Calendar {
 
 /** Reads a file; the zones of the system are the fallback. */
 Calendar ReadCalendar(const std::string& text);
+
+/** The civil time in the local zone of this computer of a time given as seconds since 1970. */
+DateTime UnixToLocal(int64_t seconds);
 
 /** One instance of a series, worked out from the rule. */
 struct Occurrence {

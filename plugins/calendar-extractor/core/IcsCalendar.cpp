@@ -392,6 +392,20 @@ ReadEvent(const Component& component, int index, Calendar* calendar)
 	event.status = Upper(text("STATUS"));
 	event.transparency = Upper(text("TRANSP"));
 	event.classification = Upper(text("CLASS"));
+	for (const Property* alt : component.FindAll("X-ALT-DESC")) {
+		const std::string* format = alt->ParamValue("FMTTYPE");
+		if (format != NULL && Upper(*format).find("HTML") != std::string::npos && event.htmlDescription.empty())
+			event.htmlDescription = Trimmed(UnescapeText(alt->value));
+	}
+	for (const Property& property : component.properties) {
+		// (the links of online meetings that the programs put into properties of their own)
+		if (property.name == "CONFERENCE" || property.name == "X-GOOGLE-CONFERENCE" || property.name == "X-MICROSOFT-SKYPETEAMSMEETINGURL"
+				|| property.name == "X-MICROSOFT-ONLINEMEETINGCONFLINK" || property.name == "X-MICROSOFT-ONLINEMEETINGEXTERNALLINK" || property.name == "X-ZOOM-MEETING-URL") {
+			const std::string link = Trimmed(UnescapeText(property.value));
+			if ((link.compare(0, 7, "http://") == 0 || link.compare(0, 8, "https://") == 0) && std::find(event.conferenceUrls.begin(), event.conferenceUrls.end(), link) == event.conferenceUrls.end())
+				event.conferenceUrls.push_back(link);
+		}
+	}
 	if (const Property* sequence = component.Find("SEQUENCE"))
 		event.sequence = atoi(sequence->value.c_str());
 	for (const Property* property : component.FindAll("CATEGORIES")) {
@@ -587,6 +601,25 @@ ReadCalendar(const std::string& text)
 			CollectEvents(root, &calendar);
 	}
 	return calendar;
+}
+
+
+DateTime
+UnixToLocal(int64_t seconds)
+{
+	time_t t = (time_t)seconds;
+	struct tm parts;
+	DateTime time;
+	if (localtime_r(&t, &parts) == NULL)
+		return FromLocalSeconds(seconds);
+	time.year = parts.tm_year + 1900;
+	time.month = parts.tm_mon + 1;
+	time.day = parts.tm_mday;
+	time.hour = parts.tm_hour;
+	time.minute = parts.tm_min;
+	time.second = parts.tm_sec;
+	time.valid = true;
+	return time;
 }
 
 
