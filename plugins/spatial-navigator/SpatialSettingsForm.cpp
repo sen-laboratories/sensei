@@ -166,6 +166,46 @@ TestOverpassServer(const Settings& settings)
 }
 
 
+namespace {
+
+/** puts the keys into the settings file (the lines of other keys, and the comments, stay) */
+status_t
+WriteKeys(const std::vector<std::pair<std::string, std::string>>& keys)
+{
+	BPath path;
+	if (!SettingsPath(&path))
+		return B_ERROR;
+	BPath folder;
+	if (path.GetParent(&folder) == B_OK)
+		create_directory(folder.Path(), 0755);
+
+	const std::string text = st::Update(ReadFileText(), keys);
+	BFile file(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
+	status_t result = file.InitCheck();
+	if (result == B_OK && file.Write(text.data(), text.size()) != (ssize_t)text.size())
+		result = B_IO_ERROR;
+	return result;
+}
+
+
+/**
+ * A mirror of the user's choice that fails the test is switched off: the navigator does not ask it (and wait for it) but tells the user to look at the settings, until a test works (or
+ * the address is another). The public server is only tested, never switched off: it is often just busy.
+ */
+void
+RememberVerdict(const Settings& tested, ServerTest* test)
+{
+	if (!IsOwnMirror(tested))
+		return;
+	const bool works = test->state == "info";
+	WriteKeys({{"overpass_failed", works ? std::string() : OverpassEndpoint(tested)}});
+	if (!works)
+		test->detail += "\nThis mirror is not used until a test works.";
+}
+
+}	// namespace
+
+
 void
 LoadSettings(Settings* settings)
 {
@@ -269,6 +309,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			Settings current;
 			LoadSettings(&current);
 			fTest = TestOverpassServer(current);
+			RememberVerdict(current, &fTest);
 			continue;
 		}
 		if (key == kTestResult || key == kTestState || key == kTestDetail)
@@ -292,18 +333,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 	if (valid.empty())
 		return first;
 
-	BPath path;
-	if (!SettingsPath(&path))
-		return B_ERROR;
-	BPath folder;
-	if (path.GetParent(&folder) == B_OK)
-		create_directory(folder.Path(), 0755);
-
-	const std::string text = st::Update(ReadFileText(), valid);
-	BFile file(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
-	status_t result = file.InitCheck();
-	if (result == B_OK && file.Write(text.data(), text.size()) != (ssize_t)text.size())
-		result = B_IO_ERROR;
+	const status_t result = WriteKeys(valid);
 	return result != B_OK ? result : first;
 }
 

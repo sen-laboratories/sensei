@@ -95,6 +95,8 @@ ParseSettings(const std::string& text, Settings* settings)
 			settings->customRequiresKey = st::ParseBool(value, settings->customRequiresKey);
 		} else if (key == "overpass_key") {
 			settings->overpassKey = value;
+		} else if (key == "overpass_failed") {
+			settings->overpassFailed = value;
 		}
 	}
 }
@@ -163,6 +165,23 @@ OverpassEndpoint(const Settings& settings)
 	if (url.find("{key}") != std::string::npos && OverpassKey(settings).empty())
 		return kDefaultOverpassUrl;
 	return url;
+}
+
+
+const char* const kMirrorNotWorking = "Your configured OSM mirror is not working, please check settings.";
+
+
+bool
+IsOwnMirror(const Settings& settings)
+{
+	return OverpassEndpoint(settings) != kDefaultOverpassUrl;
+}
+
+
+bool
+MirrorMarkedFailed(const Settings& settings)
+{
+	return IsOwnMirror(settings) && !settings.overpassFailed.empty() && settings.overpassFailed == OverpassEndpoint(settings);
 }
 
 

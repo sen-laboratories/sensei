@@ -18,6 +18,7 @@
 #include <geos_c.h>
 
 #include <stdarg.h>
+#include <string.h>
 #include <stdio.h>
 
 #include <algorithm>
@@ -47,6 +48,8 @@ const long kCacheSeconds = 30L * 24 * 3600;
 const size_t kMaxPoiPictures = 12;
 // all of the time that Overpass has for one question, in microseconds
 const bigtime_t kPoiLimit = 80 * 1000000LL;
+// a mirror of the user's choice: a server that is there answers in seconds; one that does not is not waited for (the settings window tests it with 20 seconds as well)
+const bigtime_t kMirrorLimit = 20 * 1000000LL;
 
 void
 GeosMessage(const char* format, ...)
@@ -331,10 +334,18 @@ Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 	const std::string request = PoisUrl(area, endpoint);
 	std::string body;
 	if (fCache == NULL || !fCache->Get(url, &body, (long) fSettings.poiCacheHours * 3600L)) {
+		// the test of the settings found the chosen mirror not working: it is not asked, the user is told at once (a test that works, or another address, ends that)
+		const bool ownMirror = IsOwnMirror(fSettings);
+		if (MirrorMarkedFailed(fSettings)) {
+			printf("the Overpass mirror %s failed its test: not asked\n", OverpassEndpoint(fSettings).c_str());
+			sensei::Notify("SEN Spatial Navigator", "OSM mirror not working", kMirrorNotWorking, false);
+			return false;
+		}
 		if (fDebug)
 			printf("asking %s\n", OverpassEndpoint(fSettings).c_str());		// (not the address with the key)
-		// (the public Overpass server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. One that fails at once - 429, 502 when
-		// it is busy - is asked once more after a moment, if there is time)
+		// (the public Overpass server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. One that is only busy - 429, 5xx, no answer
+		// yet - is asked once more after a moment, if there is time; an error that will not go away (the server is not there, refuses the question, wants a key) fails at once, and so does
+		// a mirror of the user's: it is asked once, with a short time)
 		int status = 0;
 		status_t result = B_ERROR;
 		const bigtime_t started = system_time();
@@ -344,16 +355,25 @@ Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 					break;
 				snooze(3000000);
 			}
-			const bigtime_t left = kPoiLimit - (system_time() - started);
+			const bigtime_t left = (ownMirror ? kMirrorLimit : kPoiLimit) - (system_time() - started);
 			result = sensei::SocketGet(request, kUserAgent, "application/json", &body, &status, left, authorization);
+			if (result != B_OK) {
+				const bool busy = status == 429 || status >= 500 || result == B_TIMED_OUT || result == B_WOULD_BLOCK;
+				if (ownMirror || !busy)
+					break;
+			}
 		}
 		if (result != B_OK) {
-			printf("could not ask Overpass (%s) for what is nearby (status %d)\n", OverpassEndpoint(fSettings).c_str(), status);
+			printf("could not ask Overpass (%s) for what is nearby (status %d, %s)\n", OverpassEndpoint(fSettings).c_str(), status, strerror(result));
+			if (ownMirror)
+				sensei::Notify("SEN Spatial Navigator", "OSM mirror not working", kMirrorNotWorking, false);
 			return false;
 		}
 		// (kept only if it is an answer: a timeout is one with a remark and no elements)
 		if (!ParsePois(body, fLanguage, pois)) {
 			printf("the answer of Overpass is not one for what is nearby\n");
+			if (ownMirror)
+				sensei::Notify("SEN Spatial Navigator", "OSM mirror not working", kMirrorNotWorking, false);
 			return false;
 		}
 		if (fCache != NULL)

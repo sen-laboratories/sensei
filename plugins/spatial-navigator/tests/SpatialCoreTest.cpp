@@ -322,6 +322,20 @@ TestSettings()
 	CHECK(OverpassEndpoint(settings) == "https://overpass.example.org/api/interpreter");
 	ParseSettings("overpass_mirror = vk-maps", &settings);
 	CHECK(OverpassKey(settings).empty());
+	// a mirror that the test found not working is not asked while it is the chosen one; the public server always is; another address or a test that works ends it
+	{
+		Settings failed;
+		CHECK(!IsOwnMirror(failed) && !MirrorMarkedFailed(failed));
+		ParseSettings("overpass_mirror = private-coffee\noverpass_failed = https://overpass.private.coffee/api/interpreter", &failed);
+		CHECK(IsOwnMirror(failed) && MirrorMarkedFailed(failed));
+		ParseSettings("overpass_mirror = vk-maps", &failed);
+		CHECK(IsOwnMirror(failed) && !MirrorMarkedFailed(failed));			// (the other address: not marked)
+		ParseSettings("overpass_mirror = default\noverpass_failed = https://overpass-api.de/api/interpreter", &failed);
+		CHECK(!IsOwnMirror(failed) && !MirrorMarkedFailed(failed));			// (the public server is never switched off)
+		ParseSettings("overpass_failed =", &failed);
+		CHECK(failed.overpassFailed.empty());
+		CHECK(std::string(kMirrorNotWorking) == "Your configured OSM mirror is not working, please check settings.");
+	}
 	// the numbers: radius and the most points of interest, in their ranges
 	Settings numbers;
 	CHECK(numbers.poiRadius == 250 && numbers.poiLimit == 40);

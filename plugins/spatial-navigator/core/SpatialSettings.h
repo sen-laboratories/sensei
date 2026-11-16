@@ -44,6 +44,11 @@ struct Settings {
 	std::string	mapStyle = sen::mapstyles::DefaultId();
 	/** the key of a server that requires one. Put in place of `{key}` in the address, else sent as `Authorization: Bearer <key>` (only over https). */
 	std::string	overpassKey;
+	/**
+	 * The address (without a key) of a mirror that the test of the settings found not working (`overpass_failed`; the settings window writes it, the user does not). While the mirror
+	 * that is chosen is that one, it is not asked at all and the user is told so at once; another address, or a test that works, ends it.
+	 */
+	std::string	overpassFailed;
 };
 
 /** Reads `key = value` lines into the settings; unknown keys and bad values are ignored (what is there stays). */
@@ -57,6 +62,15 @@ bool ValidateSetting(const std::string& key, const std::string& value, std::stri
  * address that wants a key (`{key}`) while there is none.
  */
 std::string OverpassEndpoint(const Settings& settings);
+
+/** Whether a mirror of the user's choice is asked (not the public server: that is asked whatever happened to it, it is often only busy). */
+bool IsOwnMirror(const Settings& settings);
+
+/** Whether the mirror that is chosen is the one that the test found not working: it is not asked then. */
+bool MirrorMarkedFailed(const Settings& settings);
+
+/** What the user is told then. */
+extern const char* const kMirrorNotWorking;
 
 /** The key that goes with that address: that of a server that requires one (a custom one if the flag says so); empty if there is none. */
 std::string OverpassKey(const Settings& settings);
