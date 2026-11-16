@@ -53,7 +53,7 @@ public:
 /** The settings session of a plugin with the settings window that asked. */
 class SettingsSession {
 public:
-							SettingsSession() : fOpen(false), fEnded(false), fLastUsed(0) {}
+							SettingsSession() : fOpen(false), fEnded(false), fLastUsed(0), fSerial(0) {}
 
 	/** Handles kSettings, kSettingsSet and kSettingsClose; false if the message is none of them. @p signature is that of the plugin. */
 	bool					Handle(BMessage* message, SettingsProvider* provider, const char* signature)
@@ -70,6 +70,30 @@ public:
 				return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Sends the settings to the window again: something changed that the user did not do (a test that was started by a change is done). Without a window that asked it does nothing; the window
+	 * shows the new data in the form (it keeps the row that was selected in a table).
+	 */
+	void					Push(SettingsProvider* provider, const char* signature)
+	{
+		if (!fOpen || fEnded || !fOwner.IsValid())
+			return;
+		BMessage settings, schema, defaults;
+		provider->Describe(&settings, &schema, &defaults);
+		BMessage reply(cmd::kSettingsReply);
+		reply.AddInt32(sen::settings::form::kFieldResult, B_OK);
+		reply.AddInt32(sen::settings::form::kFieldProtocol, sen::settings::form::kProtocol);
+		reply.AddString(key::kPlugin, signature);
+		reply.AddMessage(sen::settings::form::kFieldSettings, &settings);
+		if (!schema.IsEmpty())
+			reply.AddMessage(sen::settings::form::kFieldSchema, &schema);
+		if (!defaults.IsEmpty())
+			reply.AddMessage(sen::settings::form::kFieldDefaults, &defaults);
+		reply.AddInt32("serial", fSerial);
+		fOwner.SendMessage(&reply);
+		fLastUsed = system_time();
 	}
 
 	/** A session was opened (and not closed). */
@@ -106,8 +130,10 @@ private:
 			reply.AddMessage(sen::settings::form::kFieldDefaults, &defaults);
 		// (the serial of the request, which the window uses to tell the answers apart)
 		int32 serial;
-		if (message->FindInt32("serial", &serial) == B_OK)
+		if (message->FindInt32("serial", &serial) == B_OK) {
 			reply.AddInt32("serial", serial);
+			fSerial = serial;
+		}
 
 		if (message->IsSourceWaiting())
 			message->SendReply(&reply);
@@ -141,6 +167,7 @@ private:
 	bool					fOpen;
 	bool					fEnded;
 	bigtime_t				fLastUsed;
+	int32					fSerial;			///< the serial of the request that opened the session: the window tells the answers of an older request apart
 	BMessenger				fOwner;
 };
 

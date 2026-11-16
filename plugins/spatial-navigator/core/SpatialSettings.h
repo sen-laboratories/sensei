@@ -43,10 +43,10 @@ struct Settings {
 	/** the default style of the map of a place (an id of sen::mapstyles, SenMapStyles.h): the views of the map (Shoji) show it until a style is chosen in the view itself */
 	std::string	mapStyle = sen::mapstyles::DefaultId();
 	/**
-	 * The address (without a key) of a mirror that the test of the settings found not working (`overpass_failed`; the settings window writes it, the user does not). The list skips
-	 * that server until a test of it works (or its address is another). The public server is never marked: it is often only busy.
+	 * The ids of the servers that the test of the settings found not reachable (`overpass_failed`, ids with blanks between; the settings window writes it, the user does not). The list skips them until
+	 * a test of them works. The public server is never in it: it is often only busy.
 	 */
-	std::string	overpassFailed;
+	std::vector<std::string>	failedIds;
 	/**
 	 * The list of the servers (`overpass_servers`, as the list of the services of Basho: `default private-coffee -vk-maps`): the order is the order in which they are asked until one
 	 * answers, one with a `-` in front is off and keeps its place. The ids in the order of the file; what it does not name follows in the order of Mirrors(), and is on if it needs no key.
@@ -95,11 +95,20 @@ struct Server {
 	bool		isPublic = false;	///< the default server: it is asked whatever happened to it
 };
 
+/** Whether a server needs a key: one that is made for it, the custom mirror when the flag says so or its address has a place for the key. */
+bool ServerNeedsKey(const Settings& settings, const std::string& id);
+
 /**
- * The servers that are asked, in the order of the list: those that are on and complete (a custom mirror has an address, one that needs a key has it) and not marked as failed by the
- * test (@p ignoreFailed: the test itself asks them again). When no server is on at all it is the default one; when some are on and none is complete, there is none and the user is told.
+ * A server of the list as it would be asked (its address, and its key if it needs one), whether it is on or not. False if it is not complete, and @p problem says what is missing (`Needs an API key`,
+ * `Needs an address`).
  */
-std::vector<Server> ActiveServers(const Settings& settings, bool ignoreFailed = false);
+bool MakeServer(const Settings& settings, const std::string& id, Server* server, std::string* problem = nullptr);
+
+/**
+ * The servers that are asked, in the order of the list: those that are on and complete (a custom mirror has an address, one that needs a key has it) and not found unreachable by a test. When no
+ * server is on at all it is the default one; when some are on and none is complete, there is none and the user is told.
+ */
+std::vector<Server> ActiveServers(const Settings& settings);
 
 /** The name of an HTTP status in a word or two: 200 OK, 403 Forbidden, 503 Service Unavailable; `HTTP 418` for one that is not known. */
 std::string HttpStatusText(int code);

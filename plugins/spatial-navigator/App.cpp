@@ -190,6 +190,11 @@ App::MessageReceived(BMessage* message)
 			SetPulseRate(5000000);
 		return;
 	}
+	// a test in the background is done: the window gets the new status
+	if (message->what == spatial::kPushSettings) {
+		fSession.Push(&fSettingsProvider, kApplicationSignature);
+		return;
+	}
 	if (message->what == sensei::cmd::kResolve) {
 		_Resolve(message);
 		Quit();		// (a plugin is a multiple launch application that ends when it has answered)

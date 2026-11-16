@@ -61,9 +61,9 @@ public:
 };
 
 static bool
-WaitFor(Receiver* receiver, int32 count)
+WaitFor(Receiver* receiver, int32 count, int seconds = 15)
 {
-	for (int i = 0; i < 150 && receiver->got < count; i++)
+	for (int i = 0; i < seconds * 10 && receiver->got < count; i++)
 		snooze(100000);
 	return receiver->got >= count;
 }
@@ -114,6 +114,11 @@ int main(int argc, char** argv)
 	create_directory(path.Path(), 0755);
 	path.Append("spatial-navigator.settings");
 	const std::string original = ReadFile(path);
+	// the status of the servers that a test leaves in the cache: put back as it was
+	BPath statusPath;
+	find_directory(B_USER_CACHE_DIRECTORY, &statusPath, true);
+	statusPath.Append("sen/spatial-navigator/server-status");
+	const std::string originalStatus = ReadFile(statusPath);
 	WriteFile(path, "# my settings\noverpass_mirror = vk-maps\nunknown = kept\n");
 
 	Receiver* receiver = new Receiver();
@@ -155,17 +160,25 @@ int main(int argc, char** argv)
 	BMessage servers, enabledColumn, idColumn, keyColumn, url, key;
 	CHECK(schema.FindMessage("overpass_servers", &servers) == B_OK && strcmp(servers.GetString(form::kAttrKind, ""), form::kKindTable) == 0 && servers.GetBool(form::kAttrReorderable, false));
 	CHECK(schema.FindMessage("overpass_servers.enabled", &enabledColumn) == B_OK && schema.FindMessage("overpass_servers.id", &idColumn) == B_OK && idColumn.GetBool(form::kAttrHidden, false));
-	CHECK(schema.FindMessage("overpass_servers.key", &keyColumn) == B_OK && keyColumn.GetBool(form::kAttrHidden, false));
+	CHECK(schema.FindMessage("overpass_servers.status", &keyColumn) == B_OK && strcmp(keyColumn.GetString(form::kAttrStateField, ""), "status_state") == 0
+		&& strcmp(keyColumn.GetString(form::kAttrDetailField, ""), "status_detail") == 0 && strcmp(keyColumn.GetString(form::kAttrBusyField, ""), "testing") == 0);
+	CHECK(strcmp(servers.GetString(form::kAttrUpdateMsg, ""), "OVrw") == 0);		// (the table sends a message when another row is selected)
 	CHECK(schema.FindMessage("overpass_url", &url) == B_OK && !url.HasString(form::kAttrEnabledWhen));
 	CHECK(schema.FindMessage("overpass_key", &key) == B_OK && strcmp(key.GetString(form::kAttrKind, ""), form::kKindSecret) == 0
-		&& strcmp(key.GetString(form::kAttrFollowsTable, ""), "overpass_servers") == 0 && strcmp(key.GetString(form::kAttrFollowsColumn, ""), "key") == 0);
+		&& strcmp(key.GetString(form::kAttrBindToUpdateMsg, ""), "OVrw") == 0);		// (the field listens to it: it does not know the table)
+	// the key of a server is a message of its row: its value, and whether the server needs a key at all (VK Maps does not, NextGIS does)
+	BMessage keyPart, nextgisRow, nextgisPart;
+	CHECK(rowFirst.FindMessage("overpass_key", &keyPart) == B_OK && !keyPart.GetBool(form::kUpdateEnabled, true) && strcmp(keyPart.GetString(form::kUpdateValue, "x"), "") == 0);
+	CHECK(settings.FindMessage("overpass_servers", 3, &nextgisRow) == B_OK && strcmp(nextgisRow.GetString("id", ""), "nextgis") == 0 && nextgisRow.FindMessage("overpass_key", &nextgisPart) == B_OK
+		&& nextgisPart.GetBool(form::kUpdateEnabled, false));
+	CHECK(strlen(rowFirst.GetString("status", "")) > 0 && strcmp(rowFirst.GetString("status_state", "x"), "x") != 0);			// (the status is there: "Not tested" or what the last test found)
 	BMessage flag;
 	CHECK(schema.FindMessage("overpass_custom_key", &flag) == B_OK && !flag.HasString(form::kAttrEnabledWhen));
 	CHECK(settings.HasBool("overpass_custom_key") && !settings.GetBool("overpass_custom_key", true));
 
 	// the cells of the list: the key of the first row (VK Maps), the switch of the second (the public server), and the other fields
 	BMessage change;
-	change.AddString("overpass_servers_00.key", "k3y");
+	change.AddString("overpass_servers_03.overpass_key.value", "k3y");		// (the key of NextGIS, which is off: no test)
 	change.AddBool("overpass_servers_01.enabled", true);
 	change.AddString("overpass_url", "https://overpass.example.org/api/interpreter");
 	change.AddInt32("poi_radius", 400);
@@ -174,10 +187,20 @@ int main(int argc, char** argv)
 	set.AddMessage(form::kFieldSettings, &change);
 	CHECK(receiver->session.SendMessage(&set, &answer, 5000000, 5000000) == B_OK);
 	CHECK(answer.GetInt32(form::kFieldResult, -1) == B_OK);
+	// the server that was switched on is tested in the background: the answer already says so (or has the result, if the server answered at once)
+	BMessage afterSettings, defaultRow;
+	CHECK(answer.FindMessage(form::kFieldSettings, &afterSettings) == B_OK && afterSettings.FindMessage("overpass_servers", 1, &defaultRow) == B_OK
+		&& strcmp(defaultRow.GetString("id", ""), "default") == 0 && defaultRow.GetBool("enabled", false) && strlen(defaultRow.GetString("status", "")) > 0);
+	// the test is done after a while (it asks the server over the network): the plugin sends the settings to the window again, with the status of the server in its row
+	CHECK(WaitFor(receiver, 2, 40));
+	BMessage pushed, pushedRow;
+	CHECK(receiver->reply.FindMessage(form::kFieldSettings, &pushed) == B_OK && pushed.FindMessage("overpass_servers", 1, &pushedRow) == B_OK && strcmp(pushedRow.GetString("id", ""), "default") == 0
+		&& !pushedRow.GetBool("testing", true) && (strcmp(pushedRow.GetString("status_state", ""), "ok") == 0 || strcmp(pushedRow.GetString("status_state", ""), "warning") == 0
+			|| strcmp(pushedRow.GetString("status_state", ""), "error") == 0) && strlen(pushedRow.GetString("status_detail", "")) > 0);
 	std::string file = ReadFile(path);
 	CHECK(file.find("# my settings\n") != std::string::npos && file.find("unknown = kept\n") != std::string::npos);
 	CHECK(file.find("overpass_servers = vk-maps default -private-coffee -nextgis -overpass-ch -custom\n") != std::string::npos);
-	CHECK(file.find("overpass_key_vk_maps = k3y\n") != std::string::npos && file.find("overpass_url = https://overpass.example.org/api/interpreter\n") != std::string::npos);
+	CHECK(file.find("overpass_key_nextgis = k3y\n") != std::string::npos && file.find("overpass_url = https://overpass.example.org/api/interpreter\n") != std::string::npos);
 	CHECK(file.find("poi_radius = 400\n") != std::string::npos && file.find("overpass_custom_key = yes\n") != std::string::npos);
 
 	// a row moved (the whole table, in the new order): the order is written, the switches stay
@@ -212,6 +235,9 @@ int main(int argc, char** argv)
 	session.SendMessage(sensei::cmd::kSettingsClose);
 	CHECK(Gone(session));
 
+	WriteFile(statusPath, originalStatus == "<none>" ? "" : originalStatus);
+	if (originalStatus == "<none>")
+		BEntry(statusPath.Path()).Remove();
 	WriteFile(path, original == "<none>" ? "" : original);
 	if (original == "<none>")
 		BEntry(path.Path()).Remove();

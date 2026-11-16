@@ -102,6 +102,21 @@ ParseServers(const std::string& value, Settings* settings)
 	}
 }
 
+/** `private-coffee vk-maps`: the ids that are servers of the list and not the public one */
+void
+ParseFailed(const std::string& value, Settings* settings)
+{
+	settings->failedIds.clear();
+	size_t at = 0;
+	while (at < value.size()) {
+		const size_t end = value.find_first_of(" \t", at);
+		const std::string token = value.substr(at, end == std::string::npos ? std::string::npos : end - at);
+		at = end == std::string::npos ? value.size() : end + 1;
+		if (!token.empty() && token != "default" && IsMirrorId(token) && std::find(settings->failedIds.begin(), settings->failedIds.end(), token) == settings->failedIds.end())
+			settings->failedIds.push_back(token);
+	}
+}
+
 void
 SetKey(Settings* settings, const std::string& id, const std::string& key)
 {
@@ -179,7 +194,7 @@ ParseSettings(const std::string& text, Settings* settings)
 		} else if (key == "overpass_key") {
 			settings->legacyKey = value;
 		} else if (key == "overpass_failed") {
-			settings->overpassFailed = value;
+			ParseFailed(value, settings);
 		} else if (!KeyOwner(key).empty()) {
 			SetKey(settings, KeyOwner(key), value);
 		}
@@ -301,8 +316,52 @@ ServersText(const std::vector<std::string>& order, const std::vector<std::string
 const char* const kMirrorNotWorking = "Your configured OSM mirror is not working, please check settings.";
 
 
+bool
+ServerNeedsKey(const Settings& settings, const std::string& id)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (id != mirror.id)
+			continue;
+		if (mirror.requiresKey)
+			return true;
+		return id == "custom" && (settings.customRequiresKey || settings.overpassUrl.find("{key}") != std::string::npos);
+	}
+	return false;
+}
+
+
+bool
+MakeServer(const Settings& settings, const std::string& id, Server* server, std::string* problem)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (id != mirror.id)
+			continue;
+		const std::string endpoint = id == "custom" ? settings.overpassUrl : std::string(mirror.url);
+		if (endpoint.empty()) {
+			if (problem != nullptr)
+				*problem = "Needs an address";
+			return false;
+		}
+		const bool needsKey = ServerNeedsKey(settings, id) || endpoint.find("{key}") != std::string::npos;
+		const std::string key = needsKey ? KeyOf(settings, id) : std::string();
+		if (needsKey && key.empty()) {
+			if (problem != nullptr)
+				*problem = "Needs an API key";
+			return false;
+		}
+		server->id = id;
+		server->name = mirror.name;
+		server->endpoint = endpoint;
+		server->key = key;
+		server->isPublic = id == "default";
+		return true;
+	}
+	return false;
+}
+
+
 std::vector<Server>
-ActiveServers(const Settings& settings, bool ignoreFailed)
+ActiveServers(const Settings& settings)
 {
 	std::vector<Server> found;
 	bool anyOn = false;
@@ -310,34 +369,16 @@ ActiveServers(const Settings& settings, bool ignoreFailed)
 		if (!ServerIsOn(settings, id))
 			continue;
 		anyOn = true;
-		for (const Mirror& mirror : Mirrors()) {
-			if (id != mirror.id)
-				continue;
-			const std::string endpoint = id == "custom" ? settings.overpassUrl : std::string(mirror.url);
-			if (endpoint.empty())
-				break;
-			const bool needsKey = mirror.requiresKey || (id == "custom" && settings.customRequiresKey) || endpoint.find("{key}") != std::string::npos;
-			const std::string key = needsKey ? KeyOf(settings, id) : std::string();
-			if (needsKey && key.empty())
-				break;
-			if (!ignoreFailed && id != "default" && !settings.overpassFailed.empty() && settings.overpassFailed == endpoint)
-				break;
-			Server server;
-			server.id = id;
-			server.name = mirror.name;
-			server.endpoint = endpoint;
-			server.key = key;
-			server.isPublic = id == "default";
-			found.push_back(server);
-			break;
-		}
+		Server server;
+		if (!MakeServer(settings, id, &server))
+			continue;
+		if (!server.isPublic && std::find(settings.failedIds.begin(), settings.failedIds.end(), id) != settings.failedIds.end())
+			continue;
+		found.push_back(server);
 	}
 	if (!anyOn) {
 		Server server;
-		server.id = "default";
-		server.name = Mirrors()[0].name;
-		server.endpoint = kDefaultOverpassUrl;
-		server.isPublic = true;
+		MakeServer(settings, "default", &server);
 		found.push_back(server);
 	}
 	return found;
@@ -381,7 +422,7 @@ JudgeServerTest(const std::string& host, int httpStatus, bool timedOut, const st
 	if (httpStatus >= 200 && httpStatus < 300) {
 		test.text = HttpStatusText(httpStatus);
 		if (overpass) {
-			test.state = "info";
+			test.state = "ok";
 			explanation = std::string("Answered in ") + took + " (" + std::to_string(places) + " places in the test area).";
 		} else {
 			test.state = "warning";

@@ -393,15 +393,29 @@ TestSettings()
 		CHECK(ActiveServers(incomplete).empty());
 		CHECK(std::string(kMirrorNotWorking) == "Your configured OSM mirror is not working, please check settings.");
 	}
-	// a server that the test found not working is skipped (not the public one: it is often only busy); the test itself still asks it
+	// a server that the test found not reachable is skipped (not the public one: it is often only busy), until a test of it works
 	{
 		Settings failed;
-		ParseSettings("overpass_servers = private-coffee default -vk-maps\noverpass_failed = https://overpass.private.coffee/api/interpreter", &failed);
-		CHECK(ActiveServers(failed).size() == 1 && ActiveServers(failed)[0].id == "default" && ActiveServers(failed, true).size() == 2);
-		ParseSettings("overpass_failed = https://overpass-api.de/api/interpreter", &failed);
-		CHECK(ActiveServers(failed).size() == 2);
+		ParseSettings("overpass_servers = private-coffee default -vk-maps\noverpass_failed = private-coffee", &failed);
+		CHECK(ActiveServers(failed).size() == 1 && ActiveServers(failed)[0].id == "default");
+		Server tested;
+		CHECK(MakeServer(failed, "private-coffee", &tested) && tested.endpoint == "https://overpass.private.coffee/api/interpreter");		// (the test asks it all the same)
+		ParseSettings("overpass_failed = default vk-maps bogus", &failed);
+		CHECK(failed.failedIds.size() == 1 && failed.failedIds[0] == "vk-maps" && ActiveServers(failed).size() == 2);
 		ParseSettings("overpass_failed =", &failed);
-		CHECK(failed.overpassFailed.empty());
+		CHECK(failed.failedIds.empty());
+	}
+	// what a server needs: a key (the ones made for it, the custom mirror with the flag or a place for the key in its address), an address (the custom mirror)
+	{
+		Settings needs;
+		CHECK(!ServerNeedsKey(needs, "default") && ServerNeedsKey(needs, "nextgis") && ServerNeedsKey(needs, "overpass-ch") && !ServerNeedsKey(needs, "custom"));
+		Server made;
+		std::string problem;
+		CHECK(!MakeServer(needs, "nextgis", &made, &problem) && problem == "Needs an API key");
+		CHECK(!MakeServer(needs, "custom", &made, &problem) && problem == "Needs an address");
+		ParseSettings("overpass_key_nextgis = k\noverpass_url = https://x.example.org/{key}/api/interpreter", &needs);
+		CHECK(MakeServer(needs, "nextgis", &made, &problem) && made.key == "k" && ServerNeedsKey(needs, "custom") && !MakeServer(needs, "custom", &made, &problem) && problem == "Needs an API key");
+		CHECK(MakeServer(needs, "default", &made) && made.isPublic && made.key.empty());
 	}
 	// the numbers: radius and the most points of interest, in their ranges
 	Settings numbers;
@@ -439,7 +453,7 @@ TestSettings()
 	// what the test of a server says: the status as the text, the state for the icon, the detail in a few lines
 	CHECK(HttpStatusText(200) == "200 OK" && HttpStatusText(503) == "503 Service Unavailable" && HttpStatusText(418) == "HTTP 418");
 	const ServerTest works = JudgeServerTest("geo.example.org", 200, false, "", true, 12, 0.43, 20, "");
-	CHECK(works.text == "200 OK" && works.state == "info" && works.detail == "geo.example.org\nAnswered in 0.4 s (12 places in the test area).");
+	CHECK(works.text == "200 OK" && works.state == "ok" && works.detail == "geo.example.org\nAnswered in 0.4 s (12 places in the test area).");
 	const ServerTest notOverpass = JudgeServerTest("example.org", 200, false, "", false, 0, 0.2, 20, "");
 	CHECK(notOverpass.state == "warning" && notOverpass.text == "200 OK, not Overpass");
 	const ServerTest refused = JudgeServerTest("h", 403, false, "", false, 0, 1.0, 20, "A remark.");

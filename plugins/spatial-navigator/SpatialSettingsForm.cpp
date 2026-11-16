@@ -5,6 +5,7 @@
 
 #include "SpatialSettingsForm.h"
 
+#include <Application.h>
 #include <Directory.h>
 #include <File.h>
 #include <FindDirectory.h>
@@ -17,6 +18,8 @@
 #include <string.h>
 
 #include <algorithm>
+#include <map>
+#include <mutex>
 #include <vector>
 
 #include <sen/SenMessagePath.h>
@@ -35,16 +38,12 @@ namespace spatial {
 namespace {
 
 const char* const kSettingsFile = "sen/spatial-navigator.settings";
+const char* const kStatusFile = "sen/spatial-navigator/server-status";
 
-// the button that tests the server, and the field next to it that says what came of it (neither is stored)
-const char* const kTestButton = "test_overpass";
-const char* const kTestResult = "test_result";
-const char* const kTestState = "test_state";
-const char* const kTestDetail = "test_detail";
-
-// the table of the servers, and the field of the key that shows the cell `key` of the selected row
+// the table of the servers, and the command of the message that it sends when another row is selected: the field of the API key listens to it (SenSettingsForm.h, master and detail)
 const char* const kServers = "overpass_servers";
 const char* const kKeyField = "overpass_key";
+const char* const kRowCommand = "OVrw";
 const char* const kTestUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
 const bigtime_t kTestTimeout = 20 * 1000000LL;
 
@@ -92,6 +91,151 @@ ReadFileText()
 }
 
 
+// What the last test of a server found, for the column Status: the state (`ok`, `warning`, `error`, or empty), the short text and the detail for the tool tip. It is kept between the sessions in
+// the cache folder (a status that is there says when the server was last asked, the test is not repeated when the window is opened), and while a test is under way `testing` is true.
+struct Status {
+	std::string	state;
+	std::string	text;
+	std::string	detail;
+	bool		testing = false;
+};
+
+std::mutex sStatusLock;
+std::map<std::string, Status> sStatus;
+bool sStatusLoaded = false;
+std::mutex sFileLock;
+
+std::string
+Escaped(const std::string& text)
+{
+	std::string out;
+	for (char c : text) {
+		if (c == '\\')
+			out += "\\\\";
+		else if (c == '\n')
+			out += "\\n";
+		else if (c == '\t')
+			out += ' ';
+		else
+			out += c;
+	}
+	return out;
+}
+
+
+std::string
+Unescaped(const std::string& text)
+{
+	std::string out;
+	for (size_t i = 0; i < text.size(); i++) {
+		if (text[i] == '\\' && i + 1 < text.size()) {
+			i++;
+			out += text[i] == 'n' ? '\n' : text[i];
+		} else {
+			out += text[i];
+		}
+	}
+	return out;
+}
+
+
+bool
+StatusPath(BPath* path)
+{
+	return find_directory(B_USER_CACHE_DIRECTORY, path, true) == B_OK && path->Append(kStatusFile) == B_OK;
+}
+
+
+/** (the lock is held) */
+void
+LoadStatus()
+{
+	if (sStatusLoaded)
+		return;
+	sStatusLoaded = true;
+	BPath path;
+	if (!StatusPath(&path))
+		return;
+	BFile file(path.Path(), B_READ_ONLY);
+	off_t size = 0;
+	if (file.InitCheck() != B_OK || file.GetSize(&size) != B_OK || size <= 0 || size > 64 * 1024)
+		return;
+	std::string text(size, '\0');
+	if (file.Read(&text[0], size) != size)
+		return;
+	size_t at = 0;
+	while (at < text.size()) {
+		size_t end = text.find('\n', at);
+		if (end == std::string::npos)
+			end = text.size();
+		const std::string line = text.substr(at, end - at);
+		at = end + 1;
+		std::vector<std::string> parts;
+		size_t from = 0;
+		for (int field = 0; field < 4; field++) {
+			const size_t tab = field < 3 ? line.find('\t', from) : std::string::npos;
+			parts.push_back(line.substr(from, tab == std::string::npos ? std::string::npos : tab - from));
+			if (tab == std::string::npos)
+				break;
+			from = tab + 1;
+		}
+		if (parts.size() == 4) {
+			Status status;
+			status.state = parts[1];
+			status.text = Unescaped(parts[2]);
+			status.detail = Unescaped(parts[3]);
+			sStatus[parts[0]] = status;
+		}
+	}
+}
+
+
+/** (the lock is held) */
+void
+SaveStatus()
+{
+	BPath path, folder;
+	if (!StatusPath(&path) || path.GetParent(&folder) != B_OK)
+		return;
+	create_directory(folder.Path(), 0755);
+	std::string text;
+	for (const auto& entry : sStatus) {
+		if (entry.second.testing)
+			continue;
+		text += entry.first + "\t" + entry.second.state + "\t" + Escaped(entry.second.text) + "\t" + Escaped(entry.second.detail) + "\n";
+	}
+	BFile file(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
+	if (file.InitCheck() == B_OK)
+		file.Write(text.data(), text.size());
+}
+
+
+/** What the column says for a server: what is missing for one that cannot be asked yet, else what the last test found, else that there was none. */
+Status
+StatusOf(const Settings& settings, const std::string& id)
+{
+	Server server;
+	std::string problem;
+	if (!MakeServer(settings, id, &server, &problem)) {
+		// (a server that is on and cannot be asked is a warning; one that is off only says what it would need)
+		Status missing;
+		missing.state = ServerIsOn(settings, id) ? form::kStateWarning : "";
+		missing.text = problem;
+		missing.detail = problem == "Needs an address" ? "Enter the address of the custom mirror below." : "Select the row and enter the API key below.";
+		return missing;
+	}
+	std::lock_guard<std::mutex> lock(sStatusLock);
+	LoadStatus();
+	auto found = sStatus.find(id);
+	if (found != sStatus.end())
+		return found->second;
+	Status none;
+	none.text = "Not tested";
+	none.detail = "The server is tested when it is switched on.";
+	return none;
+}
+
+
 void
 ToMessage(const Settings& s, BMessage* message)
 {
@@ -102,21 +246,30 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddString("map_style", s.mapStyle.c_str());
 	message->AddString("overpass_url", s.overpassUrl.c_str());
 	message->AddBool("overpass_custom_key", s.customRequiresKey);
-	// the list of the servers: a row for each, in the order that they are asked; the key of a server is a field of its row (the field of the key follows the selected row)
+	// the list of the servers: a row for each, in the order that they are asked. The key of a server is a message of its row (`overpass_key`, with `value` and `enabled`, whether the server needs
+	// one): the field of the key is not told which row it is for, it gets that message when the row is selected
 	for (const std::string& id : ServerOrder(s)) {
 		for (const Mirror& mirror : Mirrors()) {
 			if (id != mirror.id)
 				continue;
+			const Status status = StatusOf(s, id);
 			BMessage row;
 			row.AddBool("enabled", ServerIsOn(s, id));
 			row.AddString("name", mirror.name);
 			row.AddString("info", mirror.info);
+			row.AddString("status", status.text.c_str());
 			row.AddString("id", mirror.id);
-			row.AddString("key", KeyOf(s, id).c_str());
+			row.AddString("status_state", status.state.c_str());
+			row.AddString("status_detail", status.detail.c_str());
+			row.AddBool("testing", status.testing);
+			BMessage key;
+			key.AddString(form::kUpdateValue, KeyOf(s, id).c_str());
+			key.AddBool(form::kUpdateEnabled, ServerNeedsKey(s, id));
+			row.AddMessage(kKeyField, &key);
 			message->AddMessage(kServers, &row);
 		}
 	}
-	message->AddString(kKeyField, "");		// (shows the key of the selected row: never stored)
+	message->AddString(kKeyField, "");		// (the field of the key keeps nothing: what it shows is that of the selected row)
 }
 
 /** The cell of the table that a path key names: `overpass_servers_03.enabled` (row 3, column `enabled`), or `overpass_servers.enabled` when there is a single row. */
@@ -156,39 +309,47 @@ HostOf(const std::string& address)
 	return address.substr(start, end == std::string::npos ? std::string::npos : end - start);
 }
 
+/** puts the keys into the settings file (the lines of other keys, and the comments, stay) */
+status_t
+WriteKeys(const std::vector<std::pair<std::string, std::string>>& keys)
+{
+	std::lock_guard<std::mutex> lock(sFileLock);
+	BPath path;
+	if (!SettingsPath(&path))
+		return B_ERROR;
+	BPath folder;
+	if (path.GetParent(&folder) == B_OK)
+		create_directory(folder.Path(), 0755);
+
+	const std::string text = st::Update(ReadFileText(), keys);
+	BFile file(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
+	status_t result = file.InitCheck();
+	if (result == B_OK && file.Write(text.data(), text.size()) != (ssize_t)text.size())
+		result = B_IO_ERROR;
+	return result;
+}
+
 }	// namespace
 
 
 ServerTest
-TestOverpassServer(const Settings& settings)
+TestOverpassServer(const Server& server)
 {
-	// the first server of the list that is on and complete (also one that an earlier test found not working: it is asked again)
-	const std::vector<Server> servers = ActiveServers(settings, true);
-	if (servers.empty()) {
-		ServerTest nothing;
-		nothing.text = "Nothing to test";
-		nothing.state = "warning";
-		nothing.detail = "No server of the list is on and complete.\nA custom mirror needs its address, a server with a key needs the key.";
-		return nothing;
-	}
-	const Server& first = servers[0];
-	const std::string chosen = first.endpoint;
-	const std::string host = HostOf(chosen);
-	const std::string key = first.key;
-	const std::string endpoint = WithKey(chosen, key);
+	const std::string host = HostOf(server.endpoint);
+	const std::string endpoint = WithKey(server.endpoint, server.key);
 	std::string authorization;
-	std::string extra = "Tested: " + first.name + (servers.size() > 1 ? ", the first of the list. The others follow it when it does not answer." : ".");
-	if (!key.empty() && chosen.find("{key}") == std::string::npos) {
+	std::string extra = "Tested: " + server.name + ".";
+	if (!server.key.empty() && server.endpoint.find("{key}") == std::string::npos) {
 		if (endpoint.compare(0, 8, "https://") == 0)
-			authorization = "Bearer " + key;
+			authorization = "Bearer " + server.key;
 		else
 			extra += "\nThe key is not sent: the address is not https.";
 	}
 	// an address that is only a host: the interpreter of an Overpass server is at a path of its own, mostly /api/interpreter
 	{
-		const size_t scheme = chosen.find("://");
-		const size_t slash = chosen.find('/', scheme == std::string::npos ? 0 : scheme + 3);
-		if (first.id == "custom" && (slash == std::string::npos || slash + 1 >= chosen.size()))
+		const size_t scheme = server.endpoint.find("://");
+		const size_t slash = server.endpoint.find('/', scheme == std::string::npos ? 0 : scheme + 3);
+		if (server.id == "custom" && (slash == std::string::npos || slash + 1 >= server.endpoint.size()))
 			extra += "\nThe address has no path: the interpreter is usually at .../api/interpreter.";
 	}
 
@@ -220,40 +381,75 @@ TestOverpassServer(const Settings& settings)
 
 namespace {
 
-/** puts the keys into the settings file (the lines of other keys, and the comments, stay) */
-status_t
-WriteKeys(const std::vector<std::pair<std::string, std::string>>& keys)
+/** What a test found goes to the status of the server, and a mirror (not the public server) that is not reachable is left out of the list until a test of it works. */
+void
+TestDone(const Server& server, const ServerTest& test)
 {
-	BPath path;
-	if (!SettingsPath(&path))
-		return B_ERROR;
-	BPath folder;
-	if (path.GetParent(&folder) == B_OK)
-		create_directory(folder.Path(), 0755);
-
-	const std::string text = st::Update(ReadFileText(), keys);
-	BFile file(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
-	status_t result = file.InitCheck();
-	if (result == B_OK && file.Write(text.data(), text.size()) != (ssize_t)text.size())
-		result = B_IO_ERROR;
-	return result;
+	{
+		std::lock_guard<std::mutex> lock(sStatusLock);
+		LoadStatus();
+		Status status;
+		status.state = test.state;
+		status.text = test.text;
+		status.detail = test.detail;
+		sStatus[server.id] = status;
+		SaveStatus();
+	}
+	if (!server.isPublic) {
+		Settings current;
+		ParseSettings(ReadFileText(), &current);
+		std::vector<std::string> failed = current.failedIds;
+		failed.erase(std::remove(failed.begin(), failed.end(), server.id), failed.end());
+		if (test.state == form::kStateError)
+			failed.push_back(server.id);
+		std::string text;
+		for (const std::string& id : failed)
+			text += (text.empty() ? "" : " ") + id;
+		WriteKeys({{"overpass_failed", text}});
+	}
+	// the window shows the new status (the application sends the settings to it)
+	if (be_app != NULL)
+		be_app_messenger.SendMessage(kPushSettings);
 }
 
 
-/**
- * A mirror that fails the test is switched off: the navigator does not ask it (and wait for it) and goes on with the next of the list, and tells the user to look at the settings if there is
- * none, until a test works (or the address is another). The public server is only tested, never switched off: it is often just busy.
- */
-void
-RememberVerdict(const Settings& tested, ServerTest* test)
+int32
+RunTest(void* data)
 {
-	const std::vector<Server> servers = ActiveServers(tested, true);
-	if (servers.empty() || servers[0].isPublic)
-		return;
-	const bool works = test->state == "info";
-	WriteKeys({{"overpass_failed", works ? std::string() : servers[0].endpoint}});
-	if (!works)
-		test->detail += "\nThis mirror is not used until a test works.";
+	Server* server = (Server*)data;
+	const ServerTest test = TestOverpassServer(*server);
+	TestDone(*server, test);
+	delete server;
+	return 0;
+}
+
+
+/** A server is tested in the background (it can take 20 seconds): the status shows that it is under way, and the result is pushed to the window when it is there. */
+void
+StartTest(const std::string& id)
+{
+	Settings current;
+	ParseSettings(ReadFileText(), &current);
+	Server server;
+	std::string problem;
+	if (!MakeServer(current, id, &server, &problem))
+		return;		// (the column says what is missing)
+	{
+		std::lock_guard<std::mutex> lock(sStatusLock);
+		LoadStatus();
+		if (sStatus[id].testing)
+			return;
+		Status status;
+		status.text = "Testing...";
+		status.detail = "Asking " + server.name + " a small question.";
+		status.testing = true;
+		sStatus[id] = status;
+	}
+	const thread_id thread = spawn_thread(RunTest, "overpass test", B_NORMAL_PRIORITY, new Server(server));
+	if (thread < B_OK || resume_thread(thread) != B_OK) {
+		std::lock_guard<std::mutex> lock(sStatusLock);
+		sStatus[id] = Status();
+	}
 }
 
 }	// namespace
@@ -273,30 +469,34 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	LoadSettings(&current);
 	ToMessage(current, settings);
 	ToMessage(Settings(), defaults);
-	settings->AddBool(kTestButton, false);		// (a button: never stored)
-	settings->AddString(kTestResult, fTest.text.empty() ? "Not tested yet." : fTest.text.c_str());
-	settings->AddString(kTestState, fTest.state.c_str());
-	settings->AddString(kTestDetail, fTest.detail.c_str());
 
 	schema->MakeEmpty();
 	schema->AddInt32(form::kSchemaVersion, 1);
 	int32 order = 0;
 	for (const Field& field : kFields) {
 		if (std::string(field.key) == "overpass_url") {
-			// the servers: a switch, the name and the description of each, in the order that they are asked (as the services of the location server); under it the key of the row
-			// that is selected, which has no field of its own in the table, and then what the custom mirror needs
+			// the servers: a switch, the name, the description and the status of each, in the order that they are asked (as the services of the location server). The table sends a message
+			// with the key of the row that is selected, and the field of the key under it listens to that message; then what the custom mirror needs
 			BMessage servers;
 			servers.AddString(form::kAttrLabel, "Overpass servers");
-			servers.AddString(form::kAttrHelp, "Asked in this order until one answers. Drag a row to move it. A server that needs a key is skipped until it has one.");
+			servers.AddString(form::kAttrHelp, "Asked in this order until one answers. Drag a row to move it. A server is tested when it is switched on; one that needs a key is skipped until it has one.");
 			servers.AddString(form::kAttrKind, form::kKindTable);
 			servers.AddBool(form::kAttrReorderable, true);
+			servers.AddString(form::kAttrUpdateMsg, kRowCommand);
 			servers.AddInt32(form::kAttrOrder, order++);
 			schema->AddMessage(kServers, &servers);
-			const struct { const char* column; const char* label; bool readOnly; bool hidden; } columns[] = {
-				{"enabled", "Use", false, false}, {"name", "Server", true, false}, {"info", "Description", true, false}, {"id", "", true, true}, {"key", "", true, true},
-			};
 			int32 columnOrder = 0;
-			for (const auto& column : columns) {
+			struct Column {
+				const char* name;
+				const char* label;
+				bool readOnly;
+				bool hidden;
+			};
+			const Column columns[] = {
+				{"enabled", "Use", false, false}, {"name", "Server", true, false}, {"info", "Description", true, false}, {"status", "Status", true, false},
+				{"id", "", true, true}, {"status_state", "", true, true}, {"status_detail", "", true, true}, {"testing", "", true, true},
+			};
+			for (const Column& column : columns) {
 				BMessage attributes;
 				if (column.label[0] != '\0')
 					attributes.AddString(form::kAttrLabel, column.label);
@@ -304,15 +504,20 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 					attributes.AddBool(form::kAttrReadOnly, true);
 				if (column.hidden)
 					attributes.AddBool(form::kAttrHidden, true);
+				if (std::string(column.name) == "status") {
+					// (the icon of the state before the text, the longer text as the tool tip, a spinner while the server is tested)
+					attributes.AddString(form::kAttrStateField, "status_state");
+					attributes.AddString(form::kAttrDetailField, "status_detail");
+					attributes.AddString(form::kAttrBusyField, "testing");
+				}
 				attributes.AddInt32(form::kAttrOrder, columnOrder++);
-				schema->AddMessage((std::string(kServers) + "." + column.column).c_str(), &attributes);
+				schema->AddMessage((std::string(kServers) + "." + column.name).c_str(), &attributes);
 			}
 			BMessage keyField;
 			keyField.AddString(form::kAttrLabel, "API key");
-			keyField.AddString(form::kAttrHelp, "The key of the server that is selected in the list, if it needs one (NextGIS, Overpass.ch, a custom mirror that asks for one). Optional for the others.");
+			keyField.AddString(form::kAttrHelp, "The key of the server that is selected in the list. Only for a server that needs one (NextGIS, Overpass.ch, a custom mirror that asks for one).");
 			keyField.AddString(form::kAttrKind, form::kKindSecret);
-			keyField.AddString(form::kAttrFollowsTable, kServers);
-			keyField.AddString(form::kAttrFollowsColumn, "key");
+			keyField.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
 			keyField.AddInt32(form::kAttrOrder, order++);
 			schema->AddMessage(kKeyField, &keyField);
 		}
@@ -336,31 +541,6 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		}
 		schema->AddMessage(field.key, &attributes);
 	}
-
-	// a button under the settings of the server: does it work? (the answer is shown next to it)
-	BMessage test;
-	test.AddString(form::kAttrLabel, "Test the server");
-	test.AddString(form::kAttrKind, form::kKindButton);
-	test.AddString(form::kAttrShows, kTestResult);
-	test.AddString(form::kAttrHelp, "Asks the chosen server a small question and shows the answer.");
-	test.AddInt32(form::kAttrOrder, order++);
-	schema->AddMessage(kTestButton, &test);
-	// the status of the test: the HTTP status as a short text, with the icon of its state in front (info: it works, warning: another status than success, error: down or not reachable) and the
-	// detail as the tool tip; the fields of the state and of the detail are not shown
-	BMessage result;
-	result.AddString(form::kAttrLabel, "Test result");
-	result.AddString(form::kAttrHelp, "What the last test found.");
-	result.AddBool(form::kAttrReadOnly, true);
-	result.AddString(form::kAttrStateField, kTestState);
-	result.AddString(form::kAttrDetailField, kTestDetail);
-	result.AddInt32(form::kAttrOrder, order++);
-	schema->AddMessage(kTestResult, &result);
-	for (const char* hidden : {kTestState, kTestDetail}) {
-		BMessage invisible;
-		invisible.AddBool(form::kAttrHidden, true);
-		invisible.AddInt32(form::kAttrOrder, order++);
-		schema->AddMessage(hidden, &invisible);
-	}
 }
 
 
@@ -369,33 +549,35 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 {
 	std::vector<std::pair<std::string, std::string>> valid;
 	status_t first = B_OK;
+	auto refuse = [&](const std::string& what, status_t why) {
+		refused->push_back(what);
+		if (first == B_OK)
+			first = why;
+	};
 
 	// the list of the servers as it is now; changed by a cell or by the whole table, and written once (the order, and the ones that are on)
 	Settings current;
 	LoadSettings(&current);
-	std::vector<std::string> order = ServerOrder(current);
+	const std::vector<std::string> before = ServerOrder(current);
+	std::vector<std::string> order = before;
 	std::vector<std::string> on;
 	for (const std::string& id : order) {
 		if (ServerIsOn(current, id))
 			on.push_back(id);
 	}
+	const std::vector<std::string> wasOn = on;
 	std::vector<std::pair<std::string, std::string>> keys;
+	std::vector<std::string> toTest;
 	bool listChanged = false;
 
 	char* name = nullptr;
 	for (int32 i = 0; changes.GetInfo(B_ANY_TYPE, i, &name, nullptr, nullptr) == B_OK; i++) {
 		const std::string key = name;
-		if (key == kTestButton) {
-			// (the button: the first server of the list, as the settings are in the file now; the answer is shown next to it)
-			fTest = TestOverpassServer(current);
-			RememberVerdict(current, &fTest);
-			continue;
-		}
-		if (key == kTestResult || key == kTestState || key == kTestDetail || key == kKeyField)
-			continue;
+		if (key == kKeyField)
+			continue;		// (the field of the key keeps nothing: the key is a cell of its row)
 		if (key.compare(0, strlen(kServers), kServers) == 0) {
-			// the list of the servers: the whole table (Revert, Defaults, a row moved), or a cell of a row (`overpass_servers_02.enabled`, `.key`); the row is the place in the list as
-			// it was described
+			// the list of the servers: the whole table (Revert, Defaults, a row moved), or a cell of a row (`overpass_servers_02.enabled`, `.overpass_key.value`); the row is the place in the
+			// list as it was described
 			type_code type = 0;
 			int32 count = 0;
 			changes.GetInfo(name, &type, &count);
@@ -406,20 +588,22 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 					BMessage row;
 					const std::string id = changes.FindMessage(name, v, &row) == B_OK ? row.GetString("id", "") : std::string();
 					if (KeySettingName(id).empty() || std::find(order.begin(), order.end(), id) != order.end()) {
-						refused->push_back(key);
-						if (first == B_OK)
-							first = B_BAD_VALUE;
+						refuse(key, B_BAD_VALUE);
 						continue;
 					}
 					order.push_back(id);
 					if (row.GetBool("enabled", false))
 						on.push_back(id);
+					BMessage part;
 					const char* newKey = NULL;
-					if (row.FindString("key", &newKey) == B_OK && newKey != NULL)
+					if (row.FindMessage(kKeyField, &part) == B_OK && part.FindString(form::kUpdateValue, &newKey) == B_OK && newKey != NULL
+							&& st::Trim(newKey) != KeyOf(current, id)) {
 						keys.push_back({KeySettingName(id), st::Trim(newKey)});
+						toTest.push_back(id);
+					}
 				}
 				// (what the table did not name keeps its place after the others)
-				for (const std::string& id : ServerOrder(current)) {
+				for (const std::string& id : before) {
 					if (std::find(order.begin(), order.end(), id) == order.end()) {
 						order.push_back(id);
 						if (ServerIsOn(current, id))
@@ -431,43 +615,35 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			}
 			int32 row = 0;
 			std::string column;
-			const std::vector<std::string> before = ServerOrder(current);
 			if (!ParseCellKey(key, kServers, &row, &column) || row < 0 || row >= (int32)before.size()) {
-				refused->push_back(key);
-				if (first == B_OK)
-					first = B_NAME_NOT_FOUND;
+				refuse(key, B_NAME_NOT_FOUND);
 				continue;
 			}
 			const std::string id = before[row];
 			if (column == "enabled") {
 				bool want = false;
 				if (changes.FindBool(name, &want) != B_OK) {
-					refused->push_back(key);
-					if (first == B_OK)
-						first = B_BAD_VALUE;
+					refuse(key, B_BAD_VALUE);
 					continue;
 				}
 				on.erase(std::remove(on.begin(), on.end(), id), on.end());
 				if (want)
 					on.push_back(id);
 				listChanged = true;
-			} else if (column == "key") {
+			} else if (column == std::string(kKeyField) + "." + form::kUpdateValue) {
 				// (a cell is a field of the message, named by its path: the text is the string itself)
 				std::string newKey, why;
 				const char* typed = NULL;
 				if (changes.FindString(name, &typed) == B_OK && typed != NULL)
 					newKey = typed;
 				if (typed == NULL || !ValidateSetting(KeySettingName(id), newKey, &why)) {
-					refused->push_back(why.empty() ? key : key + " (" + why + ")");
-					if (first == B_OK)
-						first = B_BAD_VALUE;
+					refuse(why.empty() ? key : key + " (" + why + ")", B_BAD_VALUE);
 					continue;
 				}
 				keys.push_back({KeySettingName(id), st::Trim(newKey)});
+				toTest.push_back(id);
 			} else {
-				refused->push_back(key);
-				if (first == B_OK)
-					first = B_NAME_NOT_FOUND;
+				refuse(key, B_NAME_NOT_FOUND);
 			}
 			continue;
 		}
@@ -478,22 +654,42 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 		}
 		std::string text, why;
 		if (field == nullptr || sen::settings::GetText(changes, key, &text) != B_OK || !ValidateSetting(key, text, &why)) {
-			refused->push_back(why.empty() ? key : key + " (" + why + ")");
-			if (first == B_OK)
-				first = field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE;
+			refuse(why.empty() ? key : key + " (" + why + ")", field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE);
 			continue;
 		}
 		if (key == "overpass_custom_key")
 			text = st::ParseBool(text, false) ? "yes" : "no";
 		valid.push_back({key, st::Trim(text)});
+		// (the address and the flag of the custom mirror change what it is asked)
+		if (key == "overpass_url" || key == "overpass_custom_key")
+			toTest.push_back("custom");
 	}
-	if (listChanged)
+	if (listChanged) {
 		valid.push_back({"overpass_servers", ServersText(order, on)});
+		// a server that is switched on is tested
+		for (const std::string& id : on) {
+			if (std::find(wasOn.begin(), wasOn.end(), id) == wasOn.end())
+				toTest.push_back(id);
+		}
+	}
 	valid.insert(valid.end(), keys.begin(), keys.end());
 	if (valid.empty())
 		return first;
 
 	const status_t result = WriteKeys(valid);
+	if (result == B_OK) {
+		// the servers whose switch, key or address changed are tested when they are on (a server that is off is not asked, and a key that is only changed is not a reason to ask it)
+		Settings now;
+		LoadSettings(&now);
+		std::vector<std::string> done;
+		for (const std::string& id : toTest) {
+			if (std::find(done.begin(), done.end(), id) != done.end())
+				continue;
+			done.push_back(id);
+			if (ServerIsOn(now, id))
+				StartTest(id);
+		}
+	}
 	return result != B_OK ? result : first;
 }
 
