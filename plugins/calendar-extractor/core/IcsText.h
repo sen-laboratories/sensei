@@ -40,10 +40,23 @@ bool ClassifyMeetingUrl(const std::string& url, std::string* service);
 /** The first lines of a text without the marks of Markdown, in one line, for a column: at most @p limit characters, cut at a word. */
 std::string PlainSummary(const std::string& markdown, size_t limit);
 
+/** The pattern that names the file of an event unless the settings say otherwise: the day, the time if the event has one, the title. */
+inline constexpr char kDefaultNamePattern[] = "{date}_{time}_{title}";
+
 /**
- * The name of the file for an event: its start in the local zone, then its title: `2026-11-12_0930_Planning`, a day has no time: `2026-12-24_Christmas`. A name that has no title is the date
- * and `Event`. Blanks become `-`, what a file name cannot hold (`/`, control characters) is left out, and a long title is cut at a word. No extension.
+ * Whether a pattern can name a file: it has text, only the tokens {date} (2026-11-12), {time} (0930, empty for a day), {year}, {month}, {day}, {hour}, {minute} and {title}, and no `/`. @p reason gets
+ * what is wrong.
  */
+bool IsValidNamePattern(const std::string& pattern, std::string* reason = nullptr);
+
+/**
+ * The name of the file for an event from a pattern (see kDefaultNamePattern; start in the local zone, a day has no time: `2026-12-24_Christmas`). Blanks in the title become `-`, what a file name cannot
+ * hold (`/`, control characters) is left out, a long title is cut at a word; a token that is empty (the time of a day) takes one of the separators around it with it. A title that is empty is `Event`; a bad
+ * pattern is the default one. No extension.
+ */
+std::string BuildEventName(const std::string& pattern, const DateTime& localStart, bool hasTime, const std::string& title);
+
+/** The name of the file for an event after the default pattern: `2026-11-12_0930_Planning`. */
 std::string EventBaseName(const DateTime& localStart, bool hasTime, const std::string& title);
 
 }	// namespace ics

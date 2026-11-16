@@ -36,7 +36,10 @@ ParseSettings(const std::string& text, Settings* settings)
 		const std::string value = st::Trim(pair.second);
 		if (key == "rename")
 			settings->rename = st::ParseBool(value, settings->rename);
-		else if (key == "description")
+		else if (key == "rename_pattern") {
+			if (ics::IsValidNamePattern(value))
+				settings->renamePattern = value;
+		} else if (key == "description")
 			settings->description = st::ParseBool(value, settings->description);
 		else if (key == "myself")
 			settings->myself = value;
@@ -57,6 +60,12 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return fail("a # or a line break cannot be stored in the settings file");
 	if (key == "rename" || key == "description")
 		return st::IsBool(v) ? true : fail("yes or no");
+	if (key == "rename_pattern") {
+		std::string why;
+		if (ics::IsValidNamePattern(v, &why))
+			return true;
+		return fail(why.c_str());
+	}
 	if (key == "myself")
 		return true;
 	return fail("no such setting");

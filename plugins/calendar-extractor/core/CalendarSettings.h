@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include "IcsText.h"
+
 /**
  * @file CalendarSettings.h
  * @brief The settings of the calendar extractor: lines of `key = value` in `~/config/settings/sen/calendar-extractor.settings` (`#` starts a comment), changed in the settings window of SEN. Plain C++.
@@ -15,6 +17,8 @@ namespace calendar {
 
 struct Settings {
 	bool		rename = true;			///< name the file after the event (2026-11-12_0930_Title.ics)
+	/** the name after the pattern: tokens {date} {time} {year} {month} {day} {hour} {minute} {title} (see ics::BuildEventName) */
+	std::string	renamePattern = ics::kDefaultNamePattern;
 	bool		description = true;		///< keep the description in a Markdown file beside the event
 	/** who the user is, as `Name <address>` (or only the address, or only the name): the attendee that is the user is told in the relation Attendee */
 	std::string	myself;

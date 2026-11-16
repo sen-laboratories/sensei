@@ -174,6 +174,32 @@ TimeZones::OffsetAt(const std::string& tzid, int64_t local, int* offset) const
 }
 
 
+/**
+ * mktime of the C library, made right: Haiku's mktime is one second late for times before 1970 (midnight of 1939-05-05 is read back as 00:00:01), so the result is looked at with
+ * localtime_r and moved by what it is off. @p local is the civil time of @p parts as seconds (LocalSeconds), the result is (time_t)-1 if there is none.
+ */
+static time_t
+CheckedMktime(struct tm* parts, int64_t local)
+{
+	const time_t real = mktime(parts);
+	if (real == (time_t)-1)
+		return real;
+	struct tm back;
+	if (localtime_r(&real, &back) == NULL)
+		return real;
+	DateTime civil;
+	civil.year = back.tm_year + 1900;
+	civil.month = back.tm_mon + 1;
+	civil.day = back.tm_mday;
+	civil.hour = back.tm_hour;
+	civil.minute = back.tm_min;
+	civil.second = back.tm_sec;
+	const int64_t drift = local - LocalSeconds(civil);
+	// (a whole hour is the other side of a change of the clock, which mktime chose: not a rounding)
+	return (drift != 0 && drift > -60 && drift < 60) ? (time_t)(real + drift) : real;
+}
+
+
 namespace {
 
 /** the offset of a zone for a local time by the C library, with no check that the zone is real */
@@ -195,7 +221,7 @@ RawZoneOffset(const std::string& tzid, int64_t local, int* offset)
 	parts.tm_min = civil.minute;
 	parts.tm_sec = civil.second;
 	parts.tm_isdst = -1;
-	const time_t real = mktime(&parts);
+	const time_t real = CheckedMktime(&parts, local);
 	if (had)
 		setenv("TZ", saved.c_str(), 1);
 	else
@@ -259,7 +285,7 @@ LocalZoneOffset(int64_t local, int* offset)
 	parts.tm_min = civil.minute;
 	parts.tm_sec = civil.second;
 	parts.tm_isdst = -1;
-	const time_t real = mktime(&parts);
+	const time_t real = CheckedMktime(&parts, local);
 	if (real == (time_t)-1)
 		return false;
 	*offset = (int)(local - (int64_t)real);

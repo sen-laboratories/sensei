@@ -19,6 +19,13 @@ int main()
 	ParseSettings("# mine\nrename = no\ndescription = YES\nmyself = Gregor B. Rosenauer <gregor@senauer.ro>\nunknown = 1\nrename = maybe\n", &s);
 	CHECK(!s.rename && s.description && s.myself == "Gregor B. Rosenauer <gregor@senauer.ro>");		// ("maybe" is no value: what was there stays)
 
+	CHECK(s.renamePattern == "{date}_{time}_{title}");
+	ParseSettings("rename_pattern = {year}-{title}\n", &s);
+	CHECK(s.renamePattern == "{year}-{title}");
+	ParseSettings("rename_pattern = {bad}\n", &s);
+	CHECK(s.renamePattern == "{year}-{title}");		// (a bad pattern leaves what was there)
+	CHECK(ValidateSetting("rename_pattern", "{date} {title}") && !ValidateSetting("rename_pattern", "{x}") && !ValidateSetting("rename_pattern", ""));
+
 	std::string reason;
 	CHECK(ValidateSetting("rename", "yes") && ValidateSetting("description", "no") && !ValidateSetting("rename", "maybe", &reason) && reason == "yes or no");
 	CHECK(ValidateSetting("myself", "") && ValidateSetting("myself", "Jane Roe <jane@example.org>") && !ValidateSetting("myself", "a # b") && !ValidateSetting("nothing", "x"));

@@ -142,7 +142,7 @@ CalendarService::Enrich(entry_ref* file, BMessage* reply)
 	}
 
 	const ics::Event& event = *events[0];
-	const calendar::Facts facts = calendar::FactsOf(calendar, event);
+	const calendar::Facts facts = calendar::FactsOf(calendar, event, fOptions.namePattern);
 	status_t status = calendar::store::SetTypes(*file, temporal::mime::kEvent);
 	if (status != B_OK)
 		return status;
@@ -368,7 +368,7 @@ CalendarService::Describe(const entry_ref& file)
 	for (const std::string& note : calendar.notes)
 		std::cout << "note: " << note << "\n";
 	for (const ics::Event* event : calendar.DistinctEvents()) {
-		const calendar::Facts f = calendar::FactsOf(calendar, *event);
+		const calendar::Facts f = calendar::FactsOf(calendar, *event, fOptions.namePattern);
 		std::cout << "--- " << (f.title.empty() ? "(no title)" : f.title) << "\n";
 		std::cout << "name:        " << f.baseName << "\n";
 		std::cout << "start:       " << (f.hasStart ? std::to_string(f.startUnix) + " (UTC), local " + ics::DateTimeText(f.localStart) : "-") << (f.startEdtf.empty() ? "" : "  EDTF " + f.startEdtf) << "\n";

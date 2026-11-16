@@ -114,6 +114,7 @@ ToMessage(const Settings& s, BMessage* message)
 {
 	message->MakeEmpty();
 	message->AddBool("rename", s.rename);
+	message->AddString("rename_pattern", s.renamePattern.c_str());
 	message->AddBool("description", s.description);
 	message->AddString("myself", s.myself.c_str());
 }
@@ -145,6 +146,12 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	rename.AddString(form::kAttrHelp, "A calendar file with one event is renamed to its date, time and title: 2026-11-12_0930_Planning.ics");
 	rename.AddInt32(form::kAttrOrder, order++);
 	schema->AddMessage("rename", &rename);
+
+	BMessage pattern;
+	pattern.AddString(form::kAttrLabel, "Name pattern");
+	pattern.AddString(form::kAttrHelp, "Tokens: {date} 2026-11-12, {time} 0930 (none for a whole day), {year} {month} {day} {hour} {minute}, {title}. For example {date}_{time}_{title}, or {year}{month}{day} {title}.");
+	pattern.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage("rename_pattern", &pattern);
 
 	BMessage description;
 	description.AddString(form::kAttrLabel, "Keep the description in a Markdown file");

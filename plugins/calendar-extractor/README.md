@@ -24,7 +24,7 @@ Use `--library <folder>` when you try a relation: the people and places that it 
 ## The name of the file
 
 The file is named after the event: its **date and time in the zone of this computer**, then its title: `2026-11-12_0930_Planning.ics`. A day has no time: `2026-12-24_Christmas.ics`. The description is in a file with the
-same name: `2026-11-12_0930_Planning.md`. A name that is taken by another file gets `-2`. *Name the file after the event* in the settings switches the renaming off; a `.md` that somebody else made, or changed, is never replaced.
+same name: `2026-11-12_0930_Planning.md`. A name that is taken by another file gets `-2`. *Name the file after the event* in the settings switches the renaming off, and the **name pattern** (`rename_pattern`) changes the name: the tokens are `{date}` (`2026-11-12`), `{time}` (`0930`, nothing for a day: its separator goes with it), `{year}` `{month}` `{day}` `{hour}` `{minute}` and `{title}`; the default is `{date}_{time}_{title}`, and `{year}{month}{day} {title}` gives `20261112 Planning.ics`. A pattern with an unknown token or a `/` is refused; a `.md` that somebody else made, or changed, is never replaced.
 
 ## What is written
 
@@ -56,7 +56,7 @@ between the event and the person, not of the person.
 
 ## Settings
 
-In the settings window of SEN, under the calendar extractor (`~/config/settings/sen/calendar-extractor.settings`): *Name the file after the event*, *Keep the description in a Markdown file*, and **Myself**: a field with a list of all the people that SEN knows
+In the settings window of SEN, under the calendar extractor (`~/config/settings/sen/calendar-extractor.settings`): *Name the file after the event*, its *Name pattern*, *Keep the description in a Markdown file*, and **Myself**: a field with a list of all the people that SEN knows
 that follows what you type; other text is fine too (`Name <address>`). The attendee with that address (or, if you give only a name, that name) is the person that you are.
 
 ## What it forgives

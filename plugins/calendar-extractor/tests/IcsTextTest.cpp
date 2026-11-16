@@ -67,6 +67,24 @@ int main()
 	CHECK(EventBaseName(t, true, std::string(200, 'a')).size() == std::string("2026-11-12_0905_").size() + 80);
 	CHECK_EQ(EventBaseName(t, true, "...hidden"), "2026-11-12_0905_hidden");
 
+	// a pattern of the settings
+	CHECK_EQ(BuildEventName("{date}_{time}_{title}", t, true, "Planning"), "2026-11-12_0905_Planning");
+	CHECK_EQ(BuildEventName("{year}{month}{day}-{hour}{minute} {title}", t, true, "A b"), "20261112-0905 A-b");
+	CHECK_EQ(BuildEventName("{title} ({date})", t, false, "Christmas"), "Christmas (2026-11-12)");
+	CHECK_EQ(BuildEventName("{date}_{time}_{title}", t, false, "Christmas"), "2026-11-12_Christmas");		// (no time: its separator goes with it)
+	CHECK_EQ(BuildEventName("{date}-{time}-{title}", t, false, "Christmas"), "2026-11-12-Christmas");
+	CHECK_EQ(BuildEventName("{time}_{title}", t, false, "Christmas"), "Christmas");
+	CHECK_EQ(BuildEventName("{title}", t, true, ""), "Event");
+	CHECK_EQ(BuildEventName("{nonsense}", t, true, "X"), "2026-11-12_0905_X");		// (a bad pattern is the default one)
+	CHECK_EQ(BuildEventName("{date} a:c", t, true, "X"), "2026-11-12 ac");
+	CHECK_EQ(BuildEventName("{date}/{title}", t, true, "X"), "2026-11-12_0905_X");
+	std::string why;
+	CHECK(IsValidNamePattern("{date}_{title}") && IsValidNamePattern("Event {title}") && IsValidNamePattern("{year}{month}{day}"));
+	CHECK(!IsValidNamePattern("", &why) && why == "the pattern is empty");
+	CHECK(!IsValidNamePattern("  ") && !IsValidNamePattern("{date}/{title}", &why) && why == "a name cannot hold a /");
+	CHECK(!IsValidNamePattern("{date", &why) && why == "a { with no }");
+	CHECK(!IsValidNamePattern("{who}", &why) && why.find("{who} is no token") == 0);
+
 	printf("%d checks, %d failure(s)\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;
 }

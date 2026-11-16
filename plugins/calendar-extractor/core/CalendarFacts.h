@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "IcsCalendar.h"
+#include "IcsText.h"
 
 /**
  * @file CalendarFacts.h
@@ -37,8 +38,8 @@ struct Facts {
 	std::string		baseName;				///< `2026-11-12_0930_Title`
 };
 
-/** What the plugin writes for an event of a calendar. */
-Facts FactsOf(const ics::Calendar& calendar, const ics::Event& event);
+/** What the plugin writes for an event of a calendar; the name of its file is made after @p namePattern. */
+Facts FactsOf(const ics::Calendar& calendar, const ics::Event& event, const std::string& namePattern = ics::kDefaultNamePattern);
 
 /** A name as people say it: `Roe, Jane` is `Jane Roe` (Outlook writes the family name first), quotes and blanks around it are taken off. A name with no comma is as it was. */
 std::string NaturalName(const std::string& name);

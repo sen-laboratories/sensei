@@ -25,6 +25,7 @@
 #include <sen/SenAttributes.h>
 #include <sen/Sensei.h>
 
+#include "core/IcsText.h"
 #include "../../common/Notice.h"
 #include "../../common/RelationTarget.h"
 
@@ -41,6 +42,7 @@ App::App()
 	calendar::Settings settings;
 	calendar::LoadSettings(&settings);
 	fOptions.rename = settings.rename;
+	fOptions.namePattern = settings.renamePattern;
 	fOptions.description = settings.description;
 	fOptions.myself = settings.myself;
 }
@@ -65,6 +67,7 @@ App::_PrintUsage(const char* error) const
 		"  --identify          only find out whether the file is an event and set its semantic type\n"
 		"  --enrich            write the attributes, name the file after the event, keep its description in a Markdown file (the default)\n"
 		"  --no-rename         enrich: keep the name of the file\n"
+		"  --name-pattern <p>  enrich: name the file after this pattern ({date} {time} {year} {month} {day} {hour} {minute} {title}, default {date}_{time}_{title})\n"
 		"  --no-description    enrich: no Markdown file for the description\n"
 		"  --describe          print what would be written (nothing is changed)\n"
 		"  --resolve <type>    print the targets of a relation (relation/x-vnd.sen-labs.relation.event.attendee, .location, .series)\n"
@@ -94,6 +97,15 @@ App::ArgvReceived(int32 argc, char** argv)
 			describe = true;
 		} else if (strcmp(arg, "--no-rename") == 0) {
 			fOptions.rename = false;
+		} else if (strcmp(arg, "--name-pattern") == 0 && i + 1 < argc) {
+			std::string why;
+			if (!ics::IsValidNamePattern(argv[++i], &why)) {
+				_PrintUsage(why.c_str());
+				fExitCode = 1;
+				Quit();
+				return;
+			}
+			fOptions.namePattern = argv[i];
 		} else if (strcmp(arg, "--no-description") == 0) {
 			fOptions.description = false;
 		} else if (strcmp(arg, "--library") == 0 && i + 1 < argc) {

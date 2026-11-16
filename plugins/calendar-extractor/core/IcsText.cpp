@@ -561,17 +561,11 @@ PlainSummary(const std::string& markdown, size_t limit)
 }
 
 
+namespace {
+
 std::string
-EventBaseName(const DateTime& start, bool hasTime, const std::string& title)
+CleanTitle(const std::string& title)
 {
-	char date[32];
-	snprintf(date, sizeof(date), "%04d-%02d-%02d", start.year, start.month, start.day);
-	std::string name = date;
-	if (hasTime) {
-		char time[16];
-		snprintf(time, sizeof(time), "_%02d%02d", start.hour, start.minute);
-		name += time;
-	}
 	// the title: blanks become -, what a name cannot hold is left out
 	std::string clean;
 	bool dash = false;
@@ -602,7 +596,125 @@ EventBaseName(const DateTime& start, bool hasTime, const std::string& title)
 			cut = dashAt;
 		clean = clean.substr(0, cut);
 	}
-	return name + "_" + (clean.empty() ? "Event" : clean);
+	return clean;
+}
+
+
+/** the value of a token of a name pattern; false if it is none */
+bool
+TokenValue(const std::string& token, const DateTime& start, bool hasTime, const std::string& title, std::string* value)
+{
+	char buffer[32];
+	if (token == "date")
+		snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", start.year, start.month, start.day);
+	else if (token == "time")
+		snprintf(buffer, sizeof(buffer), "%02d%02d", start.hour, start.minute);
+	else if (token == "year")
+		snprintf(buffer, sizeof(buffer), "%04d", start.year);
+	else if (token == "month")
+		snprintf(buffer, sizeof(buffer), "%02d", start.month);
+	else if (token == "day")
+		snprintf(buffer, sizeof(buffer), "%02d", start.day);
+	else if (token == "hour")
+		snprintf(buffer, sizeof(buffer), "%02d", start.hour);
+	else if (token == "minute")
+		snprintf(buffer, sizeof(buffer), "%02d", start.minute);
+	else if (token == "title") {
+		const std::string clean = CleanTitle(title);
+		*value = clean.empty() ? "Event" : clean;
+		return true;
+	} else
+		return false;
+	// (a day has no time of day)
+	*value = (!hasTime && (token == "time" || token == "hour" || token == "minute")) ? std::string() : std::string(buffer);
+	return true;
+}
+
+
+bool
+IsNameSeparator(char c)
+{
+	return c == '_' || c == '-' || c == ' ' || c == '.';
+}
+
+}	// namespace
+
+
+bool
+IsValidNamePattern(const std::string& pattern, std::string* reason)
+{
+	auto fail = [reason](const std::string& text) {
+		if (reason != nullptr)
+			*reason = text;
+		return false;
+	};
+	DateTime none;
+	if (pattern.find_first_not_of(" \t") == std::string::npos)
+		return fail("the pattern is empty");
+	if (pattern.find('/') != std::string::npos)
+		return fail("a name cannot hold a /");
+	for (size_t i = 0; i < pattern.size(); i++) {
+		if (pattern[i] != '{') {
+			if (pattern[i] == '}')
+				return fail("a } with no {");
+			continue;
+		}
+		const size_t close = pattern.find('}', i);
+		if (close == std::string::npos)
+			return fail("a { with no }");
+		const std::string token = pattern.substr(i + 1, close - i - 1);
+		std::string value;
+		if (!TokenValue(token, none, true, "", &value))
+			return fail("{" + token + "} is no token: use {date} {time} {year} {month} {day} {hour} {minute} {title}");
+		i = close;
+	}
+	return true;
+}
+
+
+std::string
+BuildEventName(const std::string& pattern, const DateTime& start, bool hasTime, const std::string& title)
+{
+	const std::string& use = IsValidNamePattern(pattern) ? pattern : std::string(kDefaultNamePattern);
+	std::string name;
+	for (size_t i = 0; i < use.size(); i++) {
+		const char c = use[i];
+		if (c != '{') {
+			// (what a name cannot hold)
+			if ((unsigned char)c >= 0x20 && c != 0x7F && c != '"' && c != '*' && c != '?' && c != '<' && c != '>' && c != '|' && c != '\\' && c != ':' && c != '}')
+				name += c;
+			continue;
+		}
+		const size_t close = use.find('}', i);
+		std::string value;
+		TokenValue(use.substr(i + 1, close - i - 1), start, hasTime, title, &value);
+		i = close;
+		if (value.empty()) {
+			// an empty token takes a separator with it: "2026-11-12__Title" is "2026-11-12_Title"
+			if (i + 1 < use.size() && IsNameSeparator(use[i + 1]) && (name.empty() || name.back() == use[i + 1]))
+				i++;
+			continue;
+		}
+		name += value;
+	}
+	while (!name.empty() && IsNameSeparator(name.back()))
+		name.pop_back();
+	while (!name.empty() && IsNameSeparator(name[0]))
+		name.erase(0, 1);
+	if (name.size() > 200) {
+		size_t cut = 200;
+		while (cut > 0 && ((unsigned char)name[cut] & 0xC0) == 0x80)
+			cut--;
+		name = name.substr(0, cut);
+	}
+	return name.empty() ? "Event" : name;
+}
+
+
+std::string
+EventBaseName(const DateTime& start, bool hasTime, const std::string& title)
+{
+	return BuildEventName(kDefaultNamePattern, start, hasTime, title);
 }
 
 }	// namespace ics

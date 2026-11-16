@@ -146,7 +146,7 @@ RoleText(const ics::Person& person)
 
 
 Facts
-FactsOf(const ics::Calendar& /*calendar: the times of the event are worked out already*/, const ics::Event& event)
+FactsOf(const ics::Calendar& /*calendar: the times of the event are worked out already*/, const ics::Event& event, const std::string& namePattern)
 {
 	Facts facts;
 	facts.title = event.summary;
@@ -183,7 +183,7 @@ FactsOf(const ics::Calendar& /*calendar: the times of the event are worked out a
 				facts.endEdtf = FloatingText(event.end);
 		}
 		facts.localStart = event.allDay ? event.start : ics::UnixToLocal(event.startUnix);
-		facts.baseName = ics::EventBaseName(facts.localStart, !event.allDay, event.summary);
+		facts.baseName = ics::BuildEventName(namePattern, facts.localStart, !event.allDay, event.summary);
 	}
 
 	// the links: the conference properties first, then the location, the page of the event and the description (of the text as Markdown, which has the links of an HTML text too)

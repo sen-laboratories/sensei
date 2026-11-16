@@ -9,6 +9,8 @@
 #include <Entry.h>
 #include <Message.h>
 
+#include "core/IcsText.h"
+
 /**
  * What the plugin does: finds out that a calendar file is an event (identify), writes what the file says into its attributes, names the file after the event and keeps its description
  * in a Markdown file beside it (enrich), and works out the relations of an event when they are opened (resolve): its attendees, its place and the instances of its series.
@@ -17,6 +19,7 @@ class CalendarService {
 public:
 	struct Options {
 		bool	rename = true;			///< name the file after the event (2026-11-12_0930_Title.ics)
+		std::string	namePattern = ics::kDefaultNamePattern;	///< the pattern of that name (rename_pattern in the settings)
 		bool	description = true;		///< keep the description in a Markdown file beside it
 		std::string	myself;				///< who the user is (`Name <address>`): the attendee that is the user is told in the relation Attendee
 	};
