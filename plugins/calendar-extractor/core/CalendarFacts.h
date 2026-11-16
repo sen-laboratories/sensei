@@ -40,6 +40,9 @@ struct Facts {
 /** What the plugin writes for an event of a calendar. */
 Facts FactsOf(const ics::Calendar& calendar, const ics::Event& event);
 
+/** A name as people say it: `Roe, Jane` is `Jane Roe` (Outlook writes the family name first), quotes and blanks around it are taken off. A name with no comma is as it was. */
+std::string NaturalName(const std::string& name);
+
 /** The attendees as `Name <address>` (or one of them), for the organizer attribute and for messages. */
 std::string PersonText(const ics::Person& person);
 

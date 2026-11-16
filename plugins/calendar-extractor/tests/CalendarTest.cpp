@@ -105,6 +105,20 @@ int main()
 		CHECK(e.location == "Empire State Building\n20 W 34th St\nNew York, NY 10001");
 	}
 
+	// ---- zones that the system answers for (a name that it does not know is none)
+	{
+		int offset = 0;
+		CHECK(PosixZoneOffset("America/New_York", U(2026, 11, 16, 9, 30), &offset) && offset == -5 * 3600);
+		CHECK(PosixZoneOffset("America/New_York", U(2026, 7, 16, 9, 30), &offset) && offset == -4 * 3600);
+		CHECK(PosixZoneOffset("Europe/London", U(2026, 1, 16, 9, 30), &offset) && offset == 0);		// (an offset of 0 that is real)
+		CHECK(PosixZoneOffset("Europe/London", U(2026, 7, 16, 9, 30), &offset) && offset == 3600);
+		CHECK(PosixZoneOffset("UTC", U(2026, 7, 16, 9, 30), &offset) && offset == 0 && PosixZoneOffset("Etc/GMT", U(2026, 7, 16, 9, 30), &offset));
+		CHECK(!PosixZoneOffset("Foo/Bar", U(2026, 7, 16, 9, 30), &offset) && !PosixZoneOffset("Nonsense", U(2026, 7, 16, 9, 30), &offset) && !PosixZoneOffset("Customized Time Zone", U(2026, 7, 16, 9, 30), &offset));
+		// (an event in such a zone is taken as a time of this computer)
+		Calendar odd = ReadCalendar("BEGIN:VEVENT\nSUMMARY:x\nDTSTART;TZID=Foo/Bar:20261116T093000\nEND:VEVENT\n");
+		CHECK(odd.events[0].startKnown && odd.events[0].startUnix == U(2026, 11, 16, 8, 30));
+	}
+
 	// ---- days and durations (the zone of this computer is Vienna)
 	{
 		Calendar cal = ReadCalendar(Read("allday.ics"));

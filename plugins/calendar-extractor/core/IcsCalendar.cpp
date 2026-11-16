@@ -174,12 +174,12 @@ TimeZones::OffsetAt(const std::string& tzid, int64_t local, int* offset) const
 }
 
 
+namespace {
+
+/** the offset of a zone for a local time by the C library, with no check that the zone is real */
 bool
-PosixZoneOffset(const std::string& tzid, int64_t local, int* offset)
+RawZoneOffset(const std::string& tzid, int64_t local, int* offset)
 {
-	// (only names like Europe/Vienna: a name that the library does not know would be taken as UTC without a word)
-	if (tzid.find('/') == std::string::npos || tzid.find(' ') != std::string::npos || tzid.size() > 60)
-		return false;
 	const char* before = getenv("TZ");
 	const std::string saved = before != NULL ? before : "";
 	const bool had = before != NULL;
@@ -196,18 +196,53 @@ PosixZoneOffset(const std::string& tzid, int64_t local, int* offset)
 	parts.tm_sec = civil.second;
 	parts.tm_isdst = -1;
 	const time_t real = mktime(&parts);
-	const bool ok = real != (time_t)-1;
-	// (the name that the library found: for a zone that it does not know it is the name that we gave, not an abbreviation)
-	const bool known = ok && parts.tm_zone != NULL && tzid.find(parts.tm_zone) == std::string::npos;
 	if (had)
 		setenv("TZ", saved.c_str(), 1);
 	else
 		unsetenv("TZ");
 	tzset();
-	if (!ok || !known)
+	if (real == (time_t)-1)
 		return false;
 	*offset = (int)(local - (int64_t)real);
 	return true;
+}
+
+/** zones that are UTC all the year: the library gives the same offset for a name that it does not know, so these are told by their names */
+bool
+IsAlwaysUtc(const std::string& tzid)
+{
+	static const char* names[] = {"UTC", "GMT", "Zulu", "Africa/Abidjan", "Africa/Accra", "Africa/Bamako", "Africa/Banjul", "Africa/Bissau", "Africa/Conakry", "Africa/Dakar", "Africa/Freetown",
+		"Africa/Lome", "Africa/Monrovia", "Africa/Nouakchott", "Africa/Ouagadougou", "Africa/Sao_Tome", "Atlantic/Reykjavik", "Atlantic/St_Helena"};
+	if (tzid.compare(0, 4, "Etc/") == 0)
+		return true;
+	for (const char* name : names) {
+		if (tzid == name)
+			return true;
+	}
+	return false;
+}
+
+}	// namespace
+
+
+bool
+PosixZoneOffset(const std::string& tzid, int64_t local, int* offset)
+{
+	// (only names like Europe/Vienna: a name that the library does not know would be taken as UTC without a word)
+	if (tzid.find(' ') != std::string::npos || tzid.size() > 60 || (tzid.find('/') == std::string::npos && !IsAlwaysUtc(tzid)))
+		return false;
+	if (!RawZoneOffset(tzid, local, offset))
+		return false;
+	if (*offset != 0 || IsAlwaysUtc(tzid))
+		return true;
+	// an offset of 0 is a real one (London in winter) or the answer for a name that is not known: a zone that has another offset in the other half of the year is real
+	const int year = FromLocalSeconds(local).year;
+	for (int month : {1, 7}) {
+		int other = 0;
+		if (RawZoneOffset(tzid, DaysFromCivil(year, month, 15) * 86400 + 12 * 3600, &other) && other != 0)
+			return true;
+	}
+	return false;
 }
 
 

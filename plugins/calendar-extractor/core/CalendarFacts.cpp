@@ -63,11 +63,35 @@ IsOnlyLink(const std::string& text)
 
 
 std::string
+NaturalName(const std::string& input)
+{
+	std::string name = input;
+	auto trim = [](std::string text) {
+		size_t first = 0, last = text.size();
+		while (first < last && (isspace((unsigned char)text[first]) || text[first] == '"'))
+			first++;
+		while (last > first && (isspace((unsigned char)text[last - 1]) || text[last - 1] == '"'))
+			last--;
+		return text.substr(first, last - first);
+	};
+	name = trim(name);
+	const size_t comma = name.find(',');
+	if (comma != std::string::npos && name.find(',', comma + 1) == std::string::npos && name.find('@') == std::string::npos) {
+		const std::string family = trim(name.substr(0, comma)), given = trim(name.substr(comma + 1));
+		if (!family.empty() && !given.empty())
+			return given + " " + family;
+	}
+	return name;
+}
+
+
+std::string
 PersonText(const ics::Person& person)
 {
-	if (!person.name.empty() && !person.email.empty())
-		return person.name + " <" + person.email + ">";
-	return person.name.empty() ? person.email : person.name;
+	const std::string name = NaturalName(person.name);
+	if (!name.empty() && !person.email.empty())
+		return name + " <" + person.email + ">";
+	return name.empty() ? person.email : name;
 }
 
 

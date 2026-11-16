@@ -100,6 +100,12 @@ int main()
 		CHECK(ResponseText("NEEDS ACTION") == "Needs action" && ResponseText("ACCEPTED") == "Accepted" && ResponseText("") == "" && EventStatusText("NEEDS ACTION") == "");
 	}
 
+	CHECK_EQ(NaturalName("Roe, Jane"), "Jane Roe");
+	CHECK_EQ(NaturalName("  \"Muster, Max\" "), "Max Muster");
+	CHECK_EQ(NaturalName("Jane Roe"), "Jane Roe");
+	CHECK_EQ(NaturalName("Acme, Inc., Vienna"), "Acme, Inc., Vienna");
+	CHECK_EQ(NaturalName(""), "");
+
 	printf("%d checks, %d failure(s)\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;
 }
