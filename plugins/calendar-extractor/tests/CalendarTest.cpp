@@ -154,6 +154,7 @@ int main()
 	{
 		Calendar cal = ReadCalendar(Read("multi.ics"));
 		CHECK(cal.name == "Holidays" && cal.DistinctEvents().size() == 3 && cal.events[1].summary == "Epiphany");
+		CHECK(cal.description == "Public holidays");
 	}
 
 	// ---- damage: nothing fails, what cannot be read is left out and told

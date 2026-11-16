@@ -5,6 +5,7 @@
 
 #include "CalendarService.h"
 
+#include <Directory.h>
 #include <Messenger.h>
 #include <Node.h>
 #include <String.h>
@@ -28,6 +29,7 @@
 #include "../../common/EntityFile.h"
 #include "CalendarStore.h"
 #include "core/CalendarFacts.h"
+#include "core/CalendarSettings.h"
 #include "core/IcsText.h"
 
 namespace temporal = sen::onto::temporal;
@@ -85,15 +87,14 @@ CalendarService::Identify(const entry_ref& file, BMessage* reply)
 		fprintf(stderr, "%s is no calendar file\n", file.name);
 		return B_ENTRY_NOT_FOUND;
 	}
-	if (calendar.DistinctEvents().size() != 1) {
-		fprintf(stderr, "%s has %zu events: no event of its own\n", file.name, calendar.DistinctEvents().size());
-		return B_ENTRY_NOT_FOUND;
-	}
-	status_t status = calendar::store::SetTypes(file, temporal::mime::kEvent);
+	// one event is an event, several are a calendar that holds them
+	const bool single = calendar.DistinctEvents().size() == 1;
+	const char* type = single ? temporal::mime::kEvent : temporal::mime::kCalendar;
+	status_t status = calendar::store::SetTypes(file, type);
 	if (status != B_OK)
 		return status;
-	reply->AddString(sensei::key::kSemanticType, temporal::mime::kEvent);
-	fprintf(stderr, "%s is an event\n", file.name);
+	reply->AddString(sensei::key::kSemanticType, type);
+	fprintf(stderr, "%s is %s\n", file.name, single ? "an event" : "a calendar");
 	return B_OK;
 }
 
@@ -123,9 +124,18 @@ CalendarService::Enrich(entry_ref* file, BMessage* reply)
 			last = any ? std::max(last, end) : end;
 			any = true;
 		}
-		calendar::store::SetTypes(*file, NULL);
+		calendar::store::SetTypes(*file, temporal::mime::kCalendar);
+		reply->AddString(sensei::key::kSemanticType, temporal::mime::kCalendar);
 		BNode node(file);
-		calendar::store::WriteCalendar(node, calendar.name, first, last, any);
+		std::string name = calendar.name;
+		if (name.empty()) {
+			// (a calendar that has no name is called after its file)
+			name = file->name;
+			const size_t dot = name.rfind('.');
+			if (dot != std::string::npos && dot > 0)
+				name = name.substr(0, dot);
+		}
+		calendar::store::WriteCalendar(node, name, calendar.description, (int32)events.size(), first, last, any);
 		fSummaryTitle = "Calendar enriched";
 		fSummary = std::string(file->name) + " has " + std::to_string(events.size()) + " events" + (calendar.name.empty() ? "" : " (" + calendar.name + ")") + ".";
 		return B_OK;
@@ -177,10 +187,30 @@ CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage
 	if (!ReadCalendarOf(file, &calendar))
 		return B_ENTRY_NOT_FOUND;
 	const std::vector<const ics::Event*> events = calendar.DistinctEvents();
+	const std::string kind = type != NULL ? type : "";
+
+	if (kind == temporal::mime::kCalendarEvents) {
+		// the events of a calendar are places in the same file, as the pages of a document are: the target is the file, an event is named by its UID
+		for (const ics::Event* each : events) {
+			BMessage item;
+			item.AddRef(sen::key::kTargetRef, &file);
+			item.AddString(sen::attr::kRelationLabel, "contains");
+			item.AddString(temporal::attr::kTitle, each->summary.c_str());
+			if (each->startKnown)
+				item.AddInt64(temporal::attr::kStartDate, each->startUnix);
+			if (each->endKnown)
+				item.AddInt64(temporal::attr::kEndDate, each->endUnix);
+			if (!each->uid.empty())
+				item.AddString(temporal::attr::kUid, each->uid.c_str());
+			item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
+			reply->AddMessage(sensei::key::kTargets, &item);
+		}
+		return B_OK;
+	}
+
 	if (events.size() != 1)
 		return B_ENTRY_NOT_FOUND;
 	const ics::Event& event = *events[0];
-	const std::string kind = type != NULL ? type : "";
 
 	auto libraryOf = [&](const char* mimeType, entry_ref* folder) {
 		return libraries.FindRef(mimeType, folder) == B_OK;
@@ -226,9 +256,36 @@ CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage
 			const std::string response = calendar::ResponseText(person.status);
 			if (!response.empty())
 				item.AddString(temporal::attr::kResponse, response.c_str());
+			// (the user is told among the others: the Kind of the relation is "you")
+			calendar::Settings who;
+			who.myself = fOptions.myself;
+			if (calendar::IsMyself(who, person.name, person.email))
+				item.AddString(sen::attr::kRelationKind, "you");
 			item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
 			reply->AddMessage(sensei::key::kTargets, &item);
 		}
+		return B_OK;
+	}
+
+	if (kind == temporal::mime::kEventDescription) {
+		// the Markdown file beside the event, with the name of the event: the one that this plugin made
+		std::string name = file.name;
+		const size_t dot = name.rfind('.');
+		if (dot != std::string::npos && dot > 0)
+			name = name.substr(0, dot);
+		BEntry parentEntry(&file);
+		BDirectory parent;
+		if (parentEntry.InitCheck() != B_OK || parentEntry.GetParent(&parent) != B_OK)
+			return B_OK;
+		BEntry description(&parent, (name + ".md").c_str());
+		entry_ref ref;
+		if (!description.Exists() || description.GetRef(&ref) != B_OK)
+			return B_OK;
+		BMessage item;
+		item.AddRef(sen::key::kTargetRef, &ref);
+		item.AddString(sen::attr::kRelationLabel, "described in");
+		item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
+		reply->AddMessage(sensei::key::kTargets, &item);
 		return B_OK;
 	}
 

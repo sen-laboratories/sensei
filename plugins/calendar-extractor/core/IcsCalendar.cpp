@@ -613,6 +613,8 @@ ReadCalendar(const std::string& text)
 			calendar.name = value("X-WR-CALNAME").empty() ? value("NAME") : value("X-WR-CALNAME");
 		if (calendar.timezone.empty())
 			calendar.timezone = value("X-WR-TIMEZONE");
+		if (calendar.description.empty())
+			calendar.description = value("X-WR-CALDESC").empty() ? value("DESCRIPTION") : value("X-WR-CALDESC");
 	}
 	std::vector<const Component*> pending;
 	std::function<void(const Component&)> zonesOf = [&](const Component& component) {

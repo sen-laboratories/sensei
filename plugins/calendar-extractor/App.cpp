@@ -37,6 +37,12 @@ App::App()
 	fExitCode(0),
 	fNotify(true)
 {
+	// the options are the settings, the command line may change them
+	calendar::Settings settings;
+	calendar::LoadSettings(&settings);
+	fOptions.rename = settings.rename;
+	fOptions.description = settings.description;
+	fOptions.myself = settings.myself;
 }
 
 
@@ -142,7 +148,7 @@ App::ArgvReceived(int32 argc, char** argv)
 void
 App::RefsReceived(BMessage* message)
 {
-	// Tracker's Enrich is B_REFS_RECEIVED; a double click on the file of a relation (this plugin is the application of the relation types) opens the target
+	// the Enrich of the file manager (Akita) is B_REFS_RECEIVED; a double click on the file of a relation (this plugin is the application of the relation types) opens the target
 	entry_ref first;
 	if (message->FindRef("refs", &first) == B_OK) {
 		bool found = true;
@@ -162,8 +168,24 @@ App::RefsReceived(BMessage* message)
 
 
 void
+App::Pulse()
+{
+	if (fSession.Expired())
+		Quit();
+}
+
+
+void
 App::MessageReceived(BMessage* message)
 {
+	// the settings window of SEN asks for the settings and sends the changes; the instance that is started for it ends with the session
+	if (fSession.Handle(message, &fSettingsProvider, kApplicationSignature)) {
+		if (fSession.IsEnded())
+			Quit();
+		else
+			SetPulseRate(5000000);
+		return;
+	}
 	switch (message->what) {
 		case sensei::cmd::kIdentify:
 		case sensei::cmd::kEnrich:

@@ -30,8 +30,8 @@ status_t SetTypes(const entry_ref& file, const char* semanticType);
  */
 status_t WriteEvent(BNode& node, const Facts& facts);
 
-/** The attributes of a calendar with several events: its name and the time that its events cover. */
-status_t WriteCalendar(BNode& node, const std::string& name, int64_t first, int64_t last, bool hasTimes);
+/** The attributes of a calendar with several events: its name, its description, the number of events and the time that they cover. */
+status_t WriteCalendar(BNode& node, const std::string& name, const std::string& description, int32 events, int64_t first, int64_t last, bool hasTimes);
 
 /**
  * Renames the file to @p baseName with its own extension (`.ics`, else `.ics` is added); a name that is taken by another file gets `-2`, `-3`... Gets the new ref.

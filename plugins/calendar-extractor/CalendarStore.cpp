@@ -111,9 +111,11 @@ WriteEvent(BNode& node, const Facts& facts)
 
 
 status_t
-WriteCalendar(BNode& node, const std::string& name, int64_t first, int64_t last, bool hasTimes)
+WriteCalendar(BNode& node, const std::string& name, const std::string& description, int32 events, int64_t first, int64_t last, bool hasTimes)
 {
 	PutString(node, temporal::attr::kTitle, name);
+	PutString(node, temporal::attr::kDescription, description);
+	node.WriteAttr(temporal::attr::kEventCount, B_INT32_TYPE, 0, &events, sizeof(events));
 	PutTime(node, temporal::attr::kStartDate, hasTimes, first);
 	PutTime(node, temporal::attr::kEndDate, hasTimes, last);
 	return B_OK;

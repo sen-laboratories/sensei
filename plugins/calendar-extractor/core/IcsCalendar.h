@@ -93,6 +93,7 @@ bool LocalZoneOffset(int64_t localSeconds, int* offsetSeconds);
 
 struct Calendar {
 	std::string					name;			///< X-WR-CALNAME or NAME
+	std::string					description;	///< X-WR-CALDESC or the DESCRIPTION of the calendar
 	std::string					method;			///< PUBLISH, REQUEST, REPLY, CANCEL...
 	std::string					version;		///< 2.0 or 1.0
 	std::string					productId;

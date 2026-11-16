@@ -10,6 +10,7 @@ sensei
 └── plugins
     ├── authorship-navigator  navigate
     ├── book-enricher         enrich
+    ├── calendar-extractor    enrich, identify, navigate
     ├── document-reference-navigatornavigate
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
@@ -31,6 +32,7 @@ sensei
 |---|---|---|---|---|---|
 | `authorship-navigator` (SENSEI Authorship Navigator) | `sen_plugin_authorship_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.authorship` | - | `application/x-vnd.sen-plugin.sen-labs.authorship-navigator` |
 | `book-enricher` (SEN Book Enrichment Tool (BERT)) | `sen_plugin_book_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.book` | - | `application/x-vnd.sen-plugin.sen-labs.book-enricher` |
+| `calendar-extractor` (SEN Calendar Extractor) | `sen_plugin_calendar_extractor` 0.1.0 | enrich, identify, navigate | `text/calendar`, `text/x-vcalendar`, `entity/x-vnd.sen-labs.entity.event`, `entity/x-vnd.sen-labs.entity.calendar`, `relation/x-vnd.sen-labs.relation.calendar.events`, `relation/x-vnd.sen-labs.relation.event.attendee`, `relation/x-vnd.sen-labs.relation.event.location`, `relation/x-vnd.sen-labs.relation.event.series` | - | `application/x-vnd.sen-plugin.sen-labs.calendar-extractor` |
 | `document-reference-navigator` (SENSEI Document Reference Navigator) | `sen_plugin_document_reference_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.document-reference-navigator` |
 | `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0 | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
 | `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1 | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
@@ -51,6 +53,8 @@ sensei
 
 **book-enricher**: SEN module to grab metadata for books from online services.
 
+**calendar-extractor**: Reads calendar files (iCalendar and vCalendar): an invitation or a calendar entry becomes an event with its time, place, link to the meeting and description, named after the event; a file with several events becomes a calendar that holds them. The attendees, the place and the instances of the series of an event, and the events of a calendar, are relations.
+
 **document-reference-navigator**: SEN module to open the targets of DocumentReference relations (a page, a section... of a document) in the viewer of the document, with the places mapped to its arguments.
 
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
@@ -63,7 +67,7 @@ sensei
 
 **pdf-extractor**: SEN module to extract structure outline from PDFs.
 
-**person-enricher**: Robin - Enriching People: Enriches person entities with public photos, profile information, verified links, and live microfeeds from Gravatar, Libravatar, GitHub, Fediverse, and Wikidata.
+**person-enricher**: Robin - Enriching People: finds the public photo, the profile, the verified links and the posts of a person from what the file links to: Libravatar and Gravatar (by the hash of the e-mail address), GitHub, the Fediverse, Bluesky and the feed of a homepage. A person that has only a name or a handle is searched for on Bluesky, the Fediverse, GitHub, Wikidata and ORCID: a clear match is taken, else you choose (several matches can be merged). Which services may be asked is set in the settings of SEN.
 
 **personal-relation-navigator**: SEN module to open the person or organization that a personal relation (knows, friend, colleague, employment...) ends at with its application.
 

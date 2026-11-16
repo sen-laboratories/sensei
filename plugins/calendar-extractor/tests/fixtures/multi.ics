@@ -2,6 +2,7 @@ BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Example//Export//EN
 X-WR-CALNAME:Holidays
+X-WR-CALDESC:Public holidays
 BEGIN:VEVENT
 UID:h1
 SUMMARY:New Year

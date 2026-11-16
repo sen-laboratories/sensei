@@ -18,6 +18,7 @@ public:
 	struct Options {
 		bool	rename = true;			///< name the file after the event (2026-11-12_0930_Title.ics)
 		bool	description = true;		///< keep the description in a Markdown file beside it
+		std::string	myself;				///< who the user is (`Name <address>`): the attendee that is the user is told in the relation Attendee
 	};
 
 							CalendarService() {}
