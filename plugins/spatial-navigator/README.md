@@ -76,7 +76,7 @@ the location server: a switch, the name and a description for each, in the order
 | VK Maps | `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | no. No limit. On at first |
 | NextGIS | `https://overpass.nextgis.com/{key}/api/interpreter` | **required** (free, sign up). No limit. Off at first |
 | Overpass.ch | `https://api.overpass.ch/v1/{key}/interpreter` | **required** (free tier of 10,000 requests a month, 30 a minute; paid plans). Off at first |
-| Custom mirror | the address you type under the list | the flag *The custom mirror requires an API key* says. Off at first |
+| Custom mirror | the address you type under the list | the check box *API key?* says. Off at first |
 
 The list is the public instances of the [OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) that have no other limits than their capacity and cover the
 world; others (Geofabrik, Tracestrack, Overspan: paid; Europe or one country only: dresel.systems, overpass.osm.ch) and a server of your own (`http://localhost:12345/api/interpreter`) are a custom mirror.
@@ -84,17 +84,18 @@ The question that goes out is the same for every server, and so is the answer th
 to. When the first server is busy or does not answer in time (30 seconds for the public one, 20 for another first, 25 for the ones that follow), the next one is asked; the log says which one answered.
 When no server of the list can be asked (all are off but one that is not complete, or each failed its test) the navigator tells you: *Your configured OSM mirror is not working, please check settings.*
 
-**The API key** is a field under the list that shows the key of the **selected row** (it is disabled while none is selected, and for a server that needs no key), so each server has its own. It is for the servers that
-*require* one: NextGIS and Overpass.ch, or the custom mirror when you tick *The custom mirror requires an API key* (or its address has `{key}`). For the servers of the table it is put in the address in place
-of `{key}`. For a custom mirror the same: write `{key}` in its address (`https://overpass.geofabrik.de/{key}/api/interpreter`), or leave it out and the key is sent as `Authorization: Bearer <key>`, and only over
-https. A server that requires a key and has none is left out of the list until it has one. The keys are kept as typed in `~/config/settings/sen/spatial-navigator.settings` (`overpass_key_nextgis`, ..., no `#`,
-which starts a comment there).
+**The details of a server** are under the list, for the **selected row** (they are disabled while none is selected): **Server address** (the same for every server, also the ones of the list: you may
+change it, and *Revert* beside it brings back the address that the server has in the list; a changed address is kept as `overpass_url_<server>` in the settings file, nothing is stored while it is the one of the
+list), and in one line **Needs an API key** with the **key** field after it, which can be entered when the box is ticked. The box is the flag that the column *API key?* of the table shows (read only there):
+ticked for NextGIS and Overpass.ch, and for any server whose address has a `{key}`. So each server has its own address, flag and key. The key is put in the address in place of `{key}`; without a `{key}` in the
+address it is sent as `Authorization: Bearer <key>`, and only over https (`https://overpass.geofabrik.de/{key}/api/interpreter` for a custom mirror). A server that needs a key and has none is left out of the list
+until it has one. The keys are kept as typed in `~/config/settings/sen/spatial-navigator.settings` (`overpass_key_nextgis`, ..., no `#`, which starts a comment there).
 
-**Status.** The last column says what the server did when it was last asked: a green check mark and the HTTP status (`200 OK`), a warning (the server answered with an error: `403 Forbidden`, `429 Too Many Requests`,
-`200 OK, not Overpass`, or `Needs an API key` for a server that is on and has none), or an error (`No answer`, `Not reachable`, `502 Bad Gateway`); the tool tip has the details (the time it took, what to check). A
-server is **tested when it is switched on**, and again when its key or (for the custom mirror) its address changes; the test takes up to 20 seconds, runs in the background and the column shows `Testing...` with a spinner
-meanwhile. A mirror (not the public server) that is not reachable is left out of the list until a test of it works (`overpass_failed` in the settings file names it). The last results are kept in
-`~/config/cache/sen/spatial-navigator/server-status`.
+**Status.** The last column shows only what a test found: a green check mark and the HTTP status (`200 OK`), a warning (the server answered with an error: `403 Forbidden`, `429 Too Many Requests`,
+`200 OK, not Overpass`), or an error (`No answer`, `Not reachable`, `502 Bad Gateway`), or **n/a** for a server that was not tested yet or cannot be asked yet (no address, no key: the tool tip says which); the tool tip of
+a result has the details (the time it took, what to check). A server is **tested when it is switched on**, and again when its address, key or flag changes; the button **Test availability** below the *Map style* menu, in the line of the title of the
+list, tests all that are on. A test takes up to 20 seconds, runs in the background and the column shows `Testing...` with a spinner meanwhile. A mirror (not the public server) that is not reachable is left out of the
+list until a test of it works (`overpass_failed` in the settings file names it). The last results are kept in `~/config/cache/sen/spatial-navigator/server-status`.
 
 The setting is one line, as for the location server: `overpass_servers = vk-maps default -private-coffee -nextgis -overpass-ch -custom` (the order; a `-` in front of a server that is off). A file from before the
 list, with `overpass_mirror = vk-maps` and `overpass_key`, is read as that server alone.

@@ -405,6 +405,31 @@ TestSettings()
 		ParseSettings("overpass_failed =", &failed);
 		CHECK(failed.failedIds.empty());
 	}
+	// the address and the flag of every server can be changed by the user; what is not changed is what the list says
+	{
+		Settings own;
+		CHECK(AddressOf(own, "private-coffee") == DefaultAddress("private-coffee") && AddressOf(own, "custom").empty());
+		CHECK(AddressSettingName("private-coffee") == "overpass_url_private_coffee" && AddressSettingName("custom") == "overpass_url" && AddressSettingName("nope").empty());
+		CHECK(NeedsKeySettingName("overpass-ch") == "overpass_needs_key_overpass_ch" && NeedsKeySettingName("custom") == "overpass_custom_key");
+		ParseSettings("overpass_url_private_coffee = https://mirror.example.org/api/interpreter\noverpass_needs_key_vk_maps = yes\noverpass_needs_key_nextgis = no\n", &own);
+		CHECK(AddressOf(own, "private-coffee") == "https://mirror.example.org/api/interpreter" && AddressOf(own, "vk-maps") == DefaultAddress("vk-maps"));
+		CHECK(NeedsKeyFlag(own, "vk-maps") && !NeedsKeyFlag(own, "nextgis") && DefaultNeedsKeyFlag("nextgis") && !DefaultNeedsKeyFlag("vk-maps"));
+		// (NextGIS has the place for the key in its address: it needs one whatever the flag says)
+		CHECK(ServerNeedsKey(own, "nextgis") && ServerNeedsKey(own, "vk-maps") && !ServerNeedsKey(own, "private-coffee"));
+		Server made;
+		std::string problem;
+		CHECK(MakeServer(own, "private-coffee", &made) && made.endpoint == "https://mirror.example.org/api/interpreter");
+		CHECK(!MakeServer(own, "vk-maps", &made, &problem) && problem == "Needs an API key");
+		ParseSettings("overpass_key_vk_maps = secret\n", &own);
+		CHECK(MakeServer(own, "vk-maps", &made) && made.key == "secret");
+		// the address of the list again: an empty value, or a bad one that is left out
+		ParseSettings("overpass_url_private_coffee =\n", &own);
+		CHECK(AddressOf(own, "private-coffee") == DefaultAddress("private-coffee"));
+		ParseSettings("overpass_url_private_coffee = ftp://x\n", &own);
+		CHECK(AddressOf(own, "private-coffee") == DefaultAddress("private-coffee"));
+		CHECK(ValidateSetting("overpass_url_private_coffee", "") && ValidateSetting("overpass_url_private_coffee", "https://a.example.org/x") && !ValidateSetting("overpass_url_private_coffee", "a.example.org"));
+		CHECK(ValidateSetting("overpass_needs_key_nextgis", "yes") && ValidateSetting("overpass_needs_key_nextgis", "") && !ValidateSetting("overpass_needs_key_nextgis", "maybe"));
+	}
 	// what a server needs: a key (the ones made for it, the custom mirror with the flag or a place for the key in its address), an address (the custom mirror)
 	{
 		Settings needs;

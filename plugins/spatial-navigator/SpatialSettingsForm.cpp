@@ -43,6 +43,10 @@ const char* const kStatusFile = "sen/spatial-navigator/server-status";
 // the table of the servers, and the command of the message that it sends when another row is selected: the field of the API key listens to it (SenSettingsForm.h, master and detail)
 const char* const kServers = "overpass_servers";
 const char* const kKeyField = "overpass_key";
+const char* const kAddressField = "overpass_address";
+const char* const kNeedsKeyField = "overpass_needs_key";
+const char* const kRevertButton = "overpass_address_revert";
+const char* const kTestButton = "overpass_test";
 const char* const kRowCommand = "OVrw";
 const char* const kTestUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
 const bigtime_t kTestTimeout = 20 * 1000000LL;
@@ -63,10 +67,6 @@ const Field kFields[] = {
 		"How long an answer is kept before the server is asked again (1 to 168)."},
 	{"map_style", "Map style",
 		"The default map style in Shoji. A map can choose its own (secondary mouse button)."},
-	{"overpass_url", "Custom mirror URL",
-		"The interpreter of the custom mirror, like https://host/api/interpreter. {key} marks where its key goes."},
-	{"overpass_custom_key", "The custom mirror requires an API key",
-		"Tick this if the custom mirror wants a key."},
 };
 
 bool
@@ -210,18 +210,16 @@ SaveStatus()
 }
 
 
-/** What the column says for a server: what is missing for one that cannot be asked yet, else what the last test found, else that there was none. */
+/** What the column says for a server: the result of its last test, or n/a (with the reason in the tool tip) when there was none or the server cannot be asked yet. */
 Status
 StatusOf(const Settings& settings, const std::string& id)
 {
 	Server server;
 	std::string problem;
 	if (!MakeServer(settings, id, &server, &problem)) {
-		// (a server that is on and cannot be asked is a warning; one that is off only says what it would need)
 		Status missing;
-		missing.state = ServerIsOn(settings, id) ? form::kStateWarning : "";
-		missing.text = problem;
-		missing.detail = problem == "Needs an address" ? "Enter the address of the custom mirror below." : "Select the row and enter the API key below.";
+		missing.text = "n/a";
+		missing.detail = problem == "Needs an address" ? "Not tested: enter the server address below." : "Not tested: this server needs an API key, enter it below.";
 		return missing;
 	}
 	std::lock_guard<std::mutex> lock(sStatusLock);
@@ -230,9 +228,23 @@ StatusOf(const Settings& settings, const std::string& id)
 	if (found != sStatus.end())
 		return found->second;
 	Status none;
-	none.text = "Not tested";
-	none.detail = "The server is tested when it is switched on.";
+	none.text = "n/a";
+	none.detail = "Not tested yet. A server is tested when it is switched on, or press Test availability.";
 	return none;
+}
+
+
+/** The result of a test is no longer true when the address, the key or the flag of the server changed. */
+void
+ForgetStatus(const std::string& id)
+{
+	std::lock_guard<std::mutex> lock(sStatusLock);
+	LoadStatus();
+	auto found = sStatus.find(id);
+	if (found != sStatus.end() && !found->second.testing) {
+		sStatus.erase(found);
+		SaveStatus();
+	}
 }
 
 
@@ -244,8 +256,6 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddInt32("poi_limit", s.poiLimit);
 	message->AddInt32("poi_cache_hours", s.poiCacheHours);
 	message->AddString("map_style", s.mapStyle.c_str());
-	message->AddString("overpass_url", s.overpassUrl.c_str());
-	message->AddBool("overpass_custom_key", s.customRequiresKey);
 	// the list of the servers: a row for each, in the order that they are asked. The key of a server is a message of its row (`overpass_key`, with `value` and `enabled`, whether the server needs
 	// one): the field of the key is not told which row it is for, it gets that message when the row is selected
 	for (const std::string& id : ServerOrder(s)) {
@@ -256,12 +266,21 @@ ToMessage(const Settings& s, BMessage* message)
 			BMessage row;
 			row.AddBool("enabled", ServerIsOn(s, id));
 			row.AddString("name", mirror.name);
+			row.AddBool("needs_key", ServerNeedsKey(s, id));
 			row.AddString("info", mirror.info);
 			row.AddString("status", status.text.c_str());
 			row.AddString("id", mirror.id);
 			row.AddString("status_state", status.state.c_str());
 			row.AddString("status_detail", status.detail.c_str());
 			row.AddBool("testing", status.testing);
+			// the details of the row: the address (with the one of the list, to revert to), the flag and the key, which can be used only when the server needs one
+			BMessage address;
+			address.AddString(form::kUpdateValue, AddressOf(s, id).c_str());
+			address.AddString(form::kUpdateDefault, DefaultAddress(id).c_str());
+			row.AddMessage(kAddressField, &address);
+			BMessage needsKey;
+			needsKey.AddBool(form::kUpdateValue, ServerNeedsKey(s, id));
+			row.AddMessage(kNeedsKeyField, &needsKey);
 			BMessage key;
 			key.AddString(form::kUpdateValue, KeyOf(s, id).c_str());
 			key.AddBool(form::kUpdateEnabled, ServerNeedsKey(s, id));
@@ -269,7 +288,12 @@ ToMessage(const Settings& s, BMessage* message)
 			message->AddMessage(kServers, &row);
 		}
 	}
-	message->AddString(kKeyField, "");		// (the field of the key keeps nothing: what it shows is that of the selected row)
+	// (the fields of the details keep nothing: what they show is that of the selected row; the buttons are never stored)
+	message->AddString(kAddressField, "");
+	message->AddBool(kNeedsKeyField, false);
+	message->AddString(kKeyField, "");
+	message->AddBool(kRevertButton, false);
+	message->AddBool(kTestButton, false);
 }
 
 /** The cell of the table that a path key names: `overpass_servers_03.enabled` (row 3, column `enabled`), or `overpass_servers.enabled` when there is a single row. */
@@ -474,53 +498,6 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	schema->AddInt32(form::kSchemaVersion, 1);
 	int32 order = 0;
 	for (const Field& field : kFields) {
-		if (std::string(field.key) == "overpass_url") {
-			// the servers: a switch, the name, the description and the status of each, in the order that they are asked (as the services of the location server). The table sends a message
-			// with the key of the row that is selected, and the field of the key under it listens to that message; then what the custom mirror needs
-			BMessage servers;
-			servers.AddString(form::kAttrLabel, "Overpass servers");
-			servers.AddString(form::kAttrHelp, "Asked in this order until one answers. Drag a row to move it. A server is tested when it is switched on; one that needs a key is skipped until it has one.");
-			servers.AddString(form::kAttrKind, form::kKindTable);
-			servers.AddBool(form::kAttrReorderable, true);
-			servers.AddString(form::kAttrUpdateMsg, kRowCommand);
-			servers.AddInt32(form::kAttrOrder, order++);
-			schema->AddMessage(kServers, &servers);
-			int32 columnOrder = 0;
-			struct Column {
-				const char* name;
-				const char* label;
-				bool readOnly;
-				bool hidden;
-			};
-			const Column columns[] = {
-				{"enabled", "Use", false, false}, {"name", "Server", true, false}, {"info", "Description", true, false}, {"status", "Status", true, false},
-				{"id", "", true, true}, {"status_state", "", true, true}, {"status_detail", "", true, true}, {"testing", "", true, true},
-			};
-			for (const Column& column : columns) {
-				BMessage attributes;
-				if (column.label[0] != '\0')
-					attributes.AddString(form::kAttrLabel, column.label);
-				if (column.readOnly)
-					attributes.AddBool(form::kAttrReadOnly, true);
-				if (column.hidden)
-					attributes.AddBool(form::kAttrHidden, true);
-				if (std::string(column.name) == "status") {
-					// (the icon of the state before the text, the longer text as the tool tip, a spinner while the server is tested)
-					attributes.AddString(form::kAttrStateField, "status_state");
-					attributes.AddString(form::kAttrDetailField, "status_detail");
-					attributes.AddString(form::kAttrBusyField, "testing");
-				}
-				attributes.AddInt32(form::kAttrOrder, columnOrder++);
-				schema->AddMessage((std::string(kServers) + "." + column.name).c_str(), &attributes);
-			}
-			BMessage keyField;
-			keyField.AddString(form::kAttrLabel, "API key");
-			keyField.AddString(form::kAttrHelp, "The key of the server that is selected in the list. Only for a server that needs one (NextGIS, Overpass.ch, a custom mirror that asks for one).");
-			keyField.AddString(form::kAttrKind, form::kKindSecret);
-			keyField.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
-			keyField.AddInt32(form::kAttrOrder, order++);
-			schema->AddMessage(kKeyField, &keyField);
-		}
 		BMessage attributes;
 		attributes.AddString(form::kAttrLabel, field.label);
 		attributes.AddString(form::kAttrHelp, field.help);
@@ -541,6 +518,85 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 		}
 		schema->AddMessage(field.key, &attributes);
 	}
+
+	// the servers: a switch, the name, the description, whether it needs an API key and the status of each, in the order that they are asked (as the services of the location server). The table sends
+	// a message with the parts of the row that is selected, and the fields under it (address, flag, key) listen to that message
+	BMessage servers;
+	servers.AddString(form::kAttrLabel, "Overpass servers");
+	servers.AddString(form::kAttrHelp, "Asked in this order until one answers. Drag a row to move it. A server is tested when it is switched on; one that needs a key is skipped until it has one.");
+	servers.AddString(form::kAttrKind, form::kKindTable);
+	servers.AddBool(form::kAttrReorderable, true);
+	servers.AddString(form::kAttrUpdateMsg, kRowCommand);
+	servers.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage(kServers, &servers);
+	int32 columnOrder = 0;
+	struct Column {
+		const char* name;
+		const char* label;
+		bool readOnly;
+		bool hidden;
+	};
+	const Column columns[] = {
+		{"enabled", "Use", false, false}, {"name", "Server", true, false}, {"info", "Description", true, false}, {"needs_key", "API key?", true, false}, {"status", "Status", true, false},
+		{"id", "", true, true}, {"status_state", "", true, true}, {"status_detail", "", true, true}, {"testing", "", true, true},
+	};
+	for (const Column& column : columns) {
+		BMessage attributes;
+		if (column.label[0] != '\0')
+			attributes.AddString(form::kAttrLabel, column.label);
+		if (column.readOnly)
+			attributes.AddBool(form::kAttrReadOnly, true);
+		if (column.hidden)
+			attributes.AddBool(form::kAttrHidden, true);
+		if (std::string(column.name) == "needs_key")
+			attributes.AddString(form::kAttrHelp, "The server wants an API key (NextGIS and Overpass.ch do). Change it in the details below the list.");
+		if (std::string(column.name) == "status") {
+			// (the icon of the state before the text, the longer text as the tool tip, a spinner while the server is tested)
+			attributes.AddString(form::kAttrStateField, "status_state");
+			attributes.AddString(form::kAttrDetailField, "status_detail");
+			attributes.AddString(form::kAttrBusyField, "testing");
+		}
+		attributes.AddInt32(form::kAttrOrder, columnOrder++);
+		schema->AddMessage((std::string(kServers) + "." + column.name).c_str(), &attributes);
+	}
+
+	// the button in the line of the label of the table: asks all servers that are on
+	BMessage test;
+	test.AddString(form::kAttrLabel, "Test availability");
+	test.AddString(form::kAttrHelp, "Asks every server that is switched on a small question and shows the answer in the Status column.");
+	test.AddString(form::kAttrKind, form::kKindButton);
+	test.AddString(form::kAttrBeside, kServers);
+	schema->AddMessage(kTestButton, &test);
+
+	// the details of the selected row, from the top: the address (with a button that brings back the one of the list), and in one line whether the server needs a key and the key
+	BMessage address;
+	address.AddString(form::kAttrLabel, "Server address");
+	address.AddString(form::kAttrHelp, "The address of the interpreter of the selected server, like https://host/api/interpreter. A {key} in it marks where the API key goes.");
+	address.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
+	address.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage(kAddressField, &address);
+	BMessage revert;
+	revert.AddString(form::kAttrLabel, "Revert");
+	revert.AddString(form::kAttrHelp, "Back to the address that the server has in the list.");
+	revert.AddString(form::kAttrKind, form::kKindButton);
+	revert.AddString(form::kAttrBeside, kAddressField);
+	revert.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
+	revert.AddString(form::kAttrFieldId, kAddressField);
+	schema->AddMessage(kRevertButton, &revert);
+	BMessage needsKey;
+	needsKey.AddString(form::kAttrLabel, "Needs an API key");
+	needsKey.AddString(form::kAttrHelp, "Tick it if the selected server wants a key (an address with a {key} in it always does). Without a key such a server is skipped.");
+	needsKey.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
+	needsKey.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage(kNeedsKeyField, &needsKey);
+	BMessage keyField;
+	keyField.AddString(form::kAttrLabel, "API key");
+	keyField.AddString(form::kAttrHelp, "The key of the selected server. It can be entered when the server needs one.");
+	keyField.AddString(form::kAttrKind, form::kKindSecret);
+	keyField.AddString(form::kAttrBeside, kNeedsKeyField);		// (in the line of the check box: it can be used when the box is ticked)
+	keyField.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
+	keyField.AddInt32(form::kAttrOrder, order++);
+	schema->AddMessage(kKeyField, &keyField);
 }
 
 
@@ -566,15 +622,55 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			on.push_back(id);
 	}
 	const std::vector<std::string> wasOn = on;
-	std::vector<std::pair<std::string, std::string>> keys;
-	std::vector<std::string> toTest;
-	bool listChanged = false;
+	std::vector<std::pair<std::string, std::string>> perServer;		// (the keys, addresses and flags of the servers)
+	std::vector<std::string> toTest, changedIds;
+	bool listChanged = false, testAll = false;
+
+	// what the user gave a server: each is a change only if it differs from what the server has now; the address of the list and the flag of the list are stored as nothing
+	auto giveKey = [&](const std::string& id, const std::string& typed) {
+		const std::string newKey = st::Trim(typed);
+		std::string why;
+		if (!ValidateSetting(KeySettingName(id), newKey, &why)) {
+			refuse(KeySettingName(id) + (why.empty() ? "" : " (" + why + ")"), B_BAD_VALUE);
+			return;
+		}
+		if (newKey == KeyOf(current, id))
+			return;
+		perServer.push_back({KeySettingName(id), newKey});
+		toTest.push_back(id);
+		changedIds.push_back(id);
+	};
+	auto giveAddress = [&](const std::string& id, const std::string& typed) {
+		const std::string address = st::Trim(typed);
+		std::string why;
+		if (!ValidateSetting(AddressSettingName(id), address, &why)) {
+			refuse(AddressSettingName(id) + (why.empty() ? "" : " (" + why + ")"), B_BAD_VALUE);
+			return;
+		}
+		if (address == AddressOf(current, id))
+			return;
+		perServer.push_back({AddressSettingName(id), address == DefaultAddress(id) ? std::string() : address});
+		toTest.push_back(id);
+		changedIds.push_back(id);
+	};
+	auto giveFlag = [&](const std::string& id, bool flag) {
+		if (flag == NeedsKeyFlag(current, id))
+			return;
+		// (the custom mirror always has its line: its flag has no other default than "no")
+		perServer.push_back({NeedsKeySettingName(id), id == "custom" ? (flag ? "yes" : "no") : flag == DefaultNeedsKeyFlag(id) ? std::string() : std::string(flag ? "yes" : "no")});
+		toTest.push_back(id);
+		changedIds.push_back(id);
+	};
 
 	char* name = nullptr;
 	for (int32 i = 0; changes.GetInfo(B_ANY_TYPE, i, &name, nullptr, nullptr) == B_OK; i++) {
 		const std::string key = name;
-		if (key == kKeyField)
-			continue;		// (the field of the key keeps nothing: the key is a cell of its row)
+		if (key == kTestButton) {
+			testAll = true;		// (a button: every server that is on is asked)
+			continue;
+		}
+		if (key == kKeyField || key == kAddressField || key == kNeedsKeyField || key == kRevertButton)
+			continue;		// (the fields of the details keep nothing: what they hold is a part of the row)
 		if (key.compare(0, strlen(kServers), kServers) == 0) {
 			// the list of the servers: the whole table (Revert, Defaults, a row moved), or a cell of a row (`overpass_servers_02.enabled`, `.overpass_key.value`); the row is the place in the
 			// list as it was described
@@ -595,12 +691,21 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 					if (row.GetBool("enabled", false))
 						on.push_back(id);
 					BMessage part;
-					const char* newKey = NULL;
-					if (row.FindMessage(kKeyField, &part) == B_OK && part.FindString(form::kUpdateValue, &newKey) == B_OK && newKey != NULL
-							&& st::Trim(newKey) != KeyOf(current, id)) {
-						keys.push_back({KeySettingName(id), st::Trim(newKey)});
-						toTest.push_back(id);
-					}
+					const char* typed = NULL;
+					if (row.FindMessage(kAddressField, &part) == B_OK && part.FindString(form::kUpdateValue, &typed) == B_OK && typed != NULL)
+						giveAddress(id, typed);
+					// (the flag is in the column and in the part of the details: the one that differs from what the server has says what the user wants)
+					bool flag = false;
+					bool wantsFlag = false;
+					if (row.FindMessage(kNeedsKeyField, &part) == B_OK && part.FindBool(form::kUpdateValue, &flag) == B_OK && flag != ServerNeedsKey(current, id))
+						wantsFlag = true;
+					if (!wantsFlag && row.FindBool("needs_key", &flag) == B_OK && flag != ServerNeedsKey(current, id))
+						wantsFlag = true;
+					if (wantsFlag)
+						giveFlag(id, flag);
+					typed = NULL;
+					if (row.FindMessage(kKeyField, &part) == B_OK && part.FindString(form::kUpdateValue, &typed) == B_OK && typed != NULL)
+						giveKey(id, typed);
 				}
 				// (what the table did not name keeps its place after the others)
 				for (const std::string& id : before) {
@@ -630,18 +735,25 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 				if (want)
 					on.push_back(id);
 				listChanged = true;
-			} else if (column == std::string(kKeyField) + "." + form::kUpdateValue) {
-				// (a cell is a field of the message, named by its path: the text is the string itself)
-				std::string newKey, why;
-				const char* typed = NULL;
-				if (changes.FindString(name, &typed) == B_OK && typed != NULL)
-					newKey = typed;
-				if (typed == NULL || !ValidateSetting(KeySettingName(id), newKey, &why)) {
-					refuse(why.empty() ? key : key + " (" + why + ")", B_BAD_VALUE);
+			} else if (column == "needs_key" || column == std::string(kNeedsKeyField) + "." + form::kUpdateValue) {
+				// (the check box of the column, or the one of the details: the same flag)
+				bool want = false;
+				if (changes.FindBool(name, &want) != B_OK) {
+					refuse(key, B_BAD_VALUE);
 					continue;
 				}
-				keys.push_back({KeySettingName(id), st::Trim(newKey)});
-				toTest.push_back(id);
+				giveFlag(id, want);
+			} else if (column == std::string(kAddressField) + "." + form::kUpdateValue || column == std::string(kKeyField) + "." + form::kUpdateValue) {
+				// (a cell is a field of the message, named by its path: the text is the string itself)
+				const char* typed = NULL;
+				if (changes.FindString(name, &typed) != B_OK || typed == NULL) {
+					refuse(key, B_BAD_VALUE);
+					continue;
+				}
+				if (column == std::string(kAddressField) + "." + form::kUpdateValue)
+					giveAddress(id, typed);
+				else
+					giveKey(id, typed);
 			} else {
 				refuse(key, B_NAME_NOT_FOUND);
 			}
@@ -657,12 +769,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			refuse(why.empty() ? key : key + " (" + why + ")", field == nullptr ? B_NAME_NOT_FOUND : B_BAD_VALUE);
 			continue;
 		}
-		if (key == "overpass_custom_key")
-			text = st::ParseBool(text, false) ? "yes" : "no";
 		valid.push_back({key, st::Trim(text)});
-		// (the address and the flag of the custom mirror change what it is asked)
-		if (key == "overpass_url" || key == "overpass_custom_key")
-			toTest.push_back("custom");
 	}
 	if (listChanged) {
 		valid.push_back({"overpass_servers", ServersText(order, on)});
@@ -672,15 +779,26 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 				toTest.push_back(id);
 		}
 	}
-	valid.insert(valid.end(), keys.begin(), keys.end());
-	if (valid.empty())
+	valid.insert(valid.end(), perServer.begin(), perServer.end());
+	if (valid.empty() && !testAll)
 		return first;
 
-	const status_t result = WriteKeys(valid);
+	status_t result = B_OK;
+	if (!valid.empty()) {
+		// what a test found is not true any more for a server that has another address, key or flag
+		for (const std::string& id : changedIds)
+			ForgetStatus(id);
+		result = WriteKeys(valid);
+	}
 	if (result == B_OK) {
-		// the servers whose switch, key or address changed are tested when they are on (a server that is off is not asked, and a key that is only changed is not a reason to ask it)
+		// the servers whose switch, key, flag or address changed are tested when they are on (a server that is off is not asked, and a key that is only changed is not a reason to ask it);
+		// the button asks all that are on
 		Settings now;
 		LoadSettings(&now);
+		if (testAll) {
+			for (const std::string& id : ServerOrder(now))
+				toTest.push_back(id);
+		}
 		std::vector<std::string> done;
 		for (const std::string& id : toTest) {
 			if (std::find(done.begin(), done.end(), id) != done.end())

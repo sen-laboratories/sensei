@@ -56,6 +56,10 @@ struct Settings {
 	std::vector<std::string>	serverOff;
 	/** the ids that have a key (`overpass_key_<id>`, the id with _ for -), and the key */
 	std::vector<std::pair<std::string, std::string>>	keys;
+	/** the addresses that the user changed (`overpass_url_<id>`, the id with _ for -; the custom mirror has `overpass_url` in `overpassUrl`): a server that is not here has its own address (Mirrors()) */
+	std::vector<std::pair<std::string, std::string>>	addresses;
+	/** the flags that the user set (`overpass_needs_key_<id>`; the custom mirror has `overpass_custom_key` in `customRequiresKey`): a server that is not here needs a key if Mirrors() says so */
+	std::vector<std::pair<std::string, bool>>	needsKeyFlags;
 	/** a file from before the list: the mirror that was chosen (`overpass_mirror`) is the one that is on, and the key (`overpass_key`) is its key. The list in the file replaces both. */
 	std::string	legacyMirror, legacyKey;
 	/** the file has the list */
@@ -83,6 +87,19 @@ std::string ServersText(const std::vector<std::string>& order, const std::vector
 /** The name of the setting with the key of a server: `overpass_key_nextgis` (`overpass_key_overpass_ch`). Empty if the id is none of the list. */
 std::string KeySettingName(const std::string& id);
 
+/** The names of the settings of the address and of the flag "needs a key" of a server: `overpass_url_private_coffee`, `overpass_needs_key_nextgis`; the custom mirror keeps `overpass_url` and `overpass_custom_key`. Empty if the id is none of the list. */
+std::string AddressSettingName(const std::string& id);
+std::string NeedsKeySettingName(const std::string& id);
+
+/** The address that a server has until the user changes it (empty for the custom mirror). */
+std::string DefaultAddress(const std::string& id);
+/** The address that a server is asked at: the one that the user gave it, else its own. */
+std::string AddressOf(const Settings& settings, const std::string& id);
+/** Whether the server is marked as one that needs a key (what the user ticked, else what the list says), as the column of the table shows it; ServerNeedsKey() also counts an address that has a place for the key. */
+bool NeedsKeyFlag(const Settings& settings, const std::string& id);
+/** What the list says (the flag of a server that the user did not change). */
+bool DefaultNeedsKeyFlag(const std::string& id);
+
 /** The key of a server (empty if there is none). */
 std::string KeyOf(const Settings& settings, const std::string& id);
 
@@ -95,7 +112,7 @@ struct Server {
 	bool		isPublic = false;	///< the default server: it is asked whatever happened to it
 };
 
-/** Whether a server needs a key: one that is made for it, the custom mirror when the flag says so or its address has a place for the key. */
+/** Whether a server needs a key: its flag says so (NeedsKeyFlag) or its address has a place for the key (`{key}`). */
 bool ServerNeedsKey(const Settings& settings, const std::string& id);
 
 /**

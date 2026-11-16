@@ -26,7 +26,7 @@ Mirrors()
 		{"vk-maps", "VK Maps", "A public mirror, no limit, no registration.", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", false},
 		{"nextgis", "NextGIS", "Free with an API key (nextgis.com).", "https://overpass.nextgis.com/{key}/api/interpreter", true},
 		{"overpass-ch", "Overpass.ch", "Free tier with an API key (overpass.ch).", "https://api.overpass.ch/v1/{key}/interpreter", true},
-		{"custom", "Custom mirror", "Your own server: its address is set below.", "", false},
+		{"custom", "Custom mirror", "Your own server: enter its address below.", "", false},
 	};
 	return mirrors;
 }
@@ -144,6 +144,55 @@ KeyOwner(const std::string& name)
 	return std::string();
 }
 
+void
+SetAddress(Settings* settings, const std::string& id, const std::string& address)
+{
+	for (auto it = settings->addresses.begin(); it != settings->addresses.end(); ++it) {
+		if (it->first == id) {
+			if (address.empty())
+				settings->addresses.erase(it);
+			else
+				it->second = address;
+			return;
+		}
+	}
+	if (!address.empty())
+		settings->addresses.push_back({id, address});
+}
+
+void
+SetNeedsKeyFlag(Settings* settings, const std::string& id, bool flag)
+{
+	for (auto& entry : settings->needsKeyFlags) {
+		if (entry.first == id) {
+			entry.second = flag;
+			return;
+		}
+	}
+	settings->needsKeyFlags.push_back({id, flag});
+}
+
+/** the id of the server that a setting is the address (or the flag) of, for the names that are not those of the custom mirror; empty if it is none */
+std::string
+AddressOwner(const std::string& name)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (std::string(mirror.id) != "custom" && name == AddressSettingName(mirror.id))
+			return mirror.id;
+	}
+	return std::string();
+}
+
+std::string
+NeedsKeyOwner(const std::string& name)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (std::string(mirror.id) != "custom" && name == NeedsKeySettingName(mirror.id))
+			return mirror.id;
+	}
+	return std::string();
+}
+
 /** a file from before the list: the mirror that was chosen is the only one that is on, with the key that there was */
 void
 ApplyLegacy(Settings* settings)
@@ -197,6 +246,12 @@ ParseSettings(const std::string& text, Settings* settings)
 			ParseFailed(value, settings);
 		} else if (!KeyOwner(key).empty()) {
 			SetKey(settings, KeyOwner(key), value);
+		} else if (!AddressOwner(key).empty()) {
+			if (value.empty() || IsAddress(value))
+				SetAddress(settings, AddressOwner(key), value);		// (empty: the address of the list)
+		} else if (!NeedsKeyOwner(key).empty()) {
+			if (st::IsBool(value))
+				SetNeedsKeyFlag(settings, NeedsKeyOwner(key), st::ParseBool(value, false));
 		}
 	}
 	ApplyLegacy(settings);
@@ -241,6 +296,10 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 		return ParseNumber(v, kMinCacheHours, kMaxCacheHours, &number) ? true : fail("a number of hours from 1 to 168");
 	if (key == "overpass_custom_key")
 		return st::IsBool(v) ? true : fail("yes or no");
+	if (!AddressOwner(key).empty())
+		return v.empty() || IsAddress(v) ? true : fail("an address like https://example.org/api/interpreter");
+	if (!NeedsKeyOwner(key).empty())
+		return v.empty() || st::IsBool(v) ? true : fail("yes or no");
 	if (!KeyOwner(key).empty())
 		return v.find_first_of(" \t") == std::string::npos ? true : fail("a key has no blank");
 	return fail("no such setting");
@@ -255,6 +314,80 @@ KeySettingName(const std::string& id)
 	std::string name = id;
 	std::replace(name.begin(), name.end(), '-', '_');
 	return "overpass_key_" + name;
+}
+
+
+std::string
+AddressSettingName(const std::string& id)
+{
+	if (!IsMirrorId(id))
+		return std::string();
+	if (id == "custom")
+		return "overpass_url";
+	std::string name = id;
+	std::replace(name.begin(), name.end(), '-', '_');
+	return "overpass_url_" + name;
+}
+
+
+std::string
+NeedsKeySettingName(const std::string& id)
+{
+	if (!IsMirrorId(id))
+		return std::string();
+	if (id == "custom")
+		return "overpass_custom_key";
+	std::string name = id;
+	std::replace(name.begin(), name.end(), '-', '_');
+	return "overpass_needs_key_" + name;
+}
+
+
+std::string
+DefaultAddress(const std::string& id)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (id == mirror.id)
+			return mirror.url;
+	}
+	return std::string();
+}
+
+
+std::string
+AddressOf(const Settings& settings, const std::string& id)
+{
+	if (id == "custom")
+		return settings.overpassUrl;
+	for (const auto& entry : settings.addresses) {
+		if (entry.first == id)
+			return entry.second;
+	}
+	return DefaultAddress(id);
+}
+
+
+bool
+DefaultNeedsKeyFlag(const std::string& id)
+{
+	for (const Mirror& mirror : Mirrors()) {
+		if (id == mirror.id)
+			return mirror.requiresKey;
+	}
+	return false;
+}
+
+
+bool
+NeedsKeyFlag(const Settings& settings, const std::string& id)
+{
+	if (id == "custom")
+		return settings.customRequiresKey;
+	for (const auto& entry : settings.needsKeyFlags) {
+		if (entry.first == id)
+			return entry.second;
+	}
+	return DefaultNeedsKeyFlag(id);
 }
 
 
@@ -319,14 +452,9 @@ const char* const kMirrorNotWorking = "Your configured OSM mirror is not working
 bool
 ServerNeedsKey(const Settings& settings, const std::string& id)
 {
-	for (const Mirror& mirror : Mirrors()) {
-		if (id != mirror.id)
-			continue;
-		if (mirror.requiresKey)
-			return true;
-		return id == "custom" && (settings.customRequiresKey || settings.overpassUrl.find("{key}") != std::string::npos);
-	}
-	return false;
+	if (!IsMirrorId(id))
+		return false;
+	return NeedsKeyFlag(settings, id) || AddressOf(settings, id).find("{key}") != std::string::npos;
 }
 
 
@@ -336,13 +464,13 @@ MakeServer(const Settings& settings, const std::string& id, Server* server, std:
 	for (const Mirror& mirror : Mirrors()) {
 		if (id != mirror.id)
 			continue;
-		const std::string endpoint = id == "custom" ? settings.overpassUrl : std::string(mirror.url);
+		const std::string endpoint = AddressOf(settings, id);
 		if (endpoint.empty()) {
 			if (problem != nullptr)
 				*problem = "Needs an address";
 			return false;
 		}
-		const bool needsKey = ServerNeedsKey(settings, id) || endpoint.find("{key}") != std::string::npos;
+		const bool needsKey = ServerNeedsKey(settings, id);
 		const std::string key = needsKey ? KeyOf(settings, id) : std::string();
 		if (needsKey && key.empty()) {
 			if (problem != nullptr)
