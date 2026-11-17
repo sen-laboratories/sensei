@@ -49,7 +49,7 @@ is there already is found by its address), and the folder of the relation is tem
 | **Description** | described in | describes | the Markdown file beside the event, with its name (when there is one) |
 | **Takes place at** | takes place at | hosts | the place of the location text, with its coordinates if the file has them (it is enriched by Spaces) |
 | **Series** | next | previous | the instance of a repeating event after and before this one: title, start, end and *Instance* (the RECURRENCE-ID); the rule, its exceptions, extra dates and moved instances of the file are taken into account |
-| **Events** (of a calendar) | contains | part of | each event of a calendar: title, start, end and identifier |
+| **Events** (of a calendar) | contains | part of | a **contained** relation (a self relation, as the outline of a PDF is): the calendar extractor reads the events from the file (feature *extract*) and the menu shows them as a list, in order of their start, each with title, start, end and identifier; a click opens the calendar file with its application (Shoji) |
 
 The instances of a series and the events of a calendar are **places in the same file**, as the pages of a PDF are: the target is the calendar file, the instance is told by its properties. The response of an invitation is a property of the *relation*
 between the event and the person, not of the person.

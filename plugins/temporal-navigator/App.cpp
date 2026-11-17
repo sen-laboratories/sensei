@@ -24,6 +24,7 @@
 #include <sen/SenOntoTemporal.h>
 #include <sen/Sensei.h>
 
+#include "../../common/OpenTarget.h"
 #include "TemporalResolver.h"
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.temporal-navigator";
@@ -119,8 +120,8 @@ App::RefsReceived(BMessage* message)
 			fprintf(stderr, "%s: nothing to open (the target of the relation is gone).\n", file.name);
 			continue;
 		}
-		status_t result = be_roster->Launch(&target);
-		if (result != B_OK && result != B_ALREADY_RUNNING)
+		status_t result = sensei::OpenTarget(target);
+		if (result != B_OK)
 			fprintf(stderr, "could not open %s: %s\n", target.name, strerror(result));
 	}
 	Quit();

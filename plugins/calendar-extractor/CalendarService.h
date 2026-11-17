@@ -15,6 +15,11 @@
  * What the plugin does: finds out that a calendar file is an event (identify), writes what the file says into its attributes, names the file after the event and keeps its description
  * in a Markdown file beside it (enrich), and works out the relations of an event when they are opened (resolve): its attendees, its place and the instances of its series.
  */
+/** the names that the plugin gives the properties of its contained items, which the server maps to the attributes (`SEN:attrMapping` in Resources.rdef) */
+inline constexpr char kStartAlias[] = "start";
+inline constexpr char kEndAlias[] = "end";
+inline constexpr char kUidAlias[] = "uid";
+
 class CalendarService {
 public:
 	struct Options {
@@ -32,6 +37,12 @@ public:
 
 	/** Writes the attributes; @p file is the new ref if the file was renamed. */
 	status_t				Enrich(entry_ref* file, BMessage* reply);
+
+	/**
+	 * The contained relations of a calendar file with several events: one item for each event, in the order of their start, as the format of the server wants it (the outline of a PDF is
+	 * the model). The items are places in the same file; each has the title as its label and the start, the end and the UID as properties (the aliases of the plugin, see Resources.rdef).
+	 */
+	status_t				Extract(const entry_ref& file, BMessage* reply);
 
 	/**
 	 * The targets of a relation of the event of the file (`relation/x-vnd.sen-labs.relation.event.attendee`, `.location`, `.series`), added to @p reply as sensei::key::kTargets.

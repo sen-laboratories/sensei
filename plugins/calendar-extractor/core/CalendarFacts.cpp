@@ -6,6 +6,7 @@
 #include "CalendarFacts.h"
 
 #include <stdio.h>
+#include <strings.h>
 
 #include <algorithm>
 
@@ -154,9 +155,51 @@ FactsOf(const ics::Calendar& /*calendar: the times of the event are worked out a
 	facts.location = event.location;
 	facts.url = event.url;
 	facts.recurrence = event.ruleText;
+	{
+		ics::Rule rule;
+		if (!event.ruleText.empty() && ics::ParseRule(event.ruleText, &rule))
+			facts.repeats = ics::DescribeRule(rule);
+	}
 	facts.status = EventStatusText(event.status);
 	if (event.hasOrganizer)
 		facts.organizer = PersonText(event.organizer);
+	{
+		// the people as a list that can be read at a glance: the organizer first, each once (by address, else by name), with the role and the answer in brackets
+		ics::Person organizer = event.organizer;
+		if (event.hasOrganizer) {
+			// (the organizer is mostly an attendee as well, and it is there that the answer to the invitation is)
+			for (const ics::Person& person : event.attendees) {
+				if (!organizer.email.empty() && strcasecmp(person.email.c_str(), organizer.email.c_str()) == 0 && organizer.status.empty())
+					organizer.status = person.status;
+			}
+		}
+		std::vector<const ics::Person*> people;
+		if (event.hasOrganizer)
+			people.push_back(&organizer);
+		for (const ics::Person& person : event.attendees)
+			people.push_back(&person);
+		std::vector<std::string> seen;
+		for (const ics::Person* person : people) {
+			std::string text = PersonText(*person);
+			if (text.empty())
+				continue;
+			const std::string key = person->email.empty() ? text : person->email;
+			bool known = false;
+			for (const std::string& each : seen)
+				known = known || strcasecmp(each.c_str(), key.c_str()) == 0;
+			if (known)
+				continue;
+			seen.push_back(key);
+			std::string details = RoleText(*person);
+			const std::string answer = ResponseText(person->status);
+			if (!answer.empty())
+				details += (details.empty() ? "" : ", ") + answer;
+			if (!details.empty())
+				text += " (" + details + ")";
+			std::replace(text.begin(), text.end(), ';', ',');		// (the separator of the list)
+			facts.attendees.push_back(text);
+		}
+	}
 
 	facts.markdown = ics::DescriptionToMarkdown(event.description, event.htmlDescription);
 	facts.summary = ics::PlainSummary(facts.markdown, 300);

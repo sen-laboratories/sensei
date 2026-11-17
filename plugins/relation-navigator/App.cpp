@@ -17,6 +17,8 @@
 
 #include <sen/Sen.h>
 
+#include "../../common/OpenTarget.h"
+
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.relation-navigator";
 
 
@@ -70,8 +72,7 @@ status_t
 App::Open(const entry_ref& target)
 {
 	// the application of the type of the target, as a double click on it would (a folder opens in Tracker)
-	status_t result = be_roster->Launch(&target);
-	return result == B_ALREADY_RUNNING ? B_OK : result;
+	return sensei::OpenTarget(target);
 }
 
 

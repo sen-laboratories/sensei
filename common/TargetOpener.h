@@ -32,6 +32,7 @@
 
 #include <sen/SenAbout.h>
 
+#include "OpenTarget.h"
 #include "RelationTarget.h"
 
 namespace sensei {
@@ -70,10 +71,9 @@ public:
 			}
 
 			// the target is opened by the application of its type
-			result = be_roster->Launch(&target);
-			if (result != B_OK && result != B_ALREADY_RUNNING)
+			result = OpenTarget(target);
+			if (result != B_OK)
 				break;
-			result = B_OK;
 		}
 
 		if (result != B_OK) {

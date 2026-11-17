@@ -56,6 +56,12 @@ bool IsValidNamePattern(const std::string& pattern, std::string* reason = nullpt
  */
 std::string BuildEventName(const std::string& pattern, const DateTime& localStart, bool hasTime, const std::string& title);
 
+/**
+ * A recurrence rule in words: `every year`, `every 2 weeks on Monday and Wednesday, 10 times`, `every month on the second Tuesday`, `every year on 5 May, until 2030-12-31`. Empty if the rule is none.
+ * The rule itself stays in the attribute of the rule; this is what people read.
+ */
+std::string DescribeRule(const Rule& rule);
+
 /** The name of the file for an event after the default pattern: `2026-11-12_0930_Planning`. */
 std::string EventBaseName(const DateTime& localStart, bool hasTime, const std::string& title);
 

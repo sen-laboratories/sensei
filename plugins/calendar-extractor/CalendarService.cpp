@@ -181,6 +181,49 @@ CalendarService::Enrich(entry_ref* file, BMessage* reply)
 
 
 status_t
+CalendarService::Extract(const entry_ref& file, BMessage* reply)
+{
+	ics::Calendar calendar;
+	if (!ReadCalendarOf(file, &calendar))
+		return B_ENTRY_NOT_FOUND;
+	std::vector<const ics::Event*> events = calendar.DistinctEvents();
+	// (a file with one event is that event: it contains nothing)
+	if (events.size() < 2)
+		return B_OK;
+	std::stable_sort(events.begin(), events.end(), [](const ics::Event* a, const ics::Event* b) {
+		if (a->startKnown != b->startKnown)
+			return a->startKnown;
+		return a->startKnown && a->startUnix < b->startUnix;
+	});
+
+	// The format of the server (see the PDF extractor): the items of one level are fields with one value for each item, all of them present for every item, so a property that one event
+	// lacks is left out for all. Each item has a (here empty) message of its sub items, an id that the server makes and the target, which is this file.
+	bool starts = true, ends = true;
+	for (const ics::Event* each : events) {
+		starts = starts && each->startKnown;
+		ends = ends && each->endKnown;
+	}
+	BMessage children(sensei::cmd::kResult);
+	for (const ics::Event* each : events) {
+		children.AddString(sensei::key::kLabel, each->summary.empty() ? "Event" : each->summary.c_str());
+		if (starts)
+			children.AddInt64(kStartAlias, each->startUnix);
+		if (ends)
+			children.AddInt64(kEndAlias, each->endUnix);
+		children.AddString(kUidAlias, each->uid.c_str());
+		children.AddMessage(sensei::key::kItem, new BMessage());
+		children.AddString(sensei::key::kItemId, "");
+		children.AddString(sensei::key::kTo, sensei::to::kSelf);
+	}
+	reply->AddMessage(sensei::key::kItem, &children);
+	reply->AddString(sensei::key::kItemId, "");
+	reply->AddString(sensei::key::kTo, sensei::to::kSelf);
+	fSummary = std::to_string(events.size()) + " events.";
+	return B_OK;
+}
+
+
+status_t
 CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage& libraries, BMessage* reply)
 {
 	ics::Calendar calendar;
@@ -188,25 +231,6 @@ CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage
 		return B_ENTRY_NOT_FOUND;
 	const std::vector<const ics::Event*> events = calendar.DistinctEvents();
 	const std::string kind = type != NULL ? type : "";
-
-	if (kind == temporal::mime::kCalendarEvents) {
-		// the events of a calendar are places in the same file, as the pages of a document are: the target is the file, an event is named by its UID
-		for (const ics::Event* each : events) {
-			BMessage item;
-			item.AddRef(sen::key::kTargetRef, &file);
-			item.AddString(sen::attr::kRelationLabel, "contains");
-			item.AddString(temporal::attr::kTitle, each->summary.c_str());
-			if (each->startKnown)
-				item.AddInt64(temporal::attr::kStartDate, each->startUnix);
-			if (each->endKnown)
-				item.AddInt64(temporal::attr::kEndDate, each->endUnix);
-			if (!each->uid.empty())
-				item.AddString(temporal::attr::kUid, each->uid.c_str());
-			item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
-			reply->AddMessage(sensei::key::kTargets, &item);
-		}
-		return B_OK;
-	}
 
 	if (events.size() != 1)
 		return B_ENTRY_NOT_FOUND;

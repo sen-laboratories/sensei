@@ -101,6 +101,17 @@ WriteEvent(BNode& node, const Facts& facts)
 	PutString(node, temporal::attr::kMeetingUrl, facts.meetingUrl);
 	PutString(node, temporal::attr::kMeetingType, facts.meetingType);
 	PutString(node, temporal::attr::kRecurrence, facts.recurrence);
+	PutString(node, temporal::attr::kRepeats, facts.repeats);
+	{
+		// (a list attribute is one text with the separator of the attribute between the entries)
+		std::string people;
+		for (const std::string& person : facts.attendees) {
+			if (!people.empty())
+				people += ";";
+			people += person;
+		}
+		PutString(node, temporal::attr::kAttendees, people);
+	}
 	PutTime(node, temporal::attr::kStartDate, facts.hasStart, facts.startUnix);
 	PutTime(node, temporal::attr::kEndDate, facts.hasEnd, facts.endUnix);
 	PutString(node, temporal::attr::kStartDateEdtf, facts.startEdtf);

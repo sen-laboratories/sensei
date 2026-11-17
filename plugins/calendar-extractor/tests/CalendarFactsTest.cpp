@@ -54,6 +54,12 @@ int main()
 		CHECK(f.links.size() == 1 && f.links[0] == "https://meet.example.org/abc");
 		CHECK(PersonText(cal.events[0].attendees[1]) == "Jane Roe <jane@example.org>" && RoleText(cal.events[0].attendees[2]) == "optional" && RoleText(cal.events[0].attendees[3]) == "resource"
 			&& RoleText(cal.events[0].organizer) == "organizer" && RoleText(cal.events[0].attendees[1]) == "required");
+		// the list of people: the organizer once (he is an attendee, too), the role and the answer in brackets
+		CHECK(f.attendees.size() == 4);
+		CHECK_EQ(f.attendees[0], "Max Muster <max@example.org> (organizer, Accepted)");
+		CHECK_EQ(f.attendees[1], "Jane Roe <jane@example.org> (required, Needs action)");
+		CHECK_EQ(f.attendees[2], "Erika Mustermann <erika@example.org> (optional, Tentative)");
+		CHECK(f.repeats.empty());
 		CHECK(ResponseText(cal.events[0].attendees[0].status) == "Accepted" && ResponseText(cal.events[0].attendees[1].status) == "Needs action" && ResponseText(cal.events[0].attendees[2].status) == "Tentative");
 	}
 

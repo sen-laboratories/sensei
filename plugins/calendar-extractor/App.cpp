@@ -27,6 +27,7 @@
 
 #include "core/IcsText.h"
 #include "../../common/Notice.h"
+#include "../../common/OpenTarget.h"
 #include "../../common/RelationTarget.h"
 
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.calendar-extractor";
@@ -70,6 +71,7 @@ App::_PrintUsage(const char* error) const
 		"  --name-pattern <p>  enrich: name the file after this pattern ({date} {time} {year} {month} {day} {hour} {minute} {title}, default {date}_{time}_{title})\n"
 		"  --no-description    enrich: no Markdown file for the description\n"
 		"  --describe          print what would be written (nothing is changed)\n"
+		"  --extract           print the events that a calendar file with several events contains (a self relation, what the server asks for)\n"
 		"  --resolve <type>    print the targets of a relation (relation/x-vnd.sen-labs.relation.event.attendee, .location, .series)\n"
 		"  --library <folder>  resolve: make the people and places in that folder (else in the Library of the current context of SEN: a test leaves files there)\n";
 }
@@ -117,6 +119,8 @@ App::ArgvReceived(int32 argc, char** argv)
 				Quit();
 				return;
 			}
+		} else if (strcmp(arg, "--extract") == 0) {
+			what = sensei::cmd::kExtract;
 		} else if (strcmp(arg, "--resolve") == 0 && i + 1 < argc) {
 			what = sensei::cmd::kResolve;
 			relationType = argv[++i];
@@ -151,6 +155,8 @@ App::ArgvReceived(int32 argc, char** argv)
 		message.AddRef("refs", &ref);
 		if (what == sensei::cmd::kResolve)
 			message.AddString(sen::key::kRelationType, relationType.c_str());
+		if (what == sensei::cmd::kExtract)
+			message.AddBool(sen::conf::kSelf, true);
 		_Handle(&message);
 	}
 	Quit();
@@ -163,11 +169,17 @@ App::RefsReceived(BMessage* message)
 	// the Enrich of the file manager (Akita) is B_REFS_RECEIVED; a double click on the file of a relation (this plugin is the application of the relation types) opens the target
 	entry_ref first;
 	if (message->FindRef("refs", &first) == B_OK) {
+		// an item of the menu of the contained relations (an event of a calendar) is the target with the properties of the relation: it is opened, never enriched
+		if (message->HasMessage(sen::key::kRelationProperties)) {
+			sensei::OpenTarget(first);
+			Quit();
+			return;
+		}
 		bool found = true;
 		const entry_ref target = sensei::RelationTarget(first, &found);
 		if (!(target == first)) {
 			if (found)
-				be_roster->Launch(&target);
+				sensei::OpenTarget(target);
 			else
 				fprintf(stderr, "%s: nothing to open (the target of the relation is gone).\n", first.name);
 			Quit();
@@ -222,9 +234,10 @@ App::_Handle(BMessage* message)
 		message->SendReply(&reply, this);
 		return B_BAD_VALUE;
 	}
+	// What the server sends for an extraction is B_REFS_RECEIVED with SEN:self (true or false); the Enrich of the file manager is B_REFS_RECEIVED without it.
 	uint32 what = message->what;
 	if (what == B_REFS_RECEIVED)
-		what = sensei::cmd::kEnrich;		// (the server asks for the contained relations of files of the types of this plugin: it has none)
+		what = message->HasBool(sen::conf::kSelf) ? sensei::cmd::kExtract : sensei::cmd::kEnrich;
 
 	CalendarService service(fOptions);
 	status_t result;
@@ -232,6 +245,22 @@ App::_Handle(BMessage* message)
 		case sensei::cmd::kIdentify:
 			result = service.Identify(ref, &reply);
 			break;
+		case sensei::cmd::kExtract:
+		{
+			// (the contained relations of a calendar with several events; the outgoing ones are not asked of an extractor)
+			result = message->GetBool(sen::conf::kSelf, false) ? service.Extract(ref, &reply) : B_OK;
+			BMessage root, children;
+			if (!fNotify && reply.FindMessage(sensei::key::kItem, &root) == B_OK) {
+				// (at the command line: the events that the server would get)
+				const char* label;
+				for (int32 i = 0; root.FindString(sensei::key::kLabel, i, &label) == B_OK; i++) {
+					int64 start = 0;
+					root.FindInt64(kStartAlias, i, &start);
+					printf("  %lld  %s  %s\n", (long long)start, label, root.GetString(kUidAlias, i, ""));
+				}
+			}
+			break;
+		}
 		case sensei::cmd::kResolve:
 		{
 			BMessage libraries;

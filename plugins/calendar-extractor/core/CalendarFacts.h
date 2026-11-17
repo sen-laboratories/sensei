@@ -28,6 +28,8 @@ struct Facts {
 	std::string		attendanceMode;		///< Offline, Online, Mixed, or empty
 	std::string		meetingUrl, meetingType;
 	std::string		recurrence;
+	std::string		repeats;				///< the recurrence in words (every week on Monday), empty if the event does not repeat
+	std::vector<std::string>	attendees;	///< the people as `Name <address> (role, answer)`
 	std::vector<std::string>	links;	///< all the links in the event, in the order of the file (the description, the location, the conference properties)
 	bool			hasStart = false, hasEnd = false;
 	int64_t			startUnix = 0, endUnix = 0;		///< seconds since 1970 (UTC)

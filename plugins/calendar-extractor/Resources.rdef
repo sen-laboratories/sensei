@@ -24,12 +24,23 @@ resource app_version {
 resource(0, "META:TYPE") "application/x-vnd.sen-labs.plugin";
 
 // set supported feature flags
-resource(1, "SEN:plugin:extract")  0;
+resource(1, "SEN:plugin:extract")  1;
 resource(2, "SEN:plugin:enrich")   1;
 resource(3, "SEN:plugin:identify") 1;
 resource(4, "SEN:plugin:navigate") 1;
 // whether the settings window of SEN has anything to show for this plugin (the settings: whether the file is renamed, the Markdown file of the description, who the user is)
 resource(20, "SEN:plugin:hasSettings") true;
+
+/* the contained relations of a calendar file with several events (extract): its events, as the outline of a document gives the references to its parts. The relation type of the items,
+   and the short names that the plugin gives the properties of an item, which the server maps to the attributes. */
+resource(5, "SEN:typeMapping") message {
+    "SEN:default" = "relation/x-vnd.sen-labs.relation.calendar.events"
+};
+resource(6, "SEN:attrMapping") message {
+    "start" = "schema:startDate",
+    "end"   = "schema:endDate",
+    "uid"   = "dc:identifier"
+};
 
 /* what it handles: the calendar files (to identify and to enrich), the events, and the relation types that it works out (the server asks the plugin that names a dynamic relation type here) */
 resource file_types message {

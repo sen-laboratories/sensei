@@ -711,6 +711,124 @@ BuildEventName(const std::string& pattern, const DateTime& start, bool hasTime, 
 }
 
 
+namespace {
+
+std::string
+JoinWords(const std::vector<std::string>& words)
+{
+	std::string out;
+	for (size_t i = 0; i < words.size(); i++) {
+		if (i > 0)
+			out += (i + 1 == words.size()) ? " and " : ", ";
+		out += words[i];
+	}
+	return out;
+}
+
+
+std::string
+OrdinalWord(int n)
+{
+	static const char* const names[] = {"", "first", "second", "third", "fourth", "fifth"};
+	if (n >= 1 && n <= 5)
+		return names[n];
+	return std::to_string(n) + "th";
+}
+
+
+/** 1st, 2nd, 3rd, 15th */
+std::string
+OrdinalNumber(int n)
+{
+	const int last = n % 100;
+	const char* suffix = "th";
+	if (last < 11 || last > 13) {
+		switch (n % 10) {
+			case 1: suffix = "st"; break;
+			case 2: suffix = "nd"; break;
+			case 3: suffix = "rd"; break;
+		}
+	}
+	return std::to_string(n) + suffix;
+}
+
+const char* const kWeekdayNames[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+const char* const kMonthNames[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+
+}	// namespace
+
+
+std::string
+DescribeRule(const Rule& rule)
+{
+	if (!rule.valid || rule.frequency == Frequency::None)
+		return "";
+	const char* unit = "day";
+	switch (rule.frequency) {
+		case Frequency::Secondly: unit = "second"; break;
+		case Frequency::Minutely: unit = "minute"; break;
+		case Frequency::Hourly: unit = "hour"; break;
+		case Frequency::Daily: unit = "day"; break;
+		case Frequency::Weekly: unit = "week"; break;
+		case Frequency::Monthly: unit = "month"; break;
+		case Frequency::Yearly: unit = "year"; break;
+		default: break;
+	}
+	const int interval = rule.interval > 1 ? rule.interval : 1;
+	std::string text = interval == 1 ? std::string("every ") + unit : "every " + std::to_string(interval) + " " + unit + "s";
+
+	// on which days: the weekdays (with their place in the month or year), the days of the month, the months
+	if (!rule.byDay.empty()) {
+		std::vector<std::string> days;
+		for (const WeekDay& day : rule.byDay) {
+			if (day.weekday < 0 || day.weekday > 6)
+				continue;
+			std::string name = kWeekdayNames[day.weekday];
+			if (day.ordinal > 0)
+				name = "the " + OrdinalWord(day.ordinal) + " " + name;
+			else if (day.ordinal == -1)
+				name = "the last " + name;
+			else if (day.ordinal < -1)
+				name = "the " + OrdinalWord(-day.ordinal) + " to last " + name;
+			days.push_back(name);
+		}
+		if (!days.empty())
+			text += " on " + JoinWords(days);
+	}
+	if (rule.frequency == Frequency::Yearly && rule.byMonth.size() == 1 && rule.byMonthDay.size() == 1 && rule.byMonthDay[0] > 0 && rule.byMonth[0] >= 1 && rule.byMonth[0] <= 12) {
+		text += " on " + std::to_string(rule.byMonthDay[0]) + " " + kMonthNames[rule.byMonth[0]];
+	} else {
+		if (!rule.byMonthDay.empty()) {
+			std::vector<std::string> days;
+			bool onlyFromStart = true;
+			for (int day : rule.byMonthDay) {
+				onlyFromStart = onlyFromStart && day > 0;
+				days.push_back(day == -1 ? std::string("last day") : (day > 0 ? OrdinalNumber(day) : OrdinalNumber(-day) + " day from the end"));
+			}
+			text += " on the " + JoinWords(days);
+		}
+		if (!rule.byMonth.empty()) {
+			std::vector<std::string> months;
+			for (int month : rule.byMonth) {
+				if (month >= 1 && month <= 12)
+					months.push_back(kMonthNames[month]);
+			}
+			if (!months.empty())
+				text += " in " + JoinWords(months);
+		}
+	}
+
+	// how long
+	if (rule.count == 1)
+		text += ", once";
+	else if (rule.count > 1)
+		text += ", " + std::to_string(rule.count) + " times";
+	else if (rule.until.valid)
+		text += ", until " + DateTimeText(rule.until).substr(0, 10);
+	return text;
+}
+
+
 std::string
 EventBaseName(const DateTime& start, bool hasTime, const std::string& title)
 {

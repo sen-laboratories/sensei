@@ -67,6 +67,24 @@ int main()
 	CHECK(EventBaseName(t, true, std::string(200, 'a')).size() == std::string("2026-11-12_0905_").size() + 80);
 	CHECK_EQ(EventBaseName(t, true, "...hidden"), "2026-11-12_0905_hidden");
 
+	// a recurrence rule in words
+	auto words = [](const char* rule) {
+		Rule parsed;
+		return ParseRule(rule, &parsed) ? DescribeRule(parsed) : std::string("(no rule)");
+	};
+	CHECK_EQ(words("FREQ=YEARLY"), "every year");
+	CHECK_EQ(words("FREQ=DAILY;INTERVAL=2"), "every 2 days");
+	CHECK_EQ(words("FREQ=WEEKLY;COUNT=6;BYDAY=MO"), "every week on Monday, 6 times");
+	CHECK_EQ(words("FREQ=WEEKLY;BYDAY=MO,WE,FR"), "every week on Monday, Wednesday and Friday");
+	CHECK_EQ(words("FREQ=MONTHLY;BYDAY=2TU"), "every month on the second Tuesday");
+	CHECK_EQ(words("FREQ=MONTHLY;BYDAY=-1FR"), "every month on the last Friday");
+	CHECK_EQ(words("FREQ=MONTHLY;BYMONTHDAY=1,15"), "every month on the 1st and 15th");
+	CHECK_EQ(words("FREQ=MONTHLY;BYMONTHDAY=-1"), "every month on the last day");
+	CHECK_EQ(words("FREQ=YEARLY;BYMONTH=5;BYMONTHDAY=5"), "every year on 5 May");
+	CHECK_EQ(words("FREQ=YEARLY;INTERVAL=1;BYDAY=-1SU;BYMONTH=10"), "every year on the last Sunday in October");
+	CHECK_EQ(words("FREQ=WEEKLY;UNTIL=20301231"), "every week, until 2030-12-31");
+	CHECK_EQ(words("FREQ=DAILY;COUNT=1"), "every day, once");
+
 	// a pattern of the settings
 	CHECK_EQ(BuildEventName("{date}_{time}_{title}", t, true, "Planning"), "2026-11-12_0905_Planning");
 	CHECK_EQ(BuildEventName("{year}{month}{day}-{hour}{minute} {title}", t, true, "A b"), "20261112-0905 A-b");
