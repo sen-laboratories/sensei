@@ -29,7 +29,7 @@ end of a period is the moment that the next one begins, so two days in a row **m
 with its **widest extent**, so that a relation is never claimed that the time does not allow. Times of day without a zone are the local time of the person who typed them.
 
 The files are found with a query of the index of `schema:startDate` on every volume (BFS indexes a time as the 64-bit integer that holds it, so the times must be written as `time_t`); those in
-the Trash are left out. Any file that has a start is found, whatever its type; the offer of the relation ("Open related") is for events for now: the relation types name the type *Event* as
+the Trash are left out. Any file that has a start is found, whatever its type, except a **calendar** (the umbrella of its events: its time is the time that its events cover, and it is no thing that happens before or after them); the offer of the relation ("Open related") is for events for now: the relation types name the type *Event* as
 their source and target.
 
 From the command line (for a test): `SenTemporalNavigator <relation type> <file>`, e.g. `SenTemporalNavigator relation/x-vnd.sen-labs.relation.temporal.overlaps ~/Events/Meeting`.

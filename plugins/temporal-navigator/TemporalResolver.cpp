@@ -148,6 +148,9 @@ Resolver::Resolve(const entry_ref& file, const std::string& relationType, std::v
 		node_ref id;
 		if (node.GetNodeRef(&id) == B_OK && id == ownId)
 			continue;
+		// a calendar has the time that its events cover, but it is the umbrella of its events and no event: it is no thing that happens before or after an event
+		if (ReadText(node, "META:TYPE") == sen::onto::temporal::mime::kCalendar)
+			continue;
 		TimeAttributes other;
 		if (!ReadTimeAttributes(candidate, &other))
 			continue;
