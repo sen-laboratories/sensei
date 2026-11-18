@@ -278,7 +278,7 @@ CalendarService::Materialise(const entry_ref& file, const BMessage& request, BMe
 					break;
 				}
 			}
-			status_t status = calendar::store::CreateCalendarFile(folder, title, eventText, &event);
+			status_t status = calendar::store::CreateCalendarFile(folder, title, eventText, temporal::mime::kEvent, &event);
 			if (status != B_OK) {
 				fprintf(stderr, "no file for %s: %s\n", key.c_str(), strerror(status));
 				continue;

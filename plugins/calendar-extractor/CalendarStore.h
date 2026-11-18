@@ -53,8 +53,11 @@ status_t WriteDescriptionFile(const entry_ref& beside, const std::string& baseNa
  */
 bool FindEventFile(const std::string& key, const entry_ref* folder, entry_ref* found, bool onlyInFolder = false);
 
-/** A new file in @p folder, named after @p title (`Title.ics`, `Title-2.ics`...), with the text: a calendar file that has the type text/calendar. Gets the ref. */
-status_t CreateCalendarFile(const entry_ref& folder, const std::string& title, const std::string& text, entry_ref* created);
+/**
+ * A new file in @p folder, named after @p title (`Title.ics`, `Title-2.ics`...), with the text. Its type is @p mimeType: an entity that is made (the event of a calendar) has the type of the
+ * entity, as one that is made from a template has, so that it is opened as one (Shoji); a file of another source keeps the type that it has. Gets the ref.
+ */
+status_t CreateCalendarFile(const entry_ref& folder, const std::string& title, const std::string& text, const char* mimeType, entry_ref* created);
 
 /** Replaces the text of a file. */
 status_t ReplaceText(const entry_ref& file, const std::string& text);

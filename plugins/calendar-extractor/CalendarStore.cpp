@@ -290,7 +290,7 @@ FindEventFile(const std::string& key, const entry_ref* folder, entry_ref* found,
 
 
 status_t
-CreateCalendarFile(const entry_ref& folder, const std::string& title, const std::string& text, entry_ref* created)
+CreateCalendarFile(const entry_ref& folder, const std::string& title, const std::string& text, const char* mimeType, entry_ref* created)
 {
 	BDirectory directory(&folder);
 	status_t status = directory.InitCheck();
@@ -318,7 +318,7 @@ CreateCalendarFile(const entry_ref& folder, const std::string& title, const std:
 		if (file.Write(text.data(), text.size()) != (ssize_t)text.size())
 			return B_IO_ERROR;
 		file.Sync();
-		BNodeInfo(&file).SetType("text/calendar");
+		BNodeInfo(&file).SetType(mimeType);
 		return BEntry(&directory, name.c_str()).GetRef(created);
 	}
 	return B_NAME_IN_USE;
