@@ -6,7 +6,7 @@
 set -e
 cd "$(dirname "$0")/.."
 out=${TMPDIR:-/tmp}/calendar-core-test
-for test in IcsTimeTest IcsParserTest CalendarTest IcsTextTest CalendarFactsTest CalendarSettingsTest; do
+for test in IcsTimeTest IcsParserTest CalendarTest IcsTextTest CalendarFactsTest CalendarSettingsTest IcsWriteTest; do
 	${CXX:-c++} -std=c++17 -Wall -Wextra -Icore -DFIXTURES="\"$PWD/tests/fixtures\"" -o "$out-$test" tests/$test.cpp core/*.cpp
 	echo "$test: $("$out-$test")"
 done

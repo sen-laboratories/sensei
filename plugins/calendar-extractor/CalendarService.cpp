@@ -31,6 +31,7 @@
 #include "core/CalendarFacts.h"
 #include "core/CalendarSettings.h"
 #include "core/IcsText.h"
+#include "core/IcsWrite.h"
 
 namespace temporal = sen::onto::temporal;
 namespace people = sen::onto::people;
@@ -210,7 +211,7 @@ CalendarService::Extract(const entry_ref& file, BMessage* reply)
 			children.AddInt64(kStartAlias, each->startUnix);
 		if (ends)
 			children.AddInt64(kEndAlias, each->endUnix);
-		children.AddString(kUidAlias, each->uid.c_str());
+		children.AddString(kUidAlias, ics::EventKey(*each).c_str());
 		children.AddMessage(sensei::key::kItem, new BMessage());
 		children.AddString(sensei::key::kItemId, "");
 		children.AddString(sensei::key::kTo, sensei::to::kSelf);
@@ -219,6 +220,89 @@ CalendarService::Extract(const entry_ref& file, BMessage* reply)
 	reply->AddString(sensei::key::kItemId, "");
 	reply->AddString(sensei::key::kTo, sensei::to::kSelf);
 	fSummary = std::to_string(events.size()) + " events.";
+	return B_OK;
+}
+
+
+status_t
+CalendarService::Materialise(const entry_ref& file, const BMessage& request, BMessage* reply)
+{
+	std::string text;
+	if (!calendar::store::ReadText(file, kFileLimit, &text) || !ics::LooksLikeCalendar(text.substr(0, 4096)))
+		return B_ENTRY_NOT_FOUND;
+	const ics::Parsed parsed = ics::Parse(text);
+	const ics::Calendar calendar = ics::ReadCalendar(text);
+
+	// where a new event goes: the Library folder of the type that the server gave, else the folder of the calendar
+	BMessage libraries;
+	request.FindMessage(sensei::key::kLibraries, &libraries);
+	entry_ref folder;
+	bool haveFolder = libraries.FindRef(temporal::mime::kEvent, &folder) == B_OK;
+	if (!haveFolder) {
+		BEntry entry(&file), parent;
+		haveFolder = entry.GetParent(&parent) == B_OK && parent.GetRef(&folder) == B_OK;
+	}
+	if (!haveFolder)
+		return B_ERROR;
+
+	// dropped in a folder: the event is made there (a copy of one that is kept elsewhere too), and found only if it is there already
+	const bool here = request.HasRef(sen::key::kDestinationRef);
+	int32 made = 0, found = 0;
+	BMessage item;
+	for (int32 index = 0; request.FindMessage(sensei::key::kItems, index, &item) == B_OK; index++) {
+		const std::string key = item.GetString(temporal::attr::kUid, "");
+		if (key.empty())
+			continue;
+		const std::string eventText = ics::EventFile(parsed, calendar, key);
+		if (eventText.empty()) {
+			fprintf(stderr, "no event %s in %s\n", key.c_str(), file.name);
+			continue;
+		}
+		entry_ref event;
+		bool isNew = false;
+		if (calendar::store::FindEventFile(key, &folder, &event, here)) {
+			// (kept before: the calendar may say it differently now)
+			std::string kept;
+			if (calendar::store::ReadText(event, kFileLimit, &kept) && kept == eventText) {
+				found++;
+			} else if (calendar::store::ReplaceText(event, eventText) == B_OK) {
+				BMessage ignored;
+				Enrich(&event, &ignored);
+				found++;
+			}
+		} else {
+			std::string title;
+			for (const ics::Event& each : calendar.events) {
+				if (ics::EventKey(each) == key) {
+					title = each.summary;
+					break;
+				}
+			}
+			status_t status = calendar::store::CreateCalendarFile(folder, title, eventText, &event);
+			if (status != B_OK) {
+				fprintf(stderr, "no file for %s: %s\n", key.c_str(), strerror(status));
+				continue;
+			}
+			BMessage ignored;
+			status = Enrich(&event, &ignored);
+			if (status != B_OK) {
+				fprintf(stderr, "%s could not be read as an event: %s\n", event.name, strerror(status));
+				BEntry(&event).Remove();
+				continue;
+			}
+			isNew = true;
+			made++;
+		}
+		BMessage target;
+		target.AddRef(sen::key::kTargetRef, &event);
+		target.AddString(sen::key::kItemId, item.GetString(sen::key::kItemId, ""));
+		// what makes the item the same one again (its identifier; the id of the item is made new at every listing): the server keeps it with the relation
+		target.AddString(temporal::attr::kUid, key.c_str());
+		reply->AddMessage(sensei::key::kTargets, &target);
+		if (isNew)
+			sensei::ApplyStickyClassificationsLater(event);
+	}
+	fSummary = std::to_string(made) + " events made, " + std::to_string(found) + " found.";
 	return B_OK;
 }
 

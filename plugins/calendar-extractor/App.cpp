@@ -72,6 +72,7 @@ App::_PrintUsage(const char* error) const
 		"  --no-description    enrich: no Markdown file for the description\n"
 		"  --describe          print what would be written (nothing is changed)\n"
 		"  --extract           print the events that a calendar file with several events contains (a self relation, what the server asks for)\n"
+		"  --materialise <key> make the event with this identifier (the key of an item of --extract) a file of its own, in the folder of --library (repeat for several)\n"
 		"  --resolve <type>    print the targets of a relation (relation/x-vnd.sen-labs.relation.event.attendee, .location, .series)\n"
 		"  --library <folder>  resolve: make the people and places in that folder (else in the Library of the current context of SEN: a test leaves files there)\n";
 }
@@ -84,6 +85,7 @@ App::ArgvReceived(int32 argc, char** argv)
 	uint32 what = sensei::cmd::kEnrich;
 	bool describe = false;
 	std::string relationType;
+	std::vector<std::string> keys;
 	std::vector<std::string> files;
 	for (int32 i = 1; i < argc; i++) {
 		const char* arg = argv[i];
@@ -121,6 +123,9 @@ App::ArgvReceived(int32 argc, char** argv)
 			}
 		} else if (strcmp(arg, "--extract") == 0) {
 			what = sensei::cmd::kExtract;
+		} else if (strcmp(arg, "--materialise") == 0 && i + 1 < argc) {
+			what = sensei::cmd::kMaterialise;
+			keys.push_back(argv[++i]);
 		} else if (strcmp(arg, "--resolve") == 0 && i + 1 < argc) {
 			what = sensei::cmd::kResolve;
 			relationType = argv[++i];
@@ -157,6 +162,18 @@ App::ArgvReceived(int32 argc, char** argv)
 			message.AddString(sen::key::kRelationType, relationType.c_str());
 		if (what == sensei::cmd::kExtract)
 			message.AddBool(sen::conf::kSelf, true);
+		if (what == sensei::cmd::kMaterialise) {
+			BMessage libraries;
+			if (fHasLibrary)
+				libraries.AddRef(sen::onto::temporal::mime::kEvent, &fLibrary);
+			message.AddMessage(sensei::key::kLibraries, &libraries);
+			for (const std::string& key : keys) {
+				BMessage item;
+				item.AddString(sen::onto::temporal::attr::kUid, key.c_str());
+				item.AddString(sen::key::kItemId, key.c_str());
+				message.AddMessage(sensei::key::kItems, &item);
+			}
+		}
 		_Handle(&message);
 	}
 	Quit();
@@ -214,6 +231,7 @@ App::MessageReceived(BMessage* message)
 		case sensei::cmd::kIdentify:
 		case sensei::cmd::kEnrich:
 		case sensei::cmd::kResolve:
+		case sensei::cmd::kMaterialise:
 			_Handle(message);
 			Quit();		// (a plugin is a multiple launch application that ends when it has answered)
 			break;
@@ -261,6 +279,18 @@ App::_Handle(BMessage* message)
 			}
 			break;
 		}
+		case sensei::cmd::kMaterialise:
+			result = service.Materialise(ref, *message, &reply);
+			if (!fNotify) {
+				// (at the command line: the events that the server would get)
+				BMessage target;
+				for (int32 i = 0; reply.FindMessage(sensei::key::kTargets, i, &target) == B_OK; i++) {
+					entry_ref event;
+					target.FindRef(sen::key::kTargetRef, &event);
+					printf("  %s\n", event.name);
+				}
+			}
+			break;
 		case sensei::cmd::kResolve:
 		{
 			BMessage libraries;

@@ -46,5 +46,18 @@ status_t Rename(entry_ref* file, const std::string& baseName);
  */
 status_t WriteDescriptionFile(const entry_ref& beside, const std::string& baseName, const std::string& title, const std::string& markdown, entry_ref* created);
 
+/**
+ * The file of an event that is kept (the entity), found by its identifier: asked of the file systems (the attribute is indexed), else looked for in @p folder. A file in the trash is not one.
+ * @param onlyInFolder look in @p folder only (a copy of the event is wanted there, whatever is kept elsewhere)
+ * @return false if there is none
+ */
+bool FindEventFile(const std::string& key, const entry_ref* folder, entry_ref* found, bool onlyInFolder = false);
+
+/** A new file in @p folder, named after @p title (`Title.ics`, `Title-2.ics`...), with the text: a calendar file that has the type text/calendar. Gets the ref. */
+status_t CreateCalendarFile(const entry_ref& folder, const std::string& title, const std::string& text, entry_ref* created);
+
+/** Replaces the text of a file. */
+status_t ReplaceText(const entry_ref& file, const std::string& text);
+
 }	// namespace store
 }	// namespace calendar

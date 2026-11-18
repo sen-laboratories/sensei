@@ -7,6 +7,9 @@
 
 #include <Directory.h>
 #include <File.h>
+#include <Query.h>
+#include <Volume.h>
+#include <VolumeRoster.h>
 #include <NodeInfo.h>
 #include <Path.h>
 #include <String.h>
@@ -215,6 +218,120 @@ WriteDescriptionFile(const entry_ref& beside, const std::string& baseName, const
 		PutString(file, temporal::attr::kTitle, title);
 	BEntry made(&parent, name.c_str());
 	return created != NULL ? made.GetRef(created) : B_OK;
+}
+
+namespace {
+
+bool
+IsKeptEvent(const entry_ref& ref, const std::string& key)
+{
+	BPath path(&ref);
+	std::string text = path.Path() != NULL ? path.Path() : "";
+	for (char& c : text)
+		c = (char)tolower((unsigned char)c);
+	if (text.find("/trash/") != std::string::npos)
+		return false;
+	BNode node(&ref);
+	if (node.InitCheck() != B_OK)
+		return false;
+	BString id;
+	if (node.ReadAttrString(temporal::attr::kUid, &id) != B_OK || key != id.String())
+		return false;
+	// (a calendar file, or what a plugin has typed as an event)
+	char type[B_MIME_TYPE_LENGTH];
+	type[0] = '\0';
+	BNodeInfo(&node).GetType(type);
+	BString semantic;
+	node.ReadAttrString(sen::attr::kType, &semantic);
+	return strncmp(type, "text/", 5) == 0 || semantic == temporal::mime::kEvent;
+}
+
+}	// namespace
+
+
+bool
+FindEventFile(const std::string& key, const entry_ref* folder, entry_ref* found, bool onlyInFolder)
+{
+	if (key.empty())
+		return false;
+	BVolumeRoster roster;
+	BVolume volume;
+	while (!onlyInFolder && roster.GetNextVolume(&volume) == B_OK) {
+		if (!volume.KnowsQuery())
+			continue;
+		BQuery query;
+		query.SetVolume(&volume);
+		query.PushAttr(temporal::attr::kUid);
+		query.PushString(key.c_str());
+		query.PushOp(B_EQ);
+		if (query.Fetch() != B_OK)
+			continue;
+		entry_ref ref;
+		while (query.GetNextRef(&ref) == B_OK) {
+			if (IsKeptEvent(ref, key)) {
+				*found = ref;
+				return true;
+			}
+		}
+	}
+	// no index (a volume that was not set up for the attributes of SEN): the files of the folder
+	if (folder != NULL) {
+		BDirectory directory(folder);
+		entry_ref ref;
+		while (directory.InitCheck() == B_OK && directory.GetNextRef(&ref) == B_OK) {
+			if (IsKeptEvent(ref, key)) {
+				*found = ref;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+
+status_t
+CreateCalendarFile(const entry_ref& folder, const std::string& title, const std::string& text, entry_ref* created)
+{
+	BDirectory directory(&folder);
+	status_t status = directory.InitCheck();
+	if (status != B_OK)
+		return status;
+	std::string base = title.empty() ? "Event" : title;
+	for (char& c : base) {
+		if (c == '/')
+			c = '-';
+	}
+	if (base.size() > 80) {
+		size_t cut = 80;
+		while (cut > 0 && ((unsigned char)base[cut] & 0xC0) == 0x80)
+			cut--;
+		base.resize(cut);
+	}
+	for (int attempt = 1; attempt < 100; attempt++) {
+		const std::string name = base + (attempt == 1 ? std::string() : "-" + std::to_string(attempt)) + ".ics";
+		BFile file;
+		status = directory.CreateFile(name.c_str(), &file, true);
+		if (status == B_FILE_EXISTS)
+			continue;
+		if (status != B_OK)
+			return status;
+		if (file.Write(text.data(), text.size()) != (ssize_t)text.size())
+			return B_IO_ERROR;
+		file.Sync();
+		BNodeInfo(&file).SetType("text/calendar");
+		return BEntry(&directory, name.c_str()).GetRef(created);
+	}
+	return B_NAME_IN_USE;
+}
+
+
+status_t
+ReplaceText(const entry_ref& file, const std::string& text)
+{
+	BFile out(&file, B_WRITE_ONLY | B_ERASE_FILE);
+	if (out.InitCheck() != B_OK)
+		return out.InitCheck();
+	return out.Write(text.data(), text.size()) == (ssize_t)text.size() ? B_OK : B_IO_ERROR;
 }
 
 }	// namespace store

@@ -50,6 +50,14 @@ public:
 	 */
 	status_t				Resolve(const entry_ref& file, const char* relationType, const BMessage& libraries, BMessage* reply);
 
+	/**
+	 * The entities of the items of the relation Events (sensei::cmd::kMaterialise): for each item the event as a file of its own in @p library, a calendar file with that event, enriched as an
+	 * event that was received alone. An event that is kept already (found by its identifier) is found again; its file is written again if the calendar says it differently now.
+	 * @param request what the server sent: sensei::key::kItems, sensei::key::kLibraries
+	 * @param reply gets a sensei::key::kTargets message for each item (the ref of the event, the id of the item)
+	 */
+	status_t				Materialise(const entry_ref& file, const BMessage& request, BMessage* reply);
+
 	/** Prints what would be written for the event of the file, and the relations that it would give (for the command line). */
 	status_t				Describe(const entry_ref& file);
 

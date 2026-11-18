@@ -667,6 +667,31 @@ ReadCalendar(const std::string& text)
 }
 
 
+std::string
+EventKey(const Event& event)
+{
+	if (!event.uid.empty())
+		return event.uid;
+	// (FNV-1a over what the event says: the same on every machine)
+	uint64_t hash = 14695981039346656037ULL;
+	auto mix = [&hash](const std::string& text) {
+		for (unsigned char c : text) {
+			hash ^= c;
+			hash *= 1099511628211ULL;
+		}
+		hash ^= 0x1F;
+		hash *= 1099511628211ULL;
+	};
+	mix(event.summary);
+	mix(event.startKnown ? std::to_string(event.startUnix) : std::string());
+	mix(event.endKnown ? std::to_string(event.endUnix) : std::string());
+	mix(event.location);
+	char buffer[24];
+	snprintf(buffer, sizeof(buffer), "sen-%016llx", (unsigned long long)hash);
+	return buffer;
+}
+
+
 DateTime
 UnixToLocal(int64_t seconds)
 {
