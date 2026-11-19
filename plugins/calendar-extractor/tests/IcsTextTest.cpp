@@ -4,6 +4,7 @@
  */
 // Plain C++ test of the text of events: Markdown, links, meetings, file names.
 #include "../core/IcsText.h"
+#include <sen/SenRecurrence.h>
 
 #include <stdio.h>
 
@@ -119,6 +120,31 @@ int main()
 		// (what DescribeRule says of a simple rule reads back as that rule)
 		Rule yearly;
 		CHECK(ParseRule("FREQ=YEARLY", &yearly) && RuleFromWords(DescribeRule(yearly), &r) && r.frequency == Frequency::Yearly);
+	}
+
+	// ---- the picker of a repeat cycle (SenRecurrence.h of sento) says a rule in the words of DescribeRule
+	{
+		using sen::recurrence::Spec;
+		struct Case { int unit, interval, weekdays, end, count; const char* until; };
+		const Case cases[] = {
+			{Spec::kDay, 1, 0, Spec::kNever, 1, ""},
+			{Spec::kDay, 3, 0, Spec::kCount, 5, ""},
+			{Spec::kWeek, 1, 0, Spec::kNever, 1, ""},
+			{Spec::kWeek, 2, 0x05, Spec::kNever, 1, ""},
+			{Spec::kWeek, 2, 0x15, Spec::kCount, 10, ""},
+			{Spec::kWeek, 1, 0x60, Spec::kUntil, 1, "2031-02-03"},
+			{Spec::kWeek, 1, 0x01, Spec::kCount, 1, ""},
+			{Spec::kMonth, 1, 0, Spec::kUntil, 1, "2030-12-31"},
+			{Spec::kMonth, 6, 0, Spec::kNever, 1, ""},
+			{Spec::kYear, 1, 0, Spec::kCount, 3, ""},
+		};
+		for (const Case& c : cases) {
+			Spec spec;
+			spec.unit = c.unit; spec.interval = c.interval; spec.weekdays = c.weekdays; spec.end = c.end; spec.count = c.count; spec.until = c.until;
+			Rule rule;
+			CHECK(ParseRule(sen::recurrence::RuleOf(spec), &rule) && rule.valid);
+			CHECK(DescribeRule(rule) == sen::recurrence::WordsOf(spec));
+		}
 	}
 
 	printf("%d checks, %d failure(s)\n", sChecks, sFailures);
