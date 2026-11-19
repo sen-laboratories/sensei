@@ -7,6 +7,7 @@
 #include "CalendarService.h"
 
 #include <Directory.h>
+#include <fs_attr.h>
 #include <Messenger.h>
 #include <Node.h>
 #include <String.h>
@@ -16,6 +17,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include <sen/Sen.h>
@@ -62,6 +64,118 @@ Lower(const std::string& text)
 	return out;
 }
 
+/** a time attribute (32 or 64 bit, whoever wrote it) */
+bool
+ReadTimeAttr(BNode& node, const char* name, int64_t* seconds)
+{
+	attr_info info;
+	if (node.GetAttrInfo(name, &info) != B_OK || info.type != B_TIME_TYPE)
+		return false;
+	if (info.size == (off_t)sizeof(int64_t))
+		return node.ReadAttr(name, B_TIME_TYPE, 0, seconds, sizeof(int64_t)) == (ssize_t)sizeof(int64_t);
+	if (info.size == (off_t)sizeof(int32)) {
+		int32 value;
+		if (node.ReadAttr(name, B_TIME_TYPE, 0, &value, sizeof(value)) != (ssize_t)sizeof(value))
+			return false;
+		*seconds = value;
+		return true;
+	}
+	return false;
+}
+
+/** the day of a text `YYYY-MM-DD` (what the field of a day that is all day keeps beside the time) */
+bool
+DayOfText(const BString& text, ics::DateTime* day)
+{
+	int year, month, date, used = 0;
+	if (sscanf(text.String(), "%d-%d-%d%n", &year, &month, &date, &used) < 3 || text.String()[used] != '\0')
+		return false;
+	*day = ics::DateTime();
+	day->year = year;
+	day->month = month;
+	day->day = date;
+	day->valid = true;
+	day->dateOnly = true;
+	return true;
+}
+
+/**
+ * The event whose series is asked for, as the FILE of the event says it: the attributes of the file (the ontology: start, end, how it repeats) come before what the calendar content says
+ * (the content is what the file was made from; what the user changed since is in the attributes). An event that has no calendar content (made by hand) has only the attributes.
+ * @return false if there is no event with a start
+ */
+bool
+SeriesEventOf(const entry_ref& file, ics::Event* event, ics::Calendar* calendar)
+{
+	ics::Calendar content;
+	const bool haveContent = ReadCalendarOf(file, &content);
+	const std::vector<const ics::Event*> events = haveContent ? content.DistinctEvents() : std::vector<const ics::Event*>();
+
+	BNode node(&file);
+	BString repeats, recurrence, title, startText, endText;
+	int64_t startUnix = 0, endUnix = 0;
+	const bool haveStart = node.InitCheck() == B_OK && ReadTimeAttr(node, temporal::attr::kStartDate, &startUnix);
+	const bool haveEnd = node.InitCheck() == B_OK && ReadTimeAttr(node, temporal::attr::kEndDate, &endUnix);
+	if (node.InitCheck() == B_OK) {
+		node.ReadAttrString(temporal::attr::kRepeats, &repeats);
+		node.ReadAttrString(temporal::attr::kRecurrence, &recurrence);
+		node.ReadAttrString(temporal::attr::kTitle, &title);
+		node.ReadAttrString(temporal::attr::kStartDateEdtf, &startText);
+		node.ReadAttrString(temporal::attr::kEndDateEdtf, &endText);
+	}
+
+	if (events.size() == 1) {
+		*event = *events[0];
+		*calendar = content;
+	} else if (events.empty() && haveStart) {
+		*event = ics::Event();
+		event->summary = title.String();
+		event->uid = "";
+	} else
+		return false;
+
+	// the start and the end of the attributes: a day (all day) when the text beside the time says a day
+	if (haveStart && !event->hasRecurrenceId && (events.empty() || startUnix != event->startUnix)) {
+		ics::DateTime day;
+		event->hasStart = event->startKnown = true;
+		event->startUnix = startUnix;
+		if (DayOfText(startText, &day)) {
+			event->start = day;
+			event->allDay = true;
+		} else {
+			event->start = ics::UnixToLocal(startUnix);
+			event->allDay = false;
+		}
+	}
+	if (haveEnd && !event->hasRecurrenceId && (events.empty() || endUnix != event->endUnix)) {
+		ics::DateTime day;
+		event->hasEnd = event->endKnown = true;
+		event->endUnix = endUnix;
+		event->end = DayOfText(endText, &day) ? day : ics::UnixToLocal(endUnix);
+	}
+	if (!event->hasStart || !event->start.valid)
+		return false;
+
+	// how it repeats: the field Repeats says it in words; if they are those of the rule of the content the rule stays as it is (it has more in it than the words), else the words are the rule;
+	// a recurrence rule that is kept as an attribute is read when the content has none
+	if (!events.empty() && event->hasRule && ics::DescribeRule(event->rule) == std::string(repeats.String()))
+		;	// (the content says what the field says)
+	else {
+		ics::Rule rule;
+		if (!repeats.IsEmpty() && ics::RuleFromWords(repeats.String(), &rule)) {
+			event->rule = rule;
+			event->hasRule = true;
+		} else if (!event->hasRule && !recurrence.IsEmpty() && ics::ParseRule(recurrence.String(), &rule) && rule.valid) {
+			event->rule = rule;
+			event->hasRule = true;
+		}
+	}
+
+	calendar->events.clear();
+	calendar->events.push_back(*event);
+	return true;
+}
+
 /** the first line of the text of a place, cut to a name */
 std::string
 PlaceName(const std::string& location)
@@ -77,6 +191,73 @@ PlaceName(const std::string& location)
 	}
 	return name;
 }
+
+/**
+ * The place of an event: the field Location of the file comes before what the calendar content says (the attributes are what the user has changed since the extraction); an event that has no
+ * calendar content (made by hand) has only the field.
+ */
+status_t
+ResolvePlace(const entry_ref& file, const BMessage& libraries, BMessage* reply)
+{
+	ics::Calendar content;
+	const std::vector<const ics::Event*> events = ReadCalendarOf(file, &content) ? content.DistinctEvents() : std::vector<const ics::Event*>();
+	if (events.size() > 1)
+		return B_OK;
+	ics::Event event = events.empty() ? ics::Event() : *events[0];
+
+	BNode fileNode(&file);
+	BString location, identifier;
+	if (fileNode.InitCheck() == B_OK) {
+		fileNode.ReadAttrString(temporal::attr::kLocation, &location);
+		fileNode.ReadAttrString(temporal::attr::kUid, &identifier);
+	}
+	if (!location.IsEmpty() && location.String() != event.location) {
+		event.location = location.String();
+		event.hasGeo = false;		// (the coordinates of the content belong to the place that the content named)
+	}
+	if (event.uid.empty())
+		event.uid = identifier.IsEmpty() ? std::string(file.name) : std::string(identifier.String());
+
+	const std::string name = PlaceName(event.location);
+	// (a location that is a link is the address of the meeting, not a place)
+	if (name.empty() || !ics::FindUrls(name).empty())
+		return B_OK;
+	entry_ref library;
+	const bool haveLibrary = libraries.FindRef(spatial::mime::kPlace, &library) == B_OK;
+	entry_ref ref;
+	bool created = false;
+	const status_t status = sensei::FindOrCreateEntityFile(file, spatial::mime::kPlace, name.c_str(), event.uid.c_str(), nullptr, &ref, &created, haveLibrary ? &library : NULL);
+	if (status != B_OK) {
+		fprintf(stderr, "no file for %s: %s\n", name.c_str(), strerror(status));
+		return status;
+	}
+	if (created) {
+		BNode node(&ref);
+		node.WriteAttr(spatial::attr::kTitle, B_STRING_TYPE, 0, name.c_str(), name.size() + 1);
+		if (event.location.size() > name.size())
+			node.WriteAttr(spatial::attr::kAddress, B_STRING_TYPE, 0, event.location.c_str(), event.location.size() + 1);
+		if (event.hasGeo) {
+			node.WriteAttr(spatial::attr::kLatitude, B_DOUBLE_TYPE, 0, &event.latitude, sizeof(double));
+			node.WriteAttr(spatial::attr::kLongitude, B_DOUBLE_TYPE, 0, &event.longitude, sizeof(double));
+		}
+		// a place that is new has no outline or picture: Spaces enriches it in the background
+		BMessenger server(sen::kServerSignature);
+		if (server.IsValid()) {
+			BMessage enrich(sen::cmd::kEnrichRefs);
+			enrich.AddRef("refs", &ref);
+			enrich.AddBool("wipe", false);
+			enrich.AddBool("auto", true);
+			server.SendMessage(&enrich);
+		}
+	}
+	BMessage item;
+	item.AddRef(sen::key::kTargetRef, &ref);
+	item.AddString(sen::attr::kRelationLabel, "takes place at");
+	item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
+	reply->AddMessage(sensei::key::kTargets, &item);
+	return B_OK;
+}
+
 
 }	// namespace
 
@@ -311,14 +492,49 @@ CalendarService::Materialise(const entry_ref& file, const BMessage& request, BMe
 status_t
 CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage& libraries, BMessage* reply)
 {
+	// The series of an event is asked of the file of the event first: its attributes (how it repeats, start, end) come before the content of a calendar file, and an event that was made by hand
+	// has no content at all
+	if (type != NULL && strcmp(type, temporal::mime::kEventSeries) == 0) {
+		ics::Event event;
+		ics::Calendar series;
+		bool hasPrevious = false, hasNext = false;
+		ics::Occurrence previous, next;
+		// (as of now: the series of a birthday has the next birthday as its next, as a calendar app shows it)
+		if (!SeriesEventOf(file, &event, &series)
+				|| !ics::SeriesNeighbours(series, series.events[0], &hasPrevious, &previous, &hasNext, &next, ics::LocalSeconds(ics::UnixToLocal((int64_t)time(NULL)))))
+			return B_OK;		// (no series: nothing to show, an empty relation)
+		auto add = [&](const ics::Occurrence& occurrence, const char* label) {
+			// an instance is a place in the same file, as the page of a document is: the target is the file, the instance is named by its RECURRENCE-ID
+			BMessage item;
+			item.AddRef(sen::key::kTargetRef, &file);
+			item.AddString(sen::attr::kRelationLabel, label);
+			item.AddString(temporal::attr::kTitle, occurrence.summary.c_str());
+			item.AddInt64(temporal::attr::kStartDate, occurrence.startUnix);
+			item.AddInt64(temporal::attr::kEndDate, occurrence.endUnix);
+			item.AddString(temporal::attr::kRecurrenceId, ics::OccurrenceKey(occurrence.start).c_str());
+			item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
+			reply->AddMessage(sensei::key::kTargets, &item);
+		};
+		if (hasPrevious)
+			add(previous, "previous");
+		if (hasNext)
+			add(next, "next");
+		return B_OK;
+	}
+
+	if (type != NULL && strcmp(type, temporal::mime::kEventLocation) == 0)
+		return ResolvePlace(file, libraries, reply);
+
 	ics::Calendar calendar;
+	// (a file that is no calendar file, an event that was made by hand and has no calendar content, or a calendar of many events has no attendees to resolve: that is an
+	// empty relation, not an error)
 	if (!ReadCalendarOf(file, &calendar))
-		return B_ENTRY_NOT_FOUND;
+		return B_OK;
 	const std::vector<const ics::Event*> events = calendar.DistinctEvents();
 	const std::string kind = type != NULL ? type : "";
 
 	if (events.size() != 1)
-		return B_ENTRY_NOT_FOUND;
+		return B_OK;
 	const ics::Event& event = *events[0];
 
 	auto libraryOf = [&](const char* mimeType, entry_ref* folder) {
@@ -398,46 +614,6 @@ CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage
 		return B_OK;
 	}
 
-	if (kind == temporal::mime::kEventLocation) {
-		const std::string name = PlaceName(event.location);
-		// (a location that is a link is the address of the meeting, not a place)
-		if (name.empty() || !ics::FindUrls(name).empty())
-			return B_OK;
-		entry_ref library;
-		const bool haveLibrary = libraryOf(spatial::mime::kPlace, &library);
-		entry_ref ref;
-		bool created = false;
-		const status_t status = sensei::FindOrCreateEntityFile(file, spatial::mime::kPlace, name.c_str(), event.uid.c_str(), nullptr, &ref, &created, haveLibrary ? &library : NULL);
-		if (status != B_OK) {
-			fprintf(stderr, "no file for %s: %s\n", name.c_str(), strerror(status));
-			return status;
-		}
-		if (created) {
-			BNode node(&ref);
-			node.WriteAttr(spatial::attr::kTitle, B_STRING_TYPE, 0, name.c_str(), name.size() + 1);
-			if (event.location.size() > name.size())
-				node.WriteAttr(spatial::attr::kAddress, B_STRING_TYPE, 0, event.location.c_str(), event.location.size() + 1);
-			if (event.hasGeo) {
-				node.WriteAttr(spatial::attr::kLatitude, B_DOUBLE_TYPE, 0, &event.latitude, sizeof(double));
-				node.WriteAttr(spatial::attr::kLongitude, B_DOUBLE_TYPE, 0, &event.longitude, sizeof(double));
-			}
-			// a place that is new has no outline or picture: Spaces enriches it in the background
-			BMessenger server(sen::kServerSignature);
-			if (server.IsValid()) {
-				BMessage enrich(sen::cmd::kEnrichRefs);
-				enrich.AddRef("refs", &ref);
-				enrich.AddBool("wipe", false);
-				enrich.AddBool("auto", true);
-				server.SendMessage(&enrich);
-			}
-		}
-		BMessage item;
-		item.AddRef(sen::key::kTargetRef, &ref);
-		item.AddString(sen::attr::kRelationLabel, "takes place at");
-		item.AddString(sen::onto::core::attr::kRelProvenance, kSignature);
-		reply->AddMessage(sensei::key::kTargets, &item);
-		return B_OK;
-	}
 
 	if (kind == temporal::mime::kEventSeries) {
 		bool hasPrevious = false, hasNext = false;

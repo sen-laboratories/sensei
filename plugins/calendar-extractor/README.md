@@ -71,3 +71,8 @@ is none of these gives no series and a line in the log.
 
 `tests/run.sh` builds and runs the tests of `core/` on any computer (plain C++): the dates and rules (with the examples of RFC 5545), the reader of the lines, the events of files in the style of Google, Outlook, Apple and Thunderbird, a vCalendar 1.0 file, calendars and
 damaged files (`tests/fixtures`), the Markdown, the links and meetings, the names of the files and the settings. The plugin itself is tried in the VM (`--describe`, `--enrich`, `--resolve`) and through the server.
+
+**Attributes before content.** The series of an event and its place are worked out from the attributes of the file as they are now (how it repeats, start, end, location), not from the calendar content that the file was made from: what the
+user changed in Shoji or in the list of Akita counts, and an event that has no calendar content (made by hand) works too. The words of the field Repeats (every day, every weekday, every week, every month, every year, every 2 weeks) are
+read as a rule; other words keep the rule of the content. See the developer guide of SEN.
+

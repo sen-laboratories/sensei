@@ -61,6 +61,12 @@ std::string BuildEventName(const std::string& pattern, const DateTime& localStar
  * The rule itself stays in the attribute of the rule; this is what people read.
  */
 std::string DescribeRule(const Rule& rule);
+/**
+ * The recurrence rule that the words of the field Repeats say (the words that DescribeRule makes, and the common ones that a person chooses or types): every day, every weekday, every week,
+ * every month, every year, every 2 weeks. False for words with more in them (on Monday, until 2030): those are not a rule that can be worked out from the words.
+ */
+bool RuleFromWords(const std::string& text, Rule* rule);
+
 
 /** The name of the file for an event after the default pattern: `2026-11-12_0930_Planning`. */
 std::string EventBaseName(const DateTime& localStart, bool hasTime, const std::string& title);

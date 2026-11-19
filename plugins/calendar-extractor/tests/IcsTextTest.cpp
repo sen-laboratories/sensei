@@ -103,6 +103,24 @@ int main()
 	CHECK(!IsValidNamePattern("{date", &why) && why == "a { with no }");
 	CHECK(!IsValidNamePattern("{who}", &why) && why.find("{who} is no token") == 0);
 
+
+	// ---- the words of the field Repeats are a rule
+	{
+		Rule r;
+		CHECK(RuleFromWords("every year", &r) && r.frequency == Frequency::Yearly && r.interval == 1 && r.valid);
+		CHECK(RuleFromWords("Every Month", &r) && r.frequency == Frequency::Monthly);
+		CHECK(RuleFromWords("every 2 weeks", &r) && r.frequency == Frequency::Weekly && r.interval == 2);
+		CHECK(RuleFromWords("  every day ", &r) && r.frequency == Frequency::Daily);
+		CHECK(RuleFromWords("every weekday", &r) && r.frequency == Frequency::Weekly && r.byDay.size() == 5 && r.byDay[0].weekday == 1 && r.byDay[4].weekday == 5);
+		CHECK(!RuleFromWords("every week on Monday", &r));
+		CHECK(!RuleFromWords("every year until 2030-12-31", &r));
+		CHECK(!RuleFromWords("sometimes", &r));
+		CHECK(!RuleFromWords("", &r));
+		// (what DescribeRule says of a simple rule reads back as that rule)
+		Rule yearly;
+		CHECK(ParseRule("FREQ=YEARLY", &yearly) && RuleFromWords(DescribeRule(yearly), &r) && r.frequency == Frequency::Yearly);
+	}
+
 	printf("%d checks, %d failure(s)\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;
 }
