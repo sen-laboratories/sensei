@@ -724,7 +724,7 @@ OccurrenceKey(const DateTime& slot)
 
 
 bool
-SeriesNeighbours(const Calendar& calendar, const Event& event, bool* hasPrevious, Occurrence* previous, bool* hasNext, Occurrence* next)
+SeriesNeighbours(const Calendar& calendar, const Event& event, bool* hasPrevious, Occurrence* previous, bool* hasNext, Occurrence* next, int64_t asOfLocal)
 {
 	*hasPrevious = *hasNext = false;
 	const Event* master = calendar.MasterOf(event);
@@ -733,7 +733,11 @@ SeriesNeighbours(const Calendar& calendar, const Event& event, bool* hasPrevious
 	DateTime own = event.hasRecurrenceId ? event.recurrenceId : master->start;
 	if (!own.valid)
 		return false;
-	const int64_t ownLocal = LocalSeconds(own);
+	int64_t ownLocal = LocalSeconds(own);
+	// The event that has the rule is the series itself, as a calendar shows it: its next is the next that comes after now (the next birthday), its previous the last that was before now.
+	// An instance that the file moved or changed (it has a RECURRENCE-ID) is that instance, and has the ones around it.
+	if (asOfLocal > ownLocal && !event.hasRecurrenceId)
+		ownLocal = asOfLocal;
 
 	// an UNTIL in UTC is a moment of the zone of the start: compared as the civil time there
 	Rule rule = master->rule;

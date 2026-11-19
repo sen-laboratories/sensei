@@ -131,6 +131,16 @@ int main()
 		Occurrence prev, next;
 		CHECK(SeriesNeighbours(cal, birthday, &hasPrev, &prev, &hasNext, &next) && !hasPrev && hasNext && next.start.year == 2027 && next.start.month == 11 && next.start.dateOnly);
 		CHECK(OccurrenceKey(next.start) == "20271120");
+		// as of a later moment (a calendar app shows the series from today): the next birthday after it, the last one before it
+		{
+			Occurrence prevNow, nextNow;
+			bool hasPrevNow, hasNextNow;
+			const int64_t today = LocalSeconds(FromLocalSeconds(DaysFromCivil(2030, 6, 15) * 86400));
+			CHECK(SeriesNeighbours(cal, birthday, &hasPrevNow, &prevNow, &hasNextNow, &nextNow, today) && hasPrevNow && hasNextNow);
+			CHECK(OccurrenceKey(prevNow.start) == "20291120" && OccurrenceKey(nextNow.start) == "20301120");
+			// (an instant that is in the future of the series' own start is not moved back: as of a moment before it nothing changes)
+			CHECK(SeriesNeighbours(cal, birthday, &hasPrevNow, &prevNow, &hasNextNow, &nextNow, 1) && !hasPrevNow && OccurrenceKey(nextNow.start) == "20271120");
+		}
 		const Event& workshop = cal.events[2];
 		CHECK(workshop.hasDuration && workshop.durationSeconds == 9000 && workshop.endKnown && workshop.endUnix == U(2026, 12, 1, 11, 30));
 	}

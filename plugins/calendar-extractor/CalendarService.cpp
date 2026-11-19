@@ -3,6 +3,7 @@
  * SPDX-FileCopyrightText: 2026 SEN Labs e.U.
  */
 
+#include <time.h>
 #include "CalendarService.h"
 
 #include <Directory.h>
@@ -441,7 +442,8 @@ CalendarService::Resolve(const entry_ref& file, const char* type, const BMessage
 	if (kind == temporal::mime::kEventSeries) {
 		bool hasPrevious = false, hasNext = false;
 		ics::Occurrence previous, next;
-		if (!ics::SeriesNeighbours(calendar, event, &hasPrevious, &previous, &hasNext, &next))
+		// (as of now: the series of a birthday has the next birthday as its next, as a calendar app shows it)
+		if (!ics::SeriesNeighbours(calendar, event, &hasPrevious, &previous, &hasNext, &next, ics::LocalSeconds(ics::UnixToLocal((int64_t)time(NULL)))))
 			return B_OK;		// (no series: nothing to show)
 		auto add = [&](const ics::Occurrence& occurrence, const char* label) {
 			// an instance is a place in the same file, as the page of a document is: the target is the file, the instance is named by its RECURRENCE-ID

@@ -126,7 +126,7 @@ struct Occurrence {
 };
 
 /** The instances of the series of an event just before and after it. False if the event is no part of a series (no rule, no master) or the rule cannot be used. */
-bool SeriesNeighbours(const Calendar& calendar, const Event& event, bool* hasPrevious, Occurrence* previous, bool* hasNext, Occurrence* next);
+bool SeriesNeighbours(const Calendar& calendar, const Event& event, bool* hasPrevious, Occurrence* previous, bool* hasNext, Occurrence* next, int64_t asOfLocal = 0);
 
 /**
  * What an event is known by in a file and everywhere: its UID; an event that has none (old vCalendar files, hand made ones) by `sen-` and a number made of what it says (title, times,
