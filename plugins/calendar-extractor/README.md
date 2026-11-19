@@ -74,5 +74,6 @@ damaged files (`tests/fixtures`), the Markdown, the links and meetings, the name
 
 **Attributes before content.** The series of an event and its place are worked out from the attributes of the file as they are now (how it repeats, start, end, location), not from the calendar content that the file was made from: what the
 user changed in Shoji or in the list of Akita counts, and an event that has no calendar content (made by hand) works too. The words of the field Repeats (every day, every weekday, every week, every month, every year, every 2 weeks) are
-read as a rule; other words keep the rule of the content. See the developer guide of SEN.
+read as a rule; other words keep the rule of the content. **The attendees are the exception**: they are a structure of the calendar content (a self relation), so the relation Attendee is always read from the content, never from attributes
+(which cannot tell whether the list was complete); an event without content has no attendees. See the developer guide of SEN.
 

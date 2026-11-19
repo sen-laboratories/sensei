@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include "IcsText.h"
+#include <sen/SenRecurrence.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -837,62 +838,15 @@ EventBaseName(const DateTime& start, bool hasTime, const std::string& title)
 }
 
 
-/** The rule that the words of the field Repeats say: the simple ones (every day, every weekday, every 2 weeks, every month, every year). False for words with more in them (on Monday, until 2030). */
+/** The rule that the words of the field Repeats say: the simple ones (every day, every weekday, every 2 weeks, every month, every year). False for words with more in them (on Monday, until 2030). The words are read by SenRecurrence.h of sento (which Shoji and Akita use to keep the rule beside the words), the rule by ParseRule(). */
 bool
 RuleFromWords(const std::string& text, Rule* rule)
 {
-	std::string t;
-	for (char ch : text)
-		t += (char)tolower((unsigned char)ch);
-	while (!t.empty() && isspace((unsigned char)t.back()))
-		t.pop_back();
-	size_t start = 0;
-	while (start < t.size() && isspace((unsigned char)t[start]))
-		start++;
-	t = t.substr(start);
-
 	*rule = Rule();
-	if (t == "every weekday") {
-		rule->frequency = Frequency::Weekly;
-		for (int weekday = 1; weekday <= 5; weekday++) {
-			WeekDay day;
-			day.weekday = weekday;
-			rule->byDay.push_back(day);
-		}
-		rule->valid = true;
-		return true;
-	}
-	if (t.compare(0, 6, "every ") != 0)
+	std::string rrule;
+	if (!sen::recurrence::RuleFromWords(text, &rrule))
 		return false;
-	std::istringstream in(t.substr(6));
-	std::string first, unit, rest;
-	int interval = 1;
-	in >> first;
-	if (first.empty())
-		return false;
-	if (isdigit((unsigned char)first[0])) {
-		interval = atoi(first.c_str());
-		in >> unit;
-	} else
-		unit = first;
-	in >> rest;
-	if (!rest.empty() || interval < 1 || unit.empty())
-		return false;
-	if (unit.size() > 1 && unit.back() == 's')
-		unit.pop_back();
-	if (unit == "day")
-		rule->frequency = Frequency::Daily;
-	else if (unit == "week")
-		rule->frequency = Frequency::Weekly;
-	else if (unit == "month")
-		rule->frequency = Frequency::Monthly;
-	else if (unit == "year")
-		rule->frequency = Frequency::Yearly;
-	else
-		return false;
-	rule->interval = interval;
-	rule->valid = true;
-	return true;
+	return ParseRule(rrule, rule) && rule->valid;
 }
 
 

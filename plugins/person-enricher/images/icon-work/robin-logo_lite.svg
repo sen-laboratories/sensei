@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Samurai Archer Emblem">
+  <defs>
+    <clipPath id="emblem-clip">
+      <circle cx="128" cy="128" r="118" />
+    </clipPath>
+  </defs>
+
+  <!-- Clipped Emblem Interior -->
+  <g clip-path="url(#emblem-clip)" stroke="#131d25" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- Sky Background -->
+    <circle cx="128" cy="128" r="118" fill="#c4be99" stroke="none" />
+
+    <!-- Background Bamboo (Left) -->
+    <g fill="#7c9170" stroke-width="2.5">
+      <rect x="14" y="50" width="9" height="145" />
+      <rect x="28" y="34" width="9" height="165" />
+      <rect x="42" y="24" width="9" height="165" />
+      <path d="M14,96 h9 M14,142 h9 M28,78 h9 M28,126 h9 M28,168 h9 M42,68 h9 M42,118 h9" fill="none" />
+      <!-- Bamboo Leaves -->
+      <path d="M51,68 c8,-12 18,-18 26,-16 c-6,8 -15,14 -26,16 z" fill="#4c6a58" />
+      <path d="M51,70 c10,2 18,7 22,14 c-9,-2 -16,-6 -22,-14 z" fill="#4c6a58" />
+      <path d="M40,104 c-8,-10 -16,-14 -22,-13 c4,7 12,12 22,13 z" fill="#4c6a58" />
+    </g>
+
+    <!-- Pine Tree Branches -->
+    <g fill="#c26639">
+      <!-- Top Left Branch -->
+      <path d="M30,68 c16,-14 34,-28 54,-34 c10,-3 24,-14 30,-22 l-10,-4 c-8,10 -18,16 -28,19 c-18,5 -34,14 -48,26 z" />
+      <path d="M74,36 c14,0 24,6 36,4 l2,-7 c-12,2 -20,-4 -32,-5 z" />
+      <!-- Right Branch -->
+      <path d="M250,126 c-8,-22 -14,-44 -34,-54 c-16,-8 -32,-12 -46,-22 l-5,7 c14,10 30,16 44,24 c16,10 24,28 30,48 z" />
+      <path d="M222,78 c4,-10 12,-18 20,-22 l-4,-8 c-10,5 -18,14 -24,25 z" />
+      <path d="M214,62 c-8,-16 -22,-26 -38,-30 l-2,8 c14,4 26,12 32,25 z" />
+      <!-- Bottom Right Branch -->
+      <path d="M250,144 c-12,18 -24,38 -48,54 c-10,6 -16,16 -20,30 l14,6 c6,-16 14,-24 26,-32 c18,-12 26,-30 34,-46 z" />
+      <path d="M236,166 c-14,10 -28,14 -42,10 l-2,7 c16,4 32,0 46,-9 z" />
+    </g>
+
+    <!-- Pine Foliage Clusters -->
+    <g fill="#4c6a58" stroke-width="2.5">
+      <!-- Top Left -->
+      <path d="M46,36 c2,-12 16,-16 26,-10 c6,-12 24,-12 28,0 c10,-2 16,6 10,12 c-10,4 -24,0 -34,-2 c-10,4 -26,6 -30,0 z" />
+      <path d="M78,24 c4,-12 24,-16 38,-8 c8,-4 16,4 10,10 c-12,6 -36,4 -48,-2 z" />
+      <path d="M98,40 c4,-10 20,-12 30,-4 c8,0 10,8 2,11 c-12,3 -26,1 -32,-7 z" />
+      <!-- Upper Right -->
+      <path d="M148,38 c4,-12 18,-16 28,-10 c8,-10 28,-8 34,4 c10,2 10,12 -2,14 c-16,2 -46,-2 -60,-8 z" />
+      <path d="M138,68 c4,-12 20,-16 32,-10 c10,-8 26,-4 28,8 c8,4 4,14 -8,14 c-18,0 -38,-4 -52,-12 z" />
+      <path d="M198,64 c6,-14 26,-18 40,-8 c8,4 8,14 -4,16 c-14,2 -28,-2 -36,-8 z" />
+      <!-- Mid/Lower Right -->
+      <path d="M210,148 c6,-14 24,-20 40,-14 v24 c-16,4 -32,0 -40,-10 z" />
+      <path d="M168,176 c4,-12 20,-18 32,-12 c10,-6 24,0 24,10 c-12,8 -42,10 -56,2 z" />
+    </g>
+
+    <!-- Foreground Bamboo Shoot (Bottom Right) -->
+    <g fill="#7c9170" stroke-width="2.5">
+      <rect x="195" y="196" width="9" height="44" />
+      <path d="M195,214 h9" fill="none" />
+      <path d="M195,222 c-10,-8 -20,-12 -28,-10 c6,8 16,12 28,10 z" fill="#4c6a58" />
+      <path d="M195,228 c-12,-2 -22,2 -28,8 c10,2 20,0 28,-8 z" fill="#4c6a58" />
+    </g>
+
+    <!-- Samurai Cape -->
+    <path d="M44,132 L14,186 L42,220 L74,174 Z" fill="#30483e" />
+
+    <!-- Quiver & Arrows -->
+    <g>
+      <path d="M54,106 L34,76 L42,72 L62,100 Z" fill="#e6e6d0" />
+      <path d="M58,102 L42,70 L50,67 L66,98 Z" fill="#e6e6d0" />
+      <path d="M62,98 L51,68 L58,66 L68,96 Z" fill="#e6e6d0" />
+      <path d="M46,104 L68,94 L72,104 L50,112 Z" fill="#c26639" />
+    </g>
+
+    <!-- Armor Skirt (Kusazuri) -->
+    <g>
+      <!-- Left Tasset -->
+      <path d="M62,188 L42,224 L68,236 L82,192 Z" fill="#43465d" />
+      <path d="M53,204 L74,212 L71,222 L49,213 Z" fill="#4c6a58" stroke="#cfa357" stroke-width="2" />
+      <path d="M46,216 L68,225 L64,234 L43,224 Z" fill="#c26639" stroke="#cfa357" stroke-width="2" />
+
+      <!-- Right Tasset -->
+      <path d="M108,192 L124,248 L152,238 L124,188 Z" fill="#43465d" />
+      <path d="M114,206 L133,198 L138,209 L118,217 Z" fill="#4c6a58" stroke="#cfa357" stroke-width="2" />
+      <path d="M120,220 L141,212 L147,225 L125,233 Z" fill="#c26639" stroke="#cfa357" stroke-width="2" />
+
+      <!-- Center Tasset -->
+      <path d="M78,192 L72,248 L118,248 L110,192 Z" fill="#43465d" />
+      <rect x="76" y="202" width="36" height="10" rx="2" fill="#4c6a58" stroke="#cfa357" stroke-width="2" />
+      <rect x="75" y="214" width="38" height="10" rx="2" fill="#4c6a58" stroke="#cfa357" stroke-width="2" />
+      <rect x="74" y="226" width="40" height="10" rx="2" fill="#c26639" stroke="#cfa357" stroke-width="2" />
+    </g>
+
+    <!-- Katana Hilt -->
+    <g>
+      <path d="M124,180 L148,162 L154,168 L130,186 Z" fill="#43465d" />
+      <path d="M132,175 L146,165" stroke="#cfa357" stroke-width="2.5" stroke-dasharray="3 3" />
+      <ellipse cx="127" cy="183" rx="4" ry="10" transform="rotate(-38 127 183)" fill="#cfa357" />
+    </g>
+
+    <!-- Torso / Cuirass (Do) -->
+    <g>
+      <path d="M58,126 L120,126 L124,178 L60,178 Z" fill="#43465d" />
+      <!-- Chest Lamellar Bands -->
+      <path d="M60,136 H120 M60,148 H121 M60,160 H122 M60,170 H123" stroke="#cfa357" stroke-width="2" />
+      <rect x="64" y="138" width="52" height="9" fill="#4c6a58" stroke="none" />
+      <!-- Chest Vertical Plates -->
+      <path d="M64,126 h14 v30 h-14 z" fill="#cfa357" />
+      <path d="M66,138 h10 v12 h-10 z" fill="#4c6a58" stroke-width="2" />
+      <path d="M104,126 h12 v34 h-12 z" fill="#cfa357" />
+      <!-- Diagonal Leather Strap -->
+      <path d="M74,128 L120,176 L112,180 L68,134 Z" fill="#c26639" />
+    </g>
+
+    <!-- Waist Sash (Obi) -->
+    <g fill="#c26639">
+      <path d="M58,176 C78,184 102,184 124,176 L124,190 C102,196 78,196 58,190 Z" />
+      <path d="M84,180 C90,176 98,178 100,185 C98,192 88,196 80,192 Z" />
+      <path d="M86,188 L76,198 L88,200 L96,190 Z" />
+    </g>
+
+    <!-- Left Arm (Extended Right) -->
+    <g>
+      <!-- Tunic Sleeve -->
+      <path d="M114,114 L164,118 L162,142 L114,142 Z" fill="#4c6a58" />
+      <!-- Shoulder Guard (Sode) -->
+      <path d="M118,112 L150,118 L144,132 L114,126 Z" fill="#cfa357" />
+      <path d="M126,114 L122,127 M134,116 L130,129 M142,117 L138,131" stroke="#43465d" stroke-width="3" />
+      <!-- Armored Forearm (Kote) -->
+      <path d="M162,118 L194,115 L194,134 L162,138 Z" fill="#43465d" />
+      <path d="M166,120 L192,118 L192,130 L166,133 Z" fill="#c26639" stroke="#cfa357" stroke-width="2" />
+    </g>
+
+    <!-- Right Arm (Bent, Drawing Bow) -->
+    <g>
+      <!-- Green Sleeve -->
+      <path d="M62,128 L34,140 C16,142 10,126 16,112 C20,104 30,104 42,106 L74,108 L74,126 Z" fill="#4c6a58" />
+      <!-- Armored Bracer (Kote) -->
+      <path d="M28,106 L76,105 L78,124 L30,126 C24,120 24,112 28,106 Z" fill="#c26639" />
+      <path d="M30,114 H74 M30,120 H74" stroke="#cfa357" stroke-width="2" />
+      <path d="M60,105 V125" stroke="#4c6a58" stroke-width="4" />
+    </g>
+
+    <!-- Neck Scarf & Collar -->
+    <path d="M74,114 C86,128 106,126 118,114 L112,104 L80,104 Z" fill="#30483e" />
+    <path d="M88,104 L112,104 L110,113 L90,113 Z" fill="#e6e6d0" />
+
+    <!-- Face Profile (Facing Right) -->
+    <g>
+      <path d="M88,82 L110,82 L110,90 L114,96 L110,98 L111,103 L107,106 L92,105 L86,96 Z" fill="#e6aa7a" />
+      <!-- Brow, Eye, Mouth -->
+      <path d="M100,87 L109,88" stroke-width="2.5" />
+      <circle cx="105" cy="90" r="1.4" fill="#131d25" stroke="none" />
+      <path d="M104,100 L110,100" stroke-width="2" />
+    </g>
+
+    <!-- Kabuto Helmet -->
+    <g>
+      <!-- Neck Guard (Shikoro) -->
+      <path d="M74,76 L56,98 L82,104 L90,82 Z" fill="#43465d" />
+      <path d="M68,84 L86,89 M62,91 L84,96" stroke="#cfa357" stroke-width="2" />
+      <path d="M58,96 L80,102 L77,108 L54,101 Z" fill="#c26639" />
+      <!-- Helmet Dome -->
+      <path d="M74,78 C74,60 94,54 110,64 C116,68 118,74 118,80 L74,80 Z" fill="#43465d" />
+      <!-- Visor & Side Flap (Fukigaeshi) -->
+      <path d="M90,78 C102,77 114,78 122,84 C112,87 98,86 90,83 Z" fill="#cfa357" />
+      <path d="M74,74 L84,68 L94,76 L84,84 Z" fill="#cfa357" />
+      <circle cx="84" cy="76" r="2.5" fill="#43465d" stroke-width="1.5" />
+      <!-- Gold Horns (Kuwagata) -->
+      <path d="M106,74 C94,70 86,52 76,43 C84,41 92,44 96,50 C94,56 100,66 106,68 C112,64 112,52 108,46 C113,43 118,43 121,46 C116,54 116,70 106,74 Z" fill="#cfa357" />
+      <circle cx="106" cy="68" r="3.5" fill="#cfa357" />
+    </g>
+
+    <!-- Bowstring (Taut) -->
+    <polyline points="152,12 84,110 154,224" fill="none" stroke="#131d25" stroke-width="2.2" />
+    <line x1="84" y1="110" x2="154" y2="224" stroke="#cfa357" stroke-width="1.5" />
+
+    <!-- Arrow -->
+    <g>
+      <rect x="84" y="108" width="136" height="4" fill="#c26639" stroke-width="2" />
+      <polygon points="218,104 236,110 218,116 222,110" fill="#d8dedc" stroke-width="2.2" />
+    </g>
+
+    <!-- Right Hand (Drawing String) -->
+    <g fill="#e6aa7a">
+      <rect x="74" y="104" width="16" height="16" rx="5" />
+      <path d="M80,109 H89 M80,114 H89" stroke-width="2" />
+    </g>
+
+    <!-- Left Hand (Gripping Bow) -->
+    <g fill="#e6aa7a">
+      <path d="M192,114 C198,110 208,110 214,114 L214,128 C206,132 198,132 192,128 Z" />
+      <path d="M204,117 H214 M204,122 H214 M204,126 H212" stroke-width="2" />
+    </g>
+
+  </g>
+
+  <!-- Outer Emblem Ring -->
+  <circle cx="128" cy="128" r="118" fill="none" stroke="#131d25" stroke-width="7" />
+
+  <!-- Yumi Longbow (Top tip intentionally overlaps the emblem ring) -->
+  <g stroke="#131d25" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M150,7 C154,4 158,8 158,14 C164,26 178,34 190,48 C204,64 210,88 210,114 C210,144 202,174 186,192 C172,206 160,214 156,226 C154,230 150,228 152,222 C156,208 168,198 180,186 C194,170 202,142 202,114 C202,88 196,66 184,52 C172,38 158,30 152,16 C150,12 148,9 150,7 Z" fill="#c26639" />
+    <!-- Gold Grip Wrappings (Upper & Lower) -->
+    <rect x="201" y="96" width="9" height="13" fill="#cfa357" stroke-width="2" />
+    <rect x="201" y="128" width="9" height="13" fill="#cfa357" stroke-width="2" />
+    <!-- Left Fingers Wrapping Over Bow Grip -->
+    <path d="M203,113 H215 C217,113 217,118 214,118 H203 Z" fill="#e6aa7a" stroke-width="2" />
+    <path d="M203,118 H215 C217,118 217,123 214,123 H203 Z" fill="#e6aa7a" stroke-width="2" />
+    <path d="M203,123 H213 C215,123 215,127 212,127 H203 Z" fill="#e6aa7a" stroke-width="2" />
+  </g>
+</svg>

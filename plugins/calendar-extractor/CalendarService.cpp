@@ -27,6 +27,7 @@
 #include <sen/SenOntoPeople.h>
 #include <sen/SenOntoSpatial.h>
 #include <sen/SenOntoTemporal.h>
+#include <sen/SenRecurrence.h>
 #include <sen/Sensei.h>
 
 #include "../../common/EntityFile.h"
@@ -112,13 +113,12 @@ SeriesEventOf(const entry_ref& file, ics::Event* event, ics::Calendar* calendar)
 	const std::vector<const ics::Event*> events = haveContent ? content.DistinctEvents() : std::vector<const ics::Event*>();
 
 	BNode node(&file);
-	BString repeats, recurrence, title, startText, endText;
+	BString repeats, title, startText, endText;
 	int64_t startUnix = 0, endUnix = 0;
 	const bool haveStart = node.InitCheck() == B_OK && ReadTimeAttr(node, temporal::attr::kStartDate, &startUnix);
 	const bool haveEnd = node.InitCheck() == B_OK && ReadTimeAttr(node, temporal::attr::kEndDate, &endUnix);
 	if (node.InitCheck() == B_OK) {
 		node.ReadAttrString(temporal::attr::kRepeats, &repeats);
-		node.ReadAttrString(temporal::attr::kRecurrence, &recurrence);
 		node.ReadAttrString(temporal::attr::kTitle, &title);
 		node.ReadAttrString(temporal::attr::kStartDateEdtf, &startText);
 		node.ReadAttrString(temporal::attr::kEndDateEdtf, &endText);
@@ -156,18 +156,37 @@ SeriesEventOf(const entry_ref& file, ics::Event* event, ics::Calendar* calendar)
 	if (!event->hasStart || !event->start.valid)
 		return false;
 
-	// how it repeats: the field Repeats says it in words; if they are those of the rule of the content the rule stays as it is (it has more in it than the words), else the words are the rule;
-	// a recurrence rule that is kept as an attribute is read when the content has none
-	if (!events.empty() && event->hasRule && ics::DescribeRule(event->rule) == std::string(repeats.String()))
-		;	// (the content says what the field says)
-	else {
-		ics::Rule rule;
-		if (!repeats.IsEmpty() && ics::RuleFromWords(repeats.String(), &rule)) {
-			event->rule = rule;
-			event->hasRule = true;
-		} else if (!event->hasRule && !recurrence.IsEmpty() && ics::ParseRule(recurrence.String(), &rule) && rule.valid) {
-			event->rule = rule;
-			event->hasRule = true;
+	// how it repeats (attributes before content): the technical rule (SEN:recurrence) and the words (Repeats) are kept in step by Shoji and Akita (SenRecurrence.h).
+	//  - the words are those of the rule: the rule (it has more in it than the words);
+	//  - the words differ and say something that can be read (they were changed alone): the words are the rule;
+	//  - the words are free words that cannot be read: the rule as it is kept, else the one of the content;
+	//  - no words: an empty technical rule says that it does not repeat; a missing one leaves the rule of the content.
+	{
+		std::string technical;
+		ics::Rule technicalRule, wordsRule;
+		const bool haveTechnical = node.InitCheck() == B_OK && sen::recurrence::ReadRule(node, &technical);
+		const bool technicalValid = haveTechnical && !technical.empty() && ics::ParseRule(technical, &technicalRule) && technicalRule.valid;
+		const std::string words = repeats.String();
+		if (!words.empty()) {
+			if (technicalValid && ics::DescribeRule(technicalRule) == words) {
+				event->rule = technicalRule;
+				event->hasRule = true;
+			} else if (ics::RuleFromWords(words, &wordsRule)) {
+				event->rule = wordsRule;
+				event->hasRule = true;
+			} else if (technicalValid) {
+				event->rule = technicalRule;
+				event->hasRule = true;
+			}
+			// (otherwise the rule of the content stays)
+		} else if (haveTechnical) {
+			if (technicalValid) {
+				event->rule = technicalRule;
+				event->hasRule = true;
+			} else {
+				event->rule = ics::Rule();
+				event->hasRule = false;
+			}
 		}
 	}
 
