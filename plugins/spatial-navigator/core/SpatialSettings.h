@@ -24,6 +24,7 @@ struct Mirror {
 	const char*	info;		///< the description in the list
 	const char*	url;		///< the address of the interpreter; empty for the custom one. A `{key}` in it is where the key of the user goes
 	bool		requiresKey;	///< the server requires a key; for the custom mirror the setting `overpass_custom_key` says
+	const char*	keyUrl = "";	///< where a person gets a key: the page of the server for the keys of an account (it sends new users to the sign-up); empty if there is none
 };
 
 /** The servers of the list, in this order: the default, the mirrors (those without a key first), and `custom` (the last). The list is that of the OpenStreetMap wiki, Overpass API, public instances. */

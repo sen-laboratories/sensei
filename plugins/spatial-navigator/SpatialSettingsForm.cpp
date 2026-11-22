@@ -46,6 +46,7 @@ const char* const kKeyField = "overpass_key";
 const char* const kAddressField = "overpass_address";
 const char* const kNeedsKeyField = "overpass_needs_key";
 const char* const kRevertButton = "overpass_address_revert";
+const char* const kGetKeyButton = "overpass_get_key";
 const char* const kTestButton = "overpass_test";
 const char* const kRowCommand = "OVrw";
 const char* const kTestUserAgent = "SEN-SpatialNavigator/0.1 (Haiku; https://sen-labs.org)";
@@ -285,6 +286,11 @@ ToMessage(const Settings& s, BMessage* message)
 			key.AddString(form::kUpdateValue, KeyOf(s, id).c_str());
 			key.AddBool(form::kUpdateEnabled, ServerNeedsKey(s, id));
 			row.AddMessage(kKeyField, &key);
+			// (the button beside the key goes to the page of the server where the keys are made, if it has one and the server needs a key)
+			BMessage getKey;
+			getKey.AddString(form::kUpdateUrl, mirror.keyUrl != nullptr ? mirror.keyUrl : "");
+			getKey.AddBool(form::kUpdateEnabled, ServerNeedsKey(s, id));
+			row.AddMessage(kGetKeyButton, &getKey);
 			message->AddMessage(kServers, &row);
 		}
 	}
@@ -293,6 +299,7 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddBool(kNeedsKeyField, false);
 	message->AddString(kKeyField, "");
 	message->AddBool(kRevertButton, false);
+	message->AddBool(kGetKeyButton, false);
 	message->AddBool(kTestButton, false);
 }
 
@@ -597,6 +604,15 @@ SettingsProvider::Describe(BMessage* settings, BMessage* schema, BMessage* defau
 	keyField.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
 	keyField.AddInt32(form::kAttrOrder, order++);
 	schema->AddMessage(kKeyField, &keyField);
+	// the page where a key is made, in the line of the key (the address that it opens is a part of the row, as the key is)
+	BMessage getKey;
+	getKey.AddString(form::kAttrLabel, "Get key" "\xE2\x80\xA6");
+	getKey.AddString(form::kAttrHelp, "Opens the page of the selected server where an API key is made (it takes new users to the sign-up).");
+	getKey.AddString(form::kAttrKind, form::kKindButton);
+	getKey.AddString(form::kAttrBeside, kKeyField);
+	getKey.AddString(form::kAttrBindToUpdateMsg, kRowCommand);
+	getKey.AddString(form::kAttrFieldId, kGetKeyButton);
+	schema->AddMessage(kGetKeyButton, &getKey);
 }
 
 
@@ -669,7 +685,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			testAll = true;		// (a button: every server that is on is asked)
 			continue;
 		}
-		if (key == kKeyField || key == kAddressField || key == kNeedsKeyField || key == kRevertButton)
+		if (key == kKeyField || key == kAddressField || key == kNeedsKeyField || key == kRevertButton || key == kGetKeyButton)
 			continue;		// (the fields of the details keep nothing: what they hold is a part of the row)
 		if (key.compare(0, strlen(kServers), kServers) == 0) {
 			// the list of the servers: the whole table (Revert, Defaults, a row moved), or a cell of a row (`overpass_servers_02.enabled`, `.overpass_key.value`); the row is the place in the

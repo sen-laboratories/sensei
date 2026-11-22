@@ -25,7 +25,7 @@ Mirrors()
 		{"private-coffee", "Private.coffee", "A public mirror, no limit, no registration.", "https://overpass.private.coffee/api/interpreter", false},
 		{"vk-maps", "VK Maps", "A public mirror, no limit, no registration.", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", false},
 		{"nextgis", "NextGIS", "Free with an API key (nextgis.com).", "https://overpass.nextgis.com/{key}/api/interpreter", true},
-		{"overpass-ch", "Overpass.ch", "Free tier with an API key (overpass.ch).", "https://api.overpass.ch/v1/{key}/interpreter", true},
+		{"overpass-ch", "Overpass.ch", "Free tier with an API key (overpass.ch).", "https://api.overpass.ch/v1/{key}/interpreter", true, "https://overpass.ch/dashboard/keys"},
 		{"custom", "Custom mirror", "Your own server: enter its address below.", "", false},
 	};
 	return mirrors;
