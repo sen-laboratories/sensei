@@ -72,6 +72,7 @@ struct Area {
 	std::string	countryCode;		///< ISO 3166-1 alpha-2, upper case; empty if the file says nothing that tells the country
 	bool		hasBox = false;
 	double		south = 0, north = 0, west = 0, east = 0;	///< the bounding box of the city (else the region or the country)
+	bool		strict = false;		///< the file names the city or the region: a place outside of the box is not the one (KeepInArea), where the box of a position is only a hint for the ranking
 };
 
 /**
@@ -98,7 +99,11 @@ std::string AreaUrl(const std::string& locality, const std::string& region, cons
 bool AreaFrom(const std::vector<Hit>& hits, const std::string& country, Area* area);
 /** SearchUrl() for a search in an area: only the country (`countrycodes`), and ranked for the box (`viewbox`, not a limit: a station just outside the city is still found). */
 std::string SearchUrl(const std::string& query, const std::string& language, bool boundary, int limit, double tolerance, const Area& area);
-/** Takes the answers of another country out of the list (a hit that has no country stays: nothing says that it is elsewhere). Nothing if the area has no country. */
+/**
+ * Takes the answers of another country out of the list (a hit that has no country stays: nothing says that it is elsewhere). Nothing if the area has no country.
+ * For a strict area (the file names the city or region) also the answers that lie outside of its box, with a margin of a tenth of it (at least 0.01 degrees, about a kilometre): the city
+ * that the file names comes first, a name only refines the search in it.
+ */
 void KeepInArea(std::vector<Hit>* hits, const Area& area);
 
 /** One object of OpenStreetMap by its type (node, way, relation) and id: the place that was found before. */

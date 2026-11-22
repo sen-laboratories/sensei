@@ -18,6 +18,7 @@
 #include <geos_c.h>
 
 #include <stdarg.h>
+#include <string.h>
 #include <stdio.h>
 
 #include <algorithm>
@@ -47,6 +48,12 @@ const long kCacheSeconds = 30L * 24 * 3600;
 const size_t kMaxPoiPictures = 12;
 // all of the time that Overpass has for one question, in microseconds
 const bigtime_t kPoiLimit = 80 * 1000000LL;
+// a mirror of the user's choice: a server that is there answers in seconds; one that does not is not waited for (the settings window tests it with 20 seconds as well)
+const bigtime_t kMirrorLimit = 20 * 1000000LL;
+// the public server when others follow it in the list: it is not waited for more than this, so that they have time (the sum is that of kPoiLimit); each of the others gets
+// the time of a mirror: the busy public ones answer in 20 seconds when they do
+const bigtime_t kPublicLimit = 30 * 1000000LL;
+const bigtime_t kFollowingLimit = 25 * 1000000LL;
 
 void
 GeosMessage(const char* format, ...)
@@ -318,42 +325,77 @@ Resolver::_Pois(const Box& area, std::vector<Poi>* pois)
 {
 	// (the answer is kept under the question of the public server, whichever server answered: the data are the same)
 	const std::string url = PoisUrl(area);
-	// the server of the settings, and its key: sent as a bearer token, or in the address; not over a connection that is not secure
-	const std::string key = OverpassKey(fSettings);
-	std::string endpoint = WithKey(OverpassEndpoint(fSettings), key);
-	std::string authorization;
-	if (!key.empty() && OverpassEndpoint(fSettings).find("{key}") == std::string::npos) {
-		if (endpoint.compare(0, 8, "https://") == 0)
-			authorization = "Bearer " + key;
-		else
-			printf("the key of the Overpass server is not sent: the address is not https\n");
-	}
-	const std::string request = PoisUrl(area, endpoint);
 	std::string body;
 	if (fCache == NULL || !fCache->Get(url, &body, (long) fSettings.poiCacheHours * 3600L)) {
-		if (fDebug)
-			printf("asking %s\n", OverpassEndpoint(fSettings).c_str());		// (not the address with the key)
-		// (the public Overpass server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. One that fails at once - 429, 502 when
-		// it is busy - is asked once more after a moment, if there is time)
-		int status = 0;
-		status_t result = B_ERROR;
-		const bigtime_t started = system_time();
-		for (int attempt = 0; attempt < 2 && result != B_OK; attempt++) {
-			if (attempt > 0) {
-				if (system_time() - started > 15 * 1000000LL)
-					break;
-				snooze(3000000);
-			}
-			const bigtime_t left = kPoiLimit - (system_time() - started);
-			result = sensei::SocketGet(request, kUserAgent, "application/json", &body, &status, left, authorization);
-		}
-		if (result != B_OK) {
-			printf("could not ask Overpass (%s) for what is nearby (status %d)\n", OverpassEndpoint(fSettings).c_str(), status);
+		// the servers of the list that are on, in its order, each asked once (the same question, the same data); the first that answers wins. One that is not complete or that the test
+		// of the settings found not working is not asked at all. When there is none the user is told at once.
+		const std::vector<Server> servers = ActiveServers(fSettings);
+		if (servers.empty()) {
+			printf("no Overpass server is on and complete in the settings\n");
+			sensei::Notify("SEN Spatial Navigator", "OSM mirror not working", kMirrorNotWorking, false);
 			return false;
 		}
-		// (kept only if it is an answer: a timeout is one with a remark and no elements)
-		if (!ParsePois(body, fLanguage, pois)) {
-			printf("the answer of Overpass is not one for what is nearby\n");
+		const bigtime_t started = system_time();
+		bool answered = false;
+		bool askedOwn = false;
+		for (size_t i = 0; i < servers.size() && !answered; i++) {
+			const Server& server = servers[i];
+			const bigtime_t remaining = kPoiLimit - (system_time() - started);
+			if (i > 0 && remaining < 5 * 1000000LL)
+				break;
+			// the key goes in the address, or is sent as a bearer token (not over a connection that is not secure)
+			const std::string endpoint = WithKey(server.endpoint, server.key);
+			std::string authorization;
+			if (!server.key.empty() && server.endpoint.find("{key}") == std::string::npos) {
+				if (endpoint.compare(0, 8, "https://") == 0)
+					authorization = "Bearer " + server.key;
+				else
+					printf("the key of the Overpass server %s is not sent: the address is not https\n", server.name.c_str());
+			}
+			const std::string request = PoisUrl(area, endpoint);
+			if (!server.isPublic)
+				askedOwn = true;
+			if (fDebug)
+				printf("asking %s\n", server.name.c_str());		// (not the address with the key)
+			// (the public server works out an answer for half a minute when it is busy; the SEN server waits 90 seconds for a navigator. When it is the only one, a server that is only
+			// busy - 429, 5xx, no answer yet - is asked once more after a moment, if there is time; an error that will not go away fails at once. With others in the list, each is asked
+			// once and the next one follows)
+			const bool alone = servers.size() == 1 && server.isPublic;
+			const bigtime_t limit = std::min(remaining, server.isPublic ? (alone ? kPoiLimit : kPublicLimit) : (i == 0 ? kMirrorLimit : kFollowingLimit));
+			int status = 0;
+			status_t result = B_ERROR;
+			const bigtime_t asked = system_time();
+			for (int attempt = 0; attempt < (alone ? 2 : 1) && result != B_OK; attempt++) {
+				if (attempt > 0) {
+					if (system_time() - asked > 15 * 1000000LL)
+						break;
+					snooze(3000000);
+				}
+				result = sensei::SocketGet(request, kUserAgent, "application/json", &body, &status, limit - (system_time() - asked), authorization);
+				if (result != B_OK) {
+					const bool busy = status == 429 || status >= 500 || result == B_TIMED_OUT || result == B_WOULD_BLOCK;
+					if (!busy)
+						break;
+				}
+			}
+			if (result != B_OK) {
+				printf("could not ask Overpass (%s) for what is nearby (status %d, %s)\n", server.name.c_str(), status, strerror(result));
+				continue;
+			}
+			// (kept only if it is an answer: a timeout is one with a remark and no elements)
+			std::vector<Poi> found;
+			if (!ParsePois(body, fLanguage, &found)) {
+				printf("the answer of Overpass (%s) is not one for what is nearby\n", server.name.c_str());
+				continue;
+			}
+			*pois = found;
+			answered = true;
+			if (i > 0)
+				printf("answered by %s\n", server.name.c_str());
+		}
+		if (!answered) {
+			if (askedOwn)
+				sensei::Notify("SEN Spatial Navigator", "OSM mirror not working", kMirrorNotWorking, false);
 			return false;
 		}
 		if (fCache != NULL)

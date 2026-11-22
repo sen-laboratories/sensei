@@ -591,6 +591,21 @@ TestArea()
 	std::vector<place::Hit> all{budapest, vienna};
 	place::KeepInArea(&all, place::Area());			// (an area without a country keeps all)
 	CHECK(all.size() == 2);
+
+	// a strict area (the file names the city): what lies outside of its box (and a margin of a tenth) is not the place; an area that only hints (a position) does not cut
+	place::Area city = area;
+	city.strict = true;
+	city.south = 48.1179; city.north = 48.3227; city.west = 16.1818; city.east = 16.5775;
+	place::Hit inside, suburb, farAway;
+	inside.name = "Wohnung"; inside.countryCode = "AT"; inside.latitude = 48.2; inside.longitude = 16.35;
+	suburb.name = "Klosterneuburg"; suburb.countryCode = "AT"; suburb.latitude = 48.3227 + 0.01; suburb.longitude = 16.32;		// (inside the margin)
+	farAway.name = "Salzburg"; farAway.countryCode = "AT"; farAway.latitude = 47.8; farAway.longitude = 13.04;
+	std::vector<place::Hit> cityHits{farAway, inside, suburb};
+	place::KeepInArea(&cityHits, city);
+	CHECK(cityHits.size() == 2 && cityHits[0].name == "Wohnung" && cityHits[1].name == "Klosterneuburg");
+	std::vector<place::Hit> hinted{farAway, inside};
+	place::KeepInArea(&hinted, area);
+	CHECK(hinted.size() == 2);
 }
 
 

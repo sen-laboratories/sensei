@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <sen/SenMapStyles.h>
@@ -18,21 +19,21 @@ namespace spatial {
 
 /** A server that answers the Overpass API (the same data, other limits). */
 struct Mirror {
-	const char*	id;			///< the value of the setting `overpass_mirror`
-	const char*	label;		///< what the settings window shows
+	const char*	id;			///< the id in the setting `overpass_servers`
+	const char*	name;		///< the name in the list of the settings window
+	const char*	info;		///< the description in the list
 	const char*	url;		///< the address of the interpreter; empty for the custom one. A `{key}` in it is where the key of the user goes
-	bool		requiresKey;	///< the server requires a key (the settings window enables the field for the key only then); for the custom mirror the setting `overpass_custom_key` says
+	bool		requiresKey;	///< the server requires a key; for the custom mirror the setting `overpass_custom_key` says
+	const char*	keyUrl = "";	///< where a person gets a key: the page of the server for the keys of an account (it sends new users to the sign-up); empty if there is none
 };
 
-/** The choices of the settings window, in this order: the default, the mirrors (those without a key first), and `custom` (the last). The list is that of the OpenStreetMap wiki, Overpass API, public instances. */
+/** The servers of the list, in this order: the default, the mirrors (those without a key first), and `custom` (the last). The list is that of the OpenStreetMap wiki, Overpass API, public instances. */
 const std::vector<Mirror>& Mirrors();
 
 struct Settings {
-	/** the id of a mirror (`default`, `private-coffee`, `vk-maps`) or `custom` */
-	std::string	overpassMirror = "default";
-	/** the address of the interpreter of a custom mirror (`https://example.org/api/interpreter`). A `{key}` in it is replaced by the key (for servers that take it in the path). */
+	/** the address of the interpreter of the custom mirror (`https://example.org/api/interpreter`). A `{key}` in it is replaced by the key (for servers that take it in the path). */
 	std::string	overpassUrl;
-	/** the custom mirror requires a key (the field of the key is enabled only for a server that requires one) */
+	/** the custom mirror requires a key */
 	bool		customRequiresKey = false;
 	/** how far around a place what is nearby is looked for, in metres (the area is at least twice this across; a larger place is asked for with its own box) */
 	int			poiRadius = 250;
@@ -42,8 +43,28 @@ struct Settings {
 	int			poiCacheHours = 24;
 	/** the default style of the map of a place (an id of sen::mapstyles, SenMapStyles.h): the views of the map (Shoji) show it until a style is chosen in the view itself */
 	std::string	mapStyle = sen::mapstyles::DefaultId();
-	/** the key of a server that requires one. Put in place of `{key}` in the address, else sent as `Authorization: Bearer <key>` (only over https). */
-	std::string	overpassKey;
+	/**
+	 * The ids of the servers that the test of the settings found not reachable (`overpass_failed`, ids with blanks between; the settings window writes it, the user does not). The list skips them until
+	 * a test of them works. The public server is never in it: it is often only busy.
+	 */
+	std::vector<std::string>	failedIds;
+	/**
+	 * The list of the servers (`overpass_servers`, as the list of the services of Basho: `default private-coffee -vk-maps`): the order is the order in which they are asked until one
+	 * answers, one with a `-` in front is off and keeps its place. The ids in the order of the file; what it does not name follows in the order of Mirrors(), and is on if it needs no key.
+	 */
+	std::vector<std::string>	serverOrder;
+	/** the ids that the setting names with a `-` */
+	std::vector<std::string>	serverOff;
+	/** the ids that have a key (`overpass_key_<id>`, the id with _ for -), and the key */
+	std::vector<std::pair<std::string, std::string>>	keys;
+	/** the addresses that the user changed (`overpass_url_<id>`, the id with _ for -; the custom mirror has `overpass_url` in `overpassUrl`): a server that is not here has its own address (Mirrors()) */
+	std::vector<std::pair<std::string, std::string>>	addresses;
+	/** the flags that the user set (`overpass_needs_key_<id>`; the custom mirror has `overpass_custom_key` in `customRequiresKey`): a server that is not here needs a key if Mirrors() says so */
+	std::vector<std::pair<std::string, bool>>	needsKeyFlags;
+	/** a file from before the list: the mirror that was chosen (`overpass_mirror`) is the one that is on, and the key (`overpass_key`) is its key. The list in the file replaces both. */
+	std::string	legacyMirror, legacyKey;
+	/** the file has the list */
+	bool		serversNamed = false;
 };
 
 /** Reads `key = value` lines into the settings; unknown keys and bad values are ignored (what is there stays). */
@@ -52,20 +73,81 @@ void ParseSettings(const std::string& text, Settings* settings);
 /** Whether a value can be the value of a setting, so that the settings window can say what is wrong; `reason` gets it. */
 bool ValidateSetting(const std::string& key, const std::string& value, std::string* reason = nullptr);
 
-/**
- * The address of the interpreter that is asked (with `{key}` still in it): the mirror that is chosen, else the default: a custom mirror with no address is the default, and so is any
- * address that wants a key (`{key}`) while there is none.
- */
-std::string OverpassEndpoint(const Settings& settings);
+/** What the user is told when none of the servers of the list can be asked. */
+extern const char* const kMirrorNotWorking;
 
-/** The key that goes with that address: that of a server that requires one (a custom one if the flag says so); empty if there is none. */
-std::string OverpassKey(const Settings& settings);
+/** The ids of the list in the order of the setting (every server once; those that the setting does not name last, in the order of Mirrors()). */
+std::vector<std::string> ServerOrder(const Settings& settings);
+
+/** Whether a server (its id) is on: as the setting says; a server that the setting does not name is on if it needs no key. */
+bool ServerIsOn(const Settings& settings, const std::string& id);
+
+/** The value of the setting for an order and the ids that are on: `default -private-coffee`. */
+std::string ServersText(const std::vector<std::string>& order, const std::vector<std::string>& on);
+
+/** The name of the setting with the key of a server: `overpass_key_nextgis` (`overpass_key_overpass_ch`). Empty if the id is none of the list. */
+std::string KeySettingName(const std::string& id);
+
+/** The names of the settings of the address and of the flag "needs a key" of a server: `overpass_url_private_coffee`, `overpass_needs_key_nextgis`; the custom mirror keeps `overpass_url` and `overpass_custom_key`. Empty if the id is none of the list. */
+std::string AddressSettingName(const std::string& id);
+std::string NeedsKeySettingName(const std::string& id);
+
+/** The address that a server has until the user changes it (empty for the custom mirror). */
+std::string DefaultAddress(const std::string& id);
+/** The address that a server is asked at: the one that the user gave it, else its own. */
+std::string AddressOf(const Settings& settings, const std::string& id);
+/** Whether the server is marked as one that needs a key (what the user ticked, else what the list says), as the column of the table shows it; ServerNeedsKey() also counts an address that has a place for the key. */
+bool NeedsKeyFlag(const Settings& settings, const std::string& id);
+/** What the list says (the flag of a server that the user did not change). */
+bool DefaultNeedsKeyFlag(const std::string& id);
+
+/** The key of a server (empty if there is none). */
+std::string KeyOf(const Settings& settings, const std::string& id);
+
+/** A server that is asked. */
+struct Server {
+	std::string	id;
+	std::string	name;
+	std::string	endpoint;	///< with `{key}` still in it
+	std::string	key;		///< empty if the server needs none
+	bool		isPublic = false;	///< the default server: it is asked whatever happened to it
+};
+
+/** Whether a server needs a key: its flag says so (NeedsKeyFlag) or its address has a place for the key (`{key}`). */
+bool ServerNeedsKey(const Settings& settings, const std::string& id);
 
 /**
- * When the field of the key is enabled, as the `enabled_when` of the schema: the servers that require a key, or the custom mirror with the flag
- * (`overpass_mirror=nextgis|overpass_mirror=overpass-ch|overpass_mirror=custom&overpass_custom_key=true`; `|` is or, `&` is and).
+ * A server of the list as it would be asked (its address, and its key if it needs one), whether it is on or not. False if it is not complete, and @p problem says what is missing (`Needs an API key`,
+ * `Needs an address`).
  */
-std::string KeyEnabledWhen();
+bool MakeServer(const Settings& settings, const std::string& id, Server* server, std::string* problem = nullptr);
+
+/**
+ * The servers that are asked, in the order of the list: those that are on and complete (a custom mirror has an address, one that needs a key has it) and not found unreachable by a test. When no
+ * server is on at all it is the default one; when some are on and none is complete, there is none and the user is told.
+ */
+std::vector<Server> ActiveServers(const Settings& settings);
+
+/** The name of an HTTP status in a word or two: 200 OK, 403 Forbidden, 503 Service Unavailable; `HTTP 418` for one that is not known. */
+std::string HttpStatusText(int code);
+
+/**
+ * What the test of an Overpass server found, for the line next to the button of the settings: a short text (the HTTP status: `200 OK`, `403 Forbidden`; `No answer` if there was none),
+ * the state for the icon (`info` it works, `warning` the server answered with something else than success, `error` it is down: a 5xx status, or not reachable at all) and the detail
+ * of several short lines for the tool tip.
+ */
+struct ServerTest {
+	std::string	text;
+	std::string	state;
+	std::string	detail;
+};
+
+/**
+ * Judges the answer of a server to the test question. @p httpStatus is 0 if no HTTP answer came (then @p timedOut or @p networkError say why); @p overpass whether the body of a 2xx answer is
+ * that of an Overpass server (with @p places things in it); @p extra is more for the detail (a hint about the address, a remark about the key).
+ */
+ServerTest JudgeServerTest(const std::string& host, int httpStatus, bool timedOut, const std::string& networkError, bool overpass, size_t places, double seconds, int timeoutSeconds,
+	const std::string& extra);
 
 /** The ranges of the numbers of the settings. */
 const int kMinRadius = 50, kMaxRadius = 1500, kMinLimit = 5, kMaxLimit = 200, kMinCacheHours = 1, kMaxCacheHours = 168;

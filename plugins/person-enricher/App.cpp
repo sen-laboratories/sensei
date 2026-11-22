@@ -503,8 +503,10 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 			enriched = true;
 			for (const HuntHit& hit : found)
 				_BestPhoto(&profile, hit);
-		} else if (cancelled && !enriched) {
-			return B_CANCELED;		// (nobody was chosen and the accounts gave nothing: nothing to write; else what they gave is kept)
+		} else if (cancelled) {
+			// Cancel ends the whole enrichment: nothing is written and nobody is asked about anything (a name that differs from the account's, say). What the accounts gave until now was
+			// only in memory.
+			return B_CANCELED;
 		}
 	}
 
