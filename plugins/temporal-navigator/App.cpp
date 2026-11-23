@@ -120,7 +120,7 @@ App::RefsReceived(BMessage* message)
 			fprintf(stderr, "%s: nothing to open (the target of the relation is gone).\n", file.name);
 			continue;
 		}
-		status_t result = sensei::OpenTarget(target);
+		status_t result = sensei::OpenTarget(target, sensei::TargetTypeHint(message, file).String());
 		if (result != B_OK)
 			fprintf(stderr, "could not open %s: %s\n", target.name, strerror(result));
 	}

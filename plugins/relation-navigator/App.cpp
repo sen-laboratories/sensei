@@ -69,10 +69,10 @@ App::TargetOf(const entry_ref& ref, bool* found)
 
 
 status_t
-App::Open(const entry_ref& target)
+App::Open(const entry_ref& target, const BString& typeHint)
 {
 	// the application of the type of the target, as a double click on it would (a folder opens in Tracker)
-	return sensei::OpenTarget(target);
+	return sensei::OpenTarget(target, typeHint.String());
 }
 
 
@@ -95,7 +95,7 @@ App::RefsReceived(BMessage* message)
 			continue;
 		}
 		anyTarget = true;
-		result = Open(target);
+		result = Open(target, sensei::TargetTypeHint(message, ref));
 		if (result != B_OK) {
 			fprintf(stderr, "could not open %s: %s\n", target.name, strerror(result));
 			BString error("Could not open the target: ");

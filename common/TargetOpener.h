@@ -70,8 +70,8 @@ public:
 				break;
 			}
 
-			// the target is opened by the application of its type
-			result = OpenTarget(target);
+			// the target is opened by the application of its type: the one that the file of the relation (or the message) says, else its own
+			result = OpenTarget(target, TargetTypeHint(message, ref).String());
 			if (result != B_OK)
 				break;
 		}

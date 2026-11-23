@@ -6,6 +6,7 @@
 #pragma once
 
 #include <Application.h>
+#include <String.h>
 #include <Entry.h>
 
 /**
@@ -29,5 +30,5 @@ private:
 	/** The target of a relation file (itself for any other file). */
 	static entry_ref	TargetOf(const entry_ref& ref, bool* found);
 	/** Open the target the way a double click on it would. */
-	status_t			Open(const entry_ref& target);
+	status_t			Open(const entry_ref& target, const BString& typeHint);
 };

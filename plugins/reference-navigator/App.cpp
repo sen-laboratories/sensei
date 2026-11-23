@@ -21,6 +21,8 @@
 #include <sen/Sen.h>
 #include <sen/SenOntoCore.h>
 
+#include "../../common/OpenTarget.h"
+
 static const char* kApplicationSignature = "application/x-vnd.sen-plugin.sen-labs.reference-navigator";
 static const char* kRelationNavigatorSignature = "application/x-vnd.sen-plugin.sen-labs.relation-navigator";
 // the list of the attributes in the window of FileTypes, the one that shows the types
@@ -257,7 +259,7 @@ App::RefsReceived(BMessage* message)
 		if (!mimeType.IsEmpty())
 			result = OpenMimeType(mimeType, attribute);
 		else if (message->HasMessage(sen::key::kRelationProperties))
-			result = be_roster->Launch(&ref);	// any other target of an item of a menu: opened as usual
+			result = sensei::OpenTarget(ref, sensei::TargetTypeHint(message, ref).String());	// any other target of an item of a menu: opened by the application of its type
 		else
 			// the file of a relation (double-clicked in a relation view): the relation navigator shows the target in Tracker
 			result = be_roster->Launch(kRelationNavigatorSignature, message);
