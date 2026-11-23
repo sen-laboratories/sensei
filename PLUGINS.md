@@ -10,8 +10,9 @@ sensei
 └── plugins
     ├── authorship-navigator  navigate
     ├── book-enricher         enrich
-    ├── calendar-extractor    enrich, identify, navigate
+    ├── calendar-extractor    extract, enrich, identify, navigate
     ├── document-reference-navigatornavigate
+    ├── institution-enricher  enrich
     ├── markdown-extractor    extract
     ├── mime-extractor        extract
     ├── movie-enricher        enrich
@@ -32,8 +33,9 @@ sensei
 |---|---|---|---|---|---|
 | `authorship-navigator` (SENSEI Authorship Navigator) | `sen_plugin_authorship_navigator` 0.1.0 | navigate | `relation/x-vnd.sen-labs.relation.authorship` | - | `application/x-vnd.sen-plugin.sen-labs.authorship-navigator` |
 | `book-enricher` (SEN Book Enrichment Tool (BERT)) | `sen_plugin_book_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.book` | - | `application/x-vnd.sen-plugin.sen-labs.book-enricher` |
-| `calendar-extractor` (SEN Calendar Extractor) | `sen_plugin_calendar_extractor` 0.1.0 | enrich, identify, navigate | `text/calendar`, `text/x-vcalendar`, `entity/x-vnd.sen-labs.entity.event`, `entity/x-vnd.sen-labs.entity.calendar`, `relation/x-vnd.sen-labs.relation.calendar.events`, `relation/x-vnd.sen-labs.relation.event.attendee`, `relation/x-vnd.sen-labs.relation.event.location`, `relation/x-vnd.sen-labs.relation.event.series` | - | `application/x-vnd.sen-plugin.sen-labs.calendar-extractor` |
+| `calendar-extractor` (SEN Calendar Extractor) | `sen_plugin_calendar_extractor` 0.1.0 | extract, enrich, identify, navigate | `text/calendar`, `text/x-vcalendar`, `entity/x-vnd.sen-labs.entity.event`, `entity/x-vnd.sen-labs.entity.calendar`, `relation/x-vnd.sen-labs.relation.calendar.events`, `relation/x-vnd.sen-labs.relation.event.attendee`, `relation/x-vnd.sen-labs.relation.event.location`, `relation/x-vnd.sen-labs.relation.event.description`, `relation/x-vnd.sen-labs.relation.event.series` | `relation/x-vnd.sen-labs.relation.calendar.events` | `application/x-vnd.sen-plugin.sen-labs.calendar-extractor` |
 | `document-reference-navigator` (SENSEI Document Reference Navigator) | `sen_plugin_document_reference_navigator` 0.0.1 | navigate | `relation/x-vnd.sen-labs.relation.docref` | - | `application/x-vnd.sen-plugin.sen-labs.document-reference-navigator` |
+| `institution-enricher` (SEN Campus (Institution Enricher)) | `sen_plugin_institution_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.institution` | - | `application/x-vnd.sen-plugin.sen-labs.institution-enricher` |
 | `markdown-extractor` (SEN Markdown Extractor) | `sen_plugin_markdown_extractor` 0.2.0 | extract | `text/markdown` | `relation/x-vnd.sen-labs.relation.textref` | `application/x-vnd.sen-plugin.sen-labs.markdown-extractor` |
 | `mime-extractor` (SEN MIME Extractor) | `sen_plugin_mime_extractor` 0.0.1 | extract | `application/x-vnd.Be-meta-mime` | `relation/x-vnd.sen-labs.relation.contains` | `application/x-vnd.sen-plugin.sen-labs.mime-extractor` |
 | `movie-enricher` (SEN Akari (Movie Enricher)) | `sen_plugin_movie_enricher` 0.1.0 | enrich | `entity/x-vnd.sen-labs.entity.movie`, `video` | - | `application/x-vnd.sen-plugin.sen-labs.movie-enricher` |
@@ -56,6 +58,8 @@ sensei
 **calendar-extractor**: Reads calendar files (iCalendar and vCalendar): an invitation or a calendar entry becomes an event with its time, place, link to the meeting and description, named after the event; a file with several events becomes a calendar that holds them. The attendees, the place and the instances of the series of an event, and the events of a calendar, are relations.
 
 **document-reference-navigator**: SEN module to open the targets of DocumentReference relations (a page, a section... of a document) in the viewer of the document, with the places mapped to its arguments.
+
+**institution-enricher**: Looks an institution up in the Research Organization Registry (ROR) and OpenAlex: its name and other names, types, city and country, web site, links (ROR, Wikidata, Wikipedia, OpenAlex), the number of works and citations. The larger institution and the units become institutions with a Part Of relation, the most frequent topics get a Research Focus relation.\nData: ROR (CC0) and OpenAlex (CC0).
 
 **markdown-extractor**: SEN module to extract structure outline and links from Markdown text.
 
