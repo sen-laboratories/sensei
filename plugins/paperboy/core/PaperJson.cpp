@@ -11,6 +11,7 @@
 
 #include "PaperAbstract.h"
 #include "PaperDoi.h"
+#include "PaperString.h"
 
 using nlohmann::json;
 
@@ -180,9 +181,22 @@ ParseOpenAlexWork(const std::string& body, Paper* paper)
 			const json& institutions = Child(authorship, "institutions");
 			if (institutions.is_array()) {
 				for (const json& institution : institutions) {
-					std::string name = Str(institution, "display_name");
-					if (!name.empty())
-						author.affiliations.push_back(name);
+					Affiliation affiliation;
+					affiliation.name = Str(institution, "display_name");
+					if (affiliation.name.empty())
+						continue;
+					affiliation.rorId = BareRorId(Str(institution, "ror"));
+					const std::string id = Str(institution, "id");
+					const size_t slash = id.rfind('/');
+					affiliation.openAlexId = slash == std::string::npos ? id : id.substr(slash + 1);
+					affiliation.country = Str(institution, "country_code");
+					affiliation.type = Str(institution, "type");
+					// (an institution of the paper that is named twice for one author is one)
+					bool known = false;
+					for (const Affiliation& other : author.affiliations)
+						known = known || (affiliation.HasRor() ? other.rorId == affiliation.rorId : other.name == affiliation.name);
+					if (!known)
+						author.affiliations.push_back(affiliation);
 				}
 			}
 			paper->authors.push_back(author);

@@ -220,7 +220,10 @@ ParseArxivFeed(const std::string& xml, std::vector<Paper>* papers)
 			size_t affiliationFrom = 0, affiliationNext = 0;
 			while (Element(author, "arxiv:affiliation", &text, affiliationFrom, &affiliationNext)) {
 				affiliationFrom = affiliationNext;
-				person.affiliations.push_back(SqueezeBlanks(DecodeEntities(text)));
+				Affiliation affiliation;
+				affiliation.name = SqueezeBlanks(DecodeEntities(text));
+				if (!affiliation.name.empty())
+					person.affiliations.push_back(affiliation);
 			}
 			if (!person.name.empty())
 				paper.authors.push_back(person);

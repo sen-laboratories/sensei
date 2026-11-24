@@ -26,6 +26,7 @@
 #include <sen/SenOntoPeople.h>
 #include <spdlog/spdlog.h>
 
+#include "PaperAffiliations.h"
 #include "PaperDate.h"
 #include "PaperHttp.h"
 #include "PaperPeople.h"
@@ -121,6 +122,10 @@ AuthorMaker::MakeAuthors(const entry_ref& file, const Paper& paper)
 			continue;
 		}
 		made++;
+
+		// (after the person is related to the paper: an institution that cannot be made does not undo the author)
+		if (fSettings.affiliations)
+			fInstitutions.Affiliate(ref, file, PlanAffiliations(author.affiliations, person.employments));
 	}
 	return made;
 }

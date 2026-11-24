@@ -52,6 +52,22 @@ AddSameAs(PersonData* person, const std::string& iri)
 		person->sameAs.push_back(iri);
 }
 
+/** `{"year": {"value": "2019"}, "month": {"value": "03"}, "day": ...}` as `2019-03`; empty for nothing (`null`) or for a year that is none */
+std::string
+OrcidDate(const json& date)
+{
+	const std::string year = Value(date, "year");
+	if (year.size() != 4 || !std::all_of(year.begin(), year.end(), [](unsigned char c) { return std::isdigit(c); }))
+		return "";
+	const std::string month = Value(date, "month");
+	if (month.size() != 2 || !std::isdigit((unsigned char) month[0]) || !std::isdigit((unsigned char) month[1]))
+		return year;
+	const std::string day = Value(date, "day");
+	if (day.size() != 2 || !std::isdigit((unsigned char) day[0]) || !std::isdigit((unsigned char) day[1]))
+		return year + "-" + month;
+	return year + "-" + month + "-" + day;
+}
+
 bool
 IsWikidataId(const std::string& id)
 {
@@ -147,6 +163,7 @@ ParseOrcidEmployments(const std::string& body, PersonData* person)
 	if (!answer.is_object() || !groups.is_array())
 		return false;
 
+	person->employments.clear();
 	std::string current, first;
 	for (const json& group : groups) {
 		const json& summaries = Child(group, "summaries");
@@ -158,6 +175,21 @@ ParseOrcidEmployments(const std::string& body, PersonData* person)
 			if (organization.empty())
 				continue;
 			const std::string role = Str(employment, "role-title");
+
+			Employment job;
+			job.organization = organization;
+			job.role = role;
+			job.department = Str(employment, "department-name");
+			job.since = OrcidDate(Child(employment, "start-date"));
+			job.until = OrcidDate(Child(employment, "end-date"));
+			const json& place = Child(Child(employment, "organization"), "address");
+			job.city = Str(place, "city");
+			job.country = Str(place, "country");
+			const json& registered = Child(Child(employment, "organization"), "disambiguated-organization");
+			if (Str(registered, "disambiguation-source") == "ROR")
+				job.rorId = BareRorId(Str(registered, "disambiguated-organization-identifier"));
+			person->employments.push_back(job);
+
 			const std::string text = role.empty() ? organization : role + ", " + organization;
 			if (first.empty())
 				first = text;

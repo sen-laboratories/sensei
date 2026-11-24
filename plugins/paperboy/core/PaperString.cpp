@@ -10,6 +10,32 @@
 
 namespace paperboy {
 
+std::string
+BareRorId(const std::string& text)
+{
+	std::string id = text;
+	while (!id.empty() && std::isspace((unsigned char) id.back()))
+		id.pop_back();
+	while (!id.empty() && std::isspace((unsigned char) id.front()))
+		id.erase(id.begin());
+	for (const char* prefix : {"https://ror.org/", "http://ror.org/", "ror.org/"}) {
+		const std::string p = prefix;
+		if (id.compare(0, p.size(), p) == 0) {
+			id = id.substr(p.size());
+			break;
+		}
+	}
+	// 9 characters: 0, then letters and digits in lower case (Crockford's base 32 without i, l, o, u; the last two are the checksum)
+	if (id.size() != 9 || id[0] != '0')
+		return std::string();
+	for (char c : id) {
+		if (!std::isalnum((unsigned char) c) || std::isupper((unsigned char) c))
+			return std::string();
+	}
+	return id;
+}
+
+
 /** blanks and line breaks in a row are one blank, nothing at the ends (arXiv breaks the lines of titles and abstracts) */
 std::string
 SqueezeBlanks(const std::string& text)

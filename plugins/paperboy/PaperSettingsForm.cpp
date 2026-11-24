@@ -51,6 +51,7 @@ const Field kFields[] = {
 	{"rename_pattern", kText, "Name pattern", "Tokens: {year} {first_author} {title} {doi}, for example {year}_{first_author}_{title}."},
 	{"rename_underscores", kBool, "Underscores instead of blanks in the new name", ""},
 	{"authors", kText, "Authors become people", "The authors of an enriched paper are made files next to it, with the Authorship relation."},
+	{"affiliations", kBool, "Institutions of the authors", "The institutions that the paper and ORCID name for an author become institution files, and the person is affiliated with them (only those with a ROR id)."},
 	{"max_pages", kNumber, "Pages to search for a DOI", "Of the beginning of the document."},
 	{"local_only", kBool, "Extraction: only cited papers that are on this computer", ""},
 };
@@ -106,6 +107,7 @@ ToMessage(const Settings& s, BMessage* message)
 	message->AddString("rename_pattern", s.renamePattern.c_str());
 	message->AddBool("rename_underscores", s.renameUnderscores);
 	message->AddString("authors", s.authors.c_str());
+	message->AddBool("affiliations", s.affiliations);
 	message->AddInt32("max_pages", s.maxPages);
 	message->AddBool("local_only", s.localOnly);
 }

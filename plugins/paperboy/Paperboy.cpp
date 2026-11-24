@@ -668,10 +668,11 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 		reply->AddRef("refs", file);
 
 	// the authors are people next to the paper (after the rename: their relation is to the file as it is called now)
-	int32 authors = 0;
+	int32 authors = 0, institutions = 0;
 	if (fSettings.authors != "no" && !paper.authors.empty() && sen::plugins::ExtractEntitiesIntoFiles()) {
 		AuthorMaker maker(&fHttp, fSettings, overwrite);
 		authors = maker.MakeAuthors(*file, paper);
+		institutions = maker.InstitutionsMade();
 	}
 
 	reply->AddString(sensei::key::kSemanticType, kSemanticType);
@@ -688,6 +689,7 @@ Paperboy::Enrich(entry_ref* file, BMessage* reply, bool wipe)
 	fSummary = "'" + paper.title + "'" + (paper.oaStatus.empty() ? "" : ", open access: " + paper.oaStatus)
 		+ (paper.fromOpenAlex ? ", " + std::to_string(references.size()) + " cited works" : found_at)
 		+ (authors > 0 ? ", " + std::to_string(authors) + (authors == 1 ? " author" : " authors") : "")
+		+ (institutions > 0 ? " and " + std::to_string(institutions) + (institutions == 1 ? " new institution" : " new institutions") : "")
 		+ (renamed ? "; the file is named after the title." : ".");
 	spdlog::info("{}: {} ({})", file->name, fSummary, doiSource);
 	return B_OK;

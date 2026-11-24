@@ -15,10 +15,21 @@
  */
 namespace paperboy {
 
+/** The institution that a paper names for an author. Only an institution with a ROR id is an institution of SEN: a name alone is not guessed into one. */
+struct Affiliation {
+	std::string name;
+	std::string rorId;							///< bare ROR id (04d836q62), empty if the source does not give one
+	std::string openAlexId;						///< I145847075
+	std::string country;						///< ISO 3166-1 alpha-2
+	std::string type;							///< the type of the Research Organization Registry as OpenAlex says it (education, company...), lower case
+
+	bool HasRor() const { return !rorId.empty(); }
+};
+
 struct Author {
 	std::string name;
 	std::string orcid;							///< bare ORCID iD (0000-0002-1992-2684), not the URL
-	std::vector<std::string> affiliations;
+	std::vector<Affiliation> affiliations;
 };
 
 /** A place where the paper can be read: the landing page and/or a direct link to the PDF. */

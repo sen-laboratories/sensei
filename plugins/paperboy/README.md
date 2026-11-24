@@ -90,6 +90,17 @@ The authors of an enriched paper become **people**: files of the type `entity/x-
 
 The setting `authors` says which authors: `all` (the default, the first ones: *Max. number of entities to extract* in the settings of SEN, 10 by default), `orcid` (only those with an iD) or `no`. The photos are somebody else's work: their license and photographer are in the attributes, so that an application that shows the photo can say who made it.
 
+### The institutions of the authors
+
+The institutions that the paper names for an author become **institutions** (`entity/x-vnd.sen-labs.entity.institution`, in the Library like the people), and the person is *affiliated with* each of them (the *Affiliation* relation, stored at the person). Two sources say something different, and the plan joins them by the ROR iD (`core/PaperAffiliations.cpp`):
+
+- **The paper** (OpenAlex) names the institutions of the author **at the time of the paper**, with the ROR iD, the country and the type, but with no dates and no role.
+- **ORCID** lists the employments that the person keeps, with the **dates, the role and the department**, and names the institution by an id of a register, a ROR iD where it can.
+
+So an institution of the paper that ORCID has an employment at gets that employment's *Since*, *Until*, *Role* (`SEN:REL:Role`) and *Note* (the department); two positions at one institution are two affiliations. An institution of the paper that ORCID does not know is affiliated without dates. A current employment (no end date) at an institution that the paper does not name is added: it is where the person is now. A past employment elsewhere is left out: a career would make a file of every institution that a person ever worked at. A date is as exact as the person gave it (`2019` is since 1 January 2019, until 31 December 2019).
+
+Only an institution **with a ROR iD** is made: nobody is guessed from a name (an affiliation that arXiv gives as a line of text stays what it is, the `schema:affiliation` of the author in `schema:author`). The file has the name, `dc:identifier` (the bare ROR iD), the country, the city (ORCID has it) and the type, and the link to the registry in `schema:sameAs`. An institution is found by its ROR iD anywhere on the volume, so one that the **SEN Campus** plugin enriched is not made twice, and what a file has is never overwritten: Enrich the institution to get its names, the parent organization, the topics and the counts. The setting `affiliations` switches this off.
+
 (Wikimedia sends a header with an empty value, which is valid HTTP but which Haiku's HTTP client wrongly refuses, so Wikimedia is read over a socket, `common/SocketHttp.h`; the other services go through the client of Haiku.)
 
 ## Citations
@@ -113,6 +124,7 @@ A plugin has no window of its own: the settings are shown by the **Settings wind
 | `title_search` | yes | look a paper up by its title if there is no DOI |
 | `semantic_scholar`, `dblp`, `arxiv` | yes | ask this source for a paper that OpenAlex does not know (`arxiv = no` also stops the look-up of an arXiv identifier of the document) |
 | `authors` | all | make people of the authors of an enriched paper: `all`, `orcid` (only those with an ORCID iD) or `no` |
+| `affiliations` | yes | make institutions of the affiliations of the authors (those with a ROR iD) and affiliate the person with them |
 | `max_pages` | 3 | pages from the start that are searched for a DOI |
 | `local_only` | no | extraction: only cited papers that are on this computer |
 

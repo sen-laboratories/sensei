@@ -92,7 +92,7 @@ ValidateSetting(const std::string& key, const std::string& value, std::string* r
 	if (key == "max_pages")
 		return number(1, 20) ? true : fail("a number from 1 to 20");
 	if (key == "unpaywall" || key == "rename" || key == "rename_underscores" || key == "overwrite" || key == "title_search"
-			|| key == "semantic_scholar" || key == "dblp" || key == "arxiv" || key == "local_only")
+			|| key == "semantic_scholar" || key == "dblp" || key == "arxiv" || key == "local_only" || key == "affiliations")
 		return isBool() ? true : fail("yes or no");
 	return fail("no such setting");
 }
@@ -151,6 +151,8 @@ ParseSettings(const std::string& text, Settings* settings)
 				settings->authors = mode;
 			else if (ParseBool(value, true) == false)
 				settings->authors = "no";
+		} else if (key == "affiliations") {
+			settings->affiliations = ParseBool(value, settings->affiliations);
 		} else if (key == "local_only") {
 			settings->localOnly = ParseBool(value, settings->localOnly);
 		} else if (key == "max_pages") {

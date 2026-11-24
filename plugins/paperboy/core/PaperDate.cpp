@@ -6,6 +6,7 @@
 #include "PaperDate.h"
 
 #include <cctype>
+#include <cstdio>
 
 namespace paperboy {
 
@@ -64,6 +65,31 @@ ParseDate(const std::string& date)
 	int dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
 	long long days = (long long) era * 146097 + dayOfEra - 719468;
 	return (time_t) (days * 86400);
+}
+
+
+time_t
+ParseDateEnd(const std::string& date)
+{
+	const time_t start = ParseDate(date);
+	if (start == (time_t) -1)
+		return -1;
+	if (date.size() == 10)
+		return start + 86400 - 1;
+
+	int year = Digits(date, 0, 4);
+	int month = date.size() == 7 ? Digits(date, 5, 2) : 12;
+	// (the first moment of the next month, or of the next year, less a second)
+	if (month == 12) {
+		year++;
+		month = 1;
+	} else {
+		month++;
+	}
+	char next[16];
+	snprintf(next, sizeof(next), "%04d-%02d", year, month);
+	const time_t after = ParseDate(next);
+	return after == (time_t) -1 ? -1 : after - 1;
 }
 
 }	// namespace paperboy

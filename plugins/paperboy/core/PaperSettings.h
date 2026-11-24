@@ -47,6 +47,11 @@ struct Settings {
 	 * OpenAlex gives an ORCID iD (they are then looked up at ORCID and Wikidata: biography, homepage, employer and a photo), "no" none.
 	 */
 	std::string authors = "all";
+	/**
+	 * The institutions of the authors become institutions (files, with the ROR id), and the person is affiliated with them: those that the paper names for the author and the current
+	 * employment that ORCID lists; the dates and the role are the ones of ORCID. Only an institution with a ROR id is made: a name is not guessed into an institution.
+	 */
+	bool affiliations = true;
 	/** the most authors that are made; as `choose`, from the settings that all plugins share (Max. number of entities to extract) */
 	int maxAuthors = 10;
 	/** the pages (of the beginning) that are searched for a DOI */

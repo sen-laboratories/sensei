@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include "PaperInstitutions.h"
 #include "PaperModel.h"
 #include "PaperPeople.h"
 #include "PaperSettings.h"
@@ -22,6 +23,9 @@ class HttpClient;
  * homepage, current employer) and, by the same iD, at Wikidata, which for a notable person has a photo at Wikimedia Commons: the photo is the thumbnail of
  * the file (as the cover is for a book), its license and photographer are attributes of the person, too. An author without an iD is a person with the name
  * alone: nobody is guessed from a name.
+ *
+ * The institutions that the paper names for an author, and the current employment at ORCID, are made as institutions, and the person is affiliated with them (InstitutionMaker):
+ * with the dates, the role and the department that ORCID has.
  *
  * A person that exists is found again (by the ORCID iD in `schema:sameAs`, anywhere on the volume; else by the name, in the folder of the paper) and not made twice;
  * what the person has written stays, unless the enrichment overwrites.
@@ -37,6 +41,9 @@ public:
 	 */
 	int32			MakeAuthors(const entry_ref& file, const paperboy::Paper& paper);
 
+	/** the institutions that were made for the authors (not found: the ones that are there already) */
+	int32			InstitutionsMade() const { return fInstitutions.Made(); }
+
 private:
 	/** the data of the person from ORCID, Wikidata and Commons, as far as they know it; false if none of them did */
 	bool			_Lookup(paperboy::PersonData* person, std::string* photo);
@@ -48,4 +55,5 @@ private:
 	HttpClient*		fHttp;
 	paperboy::Settings fSettings;
 	bool			fOverwrite;
+	InstitutionMaker fInstitutions;
 };

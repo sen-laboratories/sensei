@@ -21,4 +21,7 @@ std::string DecodeEntities(const std::string& text);
 /** @brief The text of a snippet of HTML (`<a href="...">Name</a>`): the tags go, the entities are decoded, the blanks squeezed. */
 std::string StripTags(const std::string& html);
 
+/** @brief `https://ror.org/04d836q62`, `ror.org/04d836q62` or `04d836q62` is `04d836q62`; anything else that is not the id of the Research Organization Registry is empty. */
+std::string BareRorId(const std::string& text);
+
 }	// namespace paperboy

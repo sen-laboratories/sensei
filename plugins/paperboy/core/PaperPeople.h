@@ -19,6 +19,21 @@
  */
 namespace paperboy {
 
+/**
+ * One employment of the person at ORCID: where, as what and from when to when. The dates are what ORCID has, as precise as the person gave them (`2019`, `2019-03`, `2019-03-01`);
+ * an empty end says that it goes on. ORCID names the institution by an id of a register (`disambiguation-source`: ROR, GRID, RINGGOLD, ...): only a ROR id is kept.
+ */
+struct Employment {
+	std::string organization;
+	std::string rorId;							///< bare, empty if ORCID does not name the institution by ROR
+	std::string country;						///< ISO 3166-1 alpha-2
+	std::string city;
+	std::string role;							///< "Professeur titulaire"
+	std::string department;
+	std::string since;
+	std::string until;
+};
+
 struct PersonData {
 	std::string name;
 	std::string givenName;
@@ -27,6 +42,7 @@ struct PersonData {
 	std::string wikidataId;						///< Q3572699
 	std::string biography;						///< the one that the person wrote at ORCID, else the short description of Wikidata
 	std::string jobTitle;						///< "Professor, University of Montreal": the current employment at ORCID
+	std::vector<Employment> employments;		///< all the employments that ORCID lists, in its order
 	std::string birthDate;						///< YYYY-MM-DD, or YYYY if Wikidata knows no more
 	std::string homepage;
 	std::vector<std::string> sameAs;			///< IRIs: ORCID, Wikidata, Wikipedia
@@ -53,7 +69,7 @@ std::string CommonsImageUrl(const std::string& photoFile, int width = 256);
 /** @brief Name, biography, homepage and the ORCID iD itself from `/person`; false if the body is not that. */
 bool ParseOrcidPerson(const std::string& json, PersonData* person);
 
-/** @brief The current employment (else the first) from `/employments` as the job title; false if the body is not that. */
+/** @brief The employments from `/employments`, and the current one (else the first) as the job title; false if the body is not that. */
 bool ParseOrcidEmployments(const std::string& json, PersonData* person);
 
 /** @brief The id (`Q...`) of the first entry of a Wikidata search; false if there is none (not every researcher is notable). */

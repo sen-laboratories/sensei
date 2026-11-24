@@ -12,6 +12,7 @@
 #include <string>
 
 #include "PaperAbstract.h"
+#include "PaperAffiliations.h"
 #include "PaperApi.h"
 #include "PaperDate.h"
 #include "PaperChoice.h"
@@ -121,6 +122,11 @@ TestDate()
 	CHECK(ParseDate("2015") == 1420070400);
 	CHECK(ParseDate("2024-02-29") == 1709164800);
 	CHECK(ParseDate("2023-02-29") == -1);
+	CHECK(ParseDateEnd("2015") == 1451606399);			// 2015-12-31 23:59:59
+	CHECK(ParseDateEnd("2024-02") == 1709251199);		// 2024-02-29 23:59:59
+	CHECK(ParseDateEnd("2015-05-26") == 1432684799);
+	CHECK(ParseDateEnd("2015-12") == 1451606399);
+	CHECK(ParseDateEnd("soon") == -1);
 	CHECK(ParseDate("2015-13-01") == -1);
 	CHECK(ParseDate("26.05.2015") == -1);
 	CHECK(ParseDate("2015-05-26T10:00:00") == -1);
@@ -164,6 +170,14 @@ TestJson()
 		CHECK_EQ(nature.authors[0].name, "Yann LeCun");
 		CHECK_EQ(nature.authors[0].orcid, "0000-0002-1992-2684");
 		CHECK(!nature.authors[0].affiliations.empty());
+		if (!nature.authors[0].affiliations.empty()) {
+			const Affiliation& home = nature.authors[0].affiliations[0];
+			CHECK(!home.name.empty());
+			CHECK_EQ(home.rorId, "01zbnvs85");
+			CHECK_EQ(home.openAlexId, "I4210114444");
+			CHECK_EQ(home.country, "US");
+			CHECK_EQ(home.type, "company");
+		}
 	}
 	CHECK(!nature.keywords.empty());
 	CHECK_EQ(nature.keywords.empty() ? "" : nature.keywords[0], "deep learning");
@@ -330,6 +344,10 @@ TestSettings()
 	CHECK_EQ(settings.authors, "no");		// (not a value: it stays)
 	ParseSettings("authors = all\n", &settings);
 	CHECK_EQ(settings.authors, "all");
+	CHECK(settings.affiliations);
+	ParseSettings("affiliations = no\n", &settings);
+	CHECK(!settings.affiliations);
+	CHECK(ValidateSetting("affiliations", "yes") && !ValidateSetting("affiliations", "maybe"));
 
 	// the most authors and asking which paper if several are found are settings of SEN that all plugins share, not of the file: the application sets them (see sen::plugins::LoadSharedSettings)
 	CHECK(settings.choose);
@@ -554,6 +572,20 @@ TestPeople()
 	CHECK(person.jobTitle.find("Professeur titulaire") == 0);
 	CHECK(person.jobTitle.find("Montr") != std::string::npos);
 	CHECK(!ParseOrcidEmployments("[]", &person));
+	CHECK(person.employments.size() == 1);
+	if (!person.employments.empty()) {
+		const Employment& job = person.employments[0];
+		CHECK_EQ(job.rorId, "0161xgx34");
+		CHECK_EQ(job.country, "CA");
+		CHECK_EQ(job.role, "Professeur titulaire");
+		CHECK_EQ(job.since, "1993-09-01");
+		CHECK(job.until.empty());
+		CHECK(job.department.find("DIRO") != std::string::npos);
+	}
+	CHECK_EQ(BareRorId("https://ror.org/04d836q62"), "04d836q62");
+	CHECK_EQ(BareRorId(" ror.org/04d836q62 "), "04d836q62");
+	CHECK(BareRorId("https://grid.ac/institutes/grid.5801.c").empty());
+	CHECK(BareRorId("Q123").empty());
 
 	std::string qid;
 	CHECK(ParseWikidataSearch(ReadFixture("wikidata-search.json"), &qid));
@@ -623,6 +655,63 @@ TestSettingsForm()
 	CHECK(UpdateSettingsText("# email = x\n", {{"email", "a@b.c"}}) == "# email = x\nemail = a@b.c\n");
 }
 
+static void
+TestAffiliations()
+{
+	auto place = [](const char* name, const char* ror, const char* country, const char* type) {
+		Affiliation a;
+		a.name = name;
+		a.rorId = ror;
+		a.country = country;
+		a.type = type;
+		return a;
+	};
+	auto job = [](const char* organization, const char* ror, const char* role, const char* since, const char* until) {
+		Employment e;
+		e.organization = organization;
+		e.rorId = ror;
+		e.role = role;
+		e.since = since;
+		e.until = until;
+		return e;
+	};
+
+	// the paper names two institutions; one of them has no id, which is no institution
+	std::vector<Affiliation> named = {place("Université de Montréal", "0161xgx34", "CA", "education"), place("Mila", "", "CA", "nonprofit"),
+		place("Meta (United States)", "01zbnvs85", "US", "company")};
+	std::vector<Stay> stays = PlanAffiliations(named, {});
+	CHECK(stays.size() == 2);
+	if (stays.size() == 2) {
+		CHECK_EQ(stays[0].rorId, "0161xgx34");
+		CHECK_EQ(stays[0].type, "Education");
+		CHECK(stays[0].since.empty() && stays[0].until.empty() && !stays[0].fromEmployment);
+		CHECK_EQ(stays[1].name, "Meta (United States)");
+	}
+
+	// ORCID dates an institution of the paper (two positions are two stays), adds where the person is now, and leaves the past elsewhere out
+	std::vector<Employment> jobs = {job("Université de Montréal", "0161xgx34", "Assistant professor", "1993-09", "2001"),
+		job("Université de Montréal", "0161xgx34", "Professeur titulaire", "2001", ""),
+		job("Old Lab", "05tqq2q94", "Student", "1985", "1990"),
+		job("Samsung", "04w3jy968", "Advisor", "2022-01-15", ""),
+		job("No Register", "", "Guest", "2020", "")};
+	jobs[1].department = "DIRO";
+	stays = PlanAffiliations(named, jobs);
+	CHECK(stays.size() == 4);		// two in Montreal, Meta without dates, Samsung (now)
+	if (stays.size() == 4) {
+		CHECK(stays[0].fromEmployment && stays[0].role == "Assistant professor" && stays[0].until == "2001");
+		CHECK(stays[1].role == "Professeur titulaire" && stays[1].until.empty() && stays[1].note == "DIRO");
+		CHECK_EQ(stays[1].type, "Education");		// (what the paper knows of the institution stays)
+		CHECK(!stays[2].fromEmployment && stays[2].rorId == "01zbnvs85");
+		CHECK(stays[3].rorId == "04w3jy968" && stays[3].since == "2022-01-15" && stays[3].type.empty());
+	}
+
+	// the same twice is once; nothing at all is nothing
+	CHECK(PlanAffiliations({named[0], named[0]}, {}).size() == 1);
+	CHECK(PlanAffiliations({}, {}).empty());
+	CHECK(InstitutionTypeText("education") == "Education" && InstitutionTypeText("").empty());
+}
+
+
 int
 main(int argc, char** argv)
 {
@@ -640,6 +729,7 @@ main(int argc, char** argv)
 	TestChoice();
 	TestSources();
 	TestPeople();
+	TestAffiliations();
 
 	std::printf("%d checks, %d failed\n", sChecks, sFailures);
 	return sFailures == 0 ? 0 : 1;

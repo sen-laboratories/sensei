@@ -97,8 +97,8 @@ AuthorsMessage(const Paper& paper)
 		person.AddString(key::kName, author.name.c_str());
 		if (!author.orcid.empty())
 			person.AddString(key::kOrcid, ("https://orcid.org/" + author.orcid).c_str());
-		for (const std::string& affiliation : author.affiliations)
-			person.AddString(key::kAffiliation, affiliation.c_str());
+		for (const Affiliation& affiliation : author.affiliations)
+			person.AddString(key::kAffiliation, affiliation.name.c_str());
 		authors.AddMessage(key::kPerson, &person);
 	}
 	return authors;
