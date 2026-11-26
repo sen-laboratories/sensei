@@ -16,7 +16,7 @@ accounts they name, and their posts, from open services. What it goes by is what
 
 A person that has a name or a handle but none of those is **searched for** (the *hunt*): Bluesky, the Fediverse (Mastodon), GitHub, Wikidata and ORCID are asked by the name and the handle, the
 answers are scored against everything that the file says (the name, the handle, a link, the place, the company), and the best one is taken if it is clearly the one. Otherwise a **dialog** shows
-the candidates with the score, and their photos, which come after the window, and the user chooses; with `--auto` the best one is taken. More than eight matches are said to be too many: the best
+the candidates with the score, and their photos, which come after the window, and the user chooses; with `--auto` nobody is there to ask, so a match is taken only if it is clearly the one (the file confirms it: a handle, a link, the ORCID iD, the place or the company), else nobody is taken and the summary says why. A name is a match only if at least two of its words fit ("Tobias Dam" is not "Tobias Whetton"; an initial fits the word that it begins). More than eight matches are said to be too many: the best
 eight are shown. Several matches can be checked (your ORCID record and your GitHub account are the same person): they are merged from the top of the list to the bottom (the rows can be dragged, or moved
 with Ctrl or Alt and the arrow keys, to say which one wins), and a value that the file has already, or that a match above has given, is never overwritten.
 
@@ -123,7 +123,7 @@ e-mail address) and **Homepage and feeds**. All are on by default; **drag a row*
 Robin asks every service that is on, in this order, for what it knows about the person:
 
 - a service the person has an **account** at (a link in `schema:sameAs`, a handle as nickname, an e-mail address, a homepage) is asked for that account;
-- a service the person has **no account** at yet is searched for people of that name (the dialog *Choose a person*, as before; one that is clearly the one is taken, `--auto` takes the best); what you choose
+- a service the person has **no account** at yet is searched for people of that name (the dialog *Choose a person*, as before; one that is clearly the one is taken, `--auto` takes nobody that the file does not confirm); what you choose
   goes into the links of the file, and from then on the account is asked directly.
 - **What an earlier service gave is not replaced by a later one** (the bio, the job, the company...), and what the file had before is never replaced (Enrich (Overwrite) does). The **photo** is the exception: the best
   one of all services is kept. The bio is `dc:description` (Description). The **posts** come from the first service of the list that has them.

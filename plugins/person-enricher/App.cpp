@@ -174,6 +174,7 @@ App::RefreshPostsOf(const entry_ref& file)
 	if (result != B_OK)
 		return result;
 	fHttp.SetDebug(fDebug);
+	fHuntNote.SetTo("");
 	fSettings = Settings();
 	LoadSettings(&fSettings);
 	PersonEnricher enricher(fHttp.Function(), fSettings);
@@ -388,9 +389,16 @@ App::_Hunt(const PersonProfile& profile, bool automatic, const std::vector<std::
 	if (hits.empty())
 		return false;
 
-	if (Hunter::IsClearWinner(hits) || automatic) {
+	if (Hunter::IsClearWinner(hits)) {
 		chosen->push_back(hits[0]);
 		return true;
+	}
+	// Nobody is there to ask (--auto): a name that fits is not enough to take a person. What the file says (a handle, a link, the ORCID iD, the place, the company) has to confirm it;
+	// else nothing is taken rather than somebody else (two people share a name often).
+	if (automatic) {
+		fHuntNote.SetTo(hits.size() == 1 ? "Somebody of that name was found" : "Several people could be meant");
+		fHuntNote << " (" << hits[0].name.c_str() << ", " << ServiceName(hits[0].service) << "), but nothing in the file confirms it: Enrich without --auto to choose";
+		return false;
 	}
 
 	const size_t total = hits.size();
@@ -473,6 +481,7 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 	}
 
 	fHttp.SetDebug(fDebug);
+	fHuntNote.SetTo("");
 	fSettings = Settings();
 	LoadSettings(&fSettings);
 	PersonEnricher enricher(fHttp.Function(), fSettings);
@@ -550,6 +559,8 @@ App::EnrichOne(const entry_ref& file, bool wipe, bool automatic, BString* summar
 			detail << (i == 0 ? "" : " + ") << found[i].name.c_str() << " (" << ServiceName(found[i].service) << ")";
 		detail << "; ";
 	}
+	if (!hunted && fHuntNote.Length() > 0)
+		detail << fHuntNote << "; ";
 	if (nameCorrected)
 		detail << "Name: " << profile.name.c_str() << (renameFile && current != file ? " (file renamed)" : "") << "; ";
 	else if (renameFile && current != file)

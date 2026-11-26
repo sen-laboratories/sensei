@@ -239,10 +239,30 @@ Hunter::NameSimilarity(const std::string& a, const std::string& b)
 		if (right.count(word) != 0)
 			same++;
 	}
-	if (same == 0)
+	// an initial ("T. Dam") is the word that it begins ("Tobias Dam"): half a word, because it fits many
+	size_t initials = 0;
+	std::set<std::string> usedRight;
+	for (const std::string& word : left) {
+		if (right.count(word) != 0)
+			continue;
+		for (const std::string& other : right) {
+			if (left.count(other) != 0 || usedRight.count(other) != 0)
+				continue;		// (matched exactly already, or by another initial)
+			if ((word.size() == 1 && other[0] == word[0]) || (other.size() == 1 && word[0] == other[0])) {
+				initials++;
+				usedRight.insert(other);
+				break;
+			}
+		}
+	}
+	if (same + initials == 0)
 		return 0;
+	const float matched = (float)same + 0.5f * (float)initials;
 	const float small = (float)std::min(left.size(), right.size()), large = (float)std::max(left.size(), right.size());
-	return std::min(1.0f, ((float)same / small) * (0.7f + 0.3f * (float)same / large));
+	// two names of several words that share only one of them are two people ("Tobias Dam", "Tobias Whetton"): a first name or a family name alone is no match
+	if (small >= 2 && same + initials < 2)
+		return 0;
+	return std::min(1.0f, (matched / small) * (0.7f + 0.3f * matched / large));
 }
 
 
@@ -280,6 +300,10 @@ Hunter::Score(HuntHit* hit, const PersonProfile& wanted)
 		if (linked)
 			score = std::max(score, 0.9f);
 	}
+
+	// the ORCID iD that the file has is the person: a hit that says the same iD (a Wikidata entry, an ORCID record, an account that names it) is as good as a link
+	if (!wanted.orcid.empty() && (hit->orcid == wanted.orcid || Contains(hit->description + " " + hit->homepage, wanted.orcid)))
+		score = std::max(score, 0.9f);
 
 	// what else the file says (the place, the company, the job) fits what the hit says about itself
 	const std::string about = hit->description + " " + hit->location + " " + hit->company + " " + hit->jobTitle;

@@ -44,6 +44,7 @@ private:
 	void _BestPhoto(PersonProfile* profile, const HuntHit& hit);
 
 	HttpFetcher fHttp;
+	BString fHuntNote;					///< why a search for the person took nobody (--auto and nothing confirms the name), for the summary
 	Settings fSettings;					///< from the settings file, read for every file (the settings window may have changed it)
 	SettingsProvider fSettingsProvider;
 	sensei::SettingsSession fSession;

@@ -504,6 +504,10 @@ main()
 			CHECK(Hunter::NameSimilarity("Jos\xC3\xA9 Garc\xC3\xAD" "a", "Jose Garcia") == 1.0f);
 			CHECK(Hunter::NameSimilarity("Gregor B. Rosenauer", "Gregor Rosenauer") > 0.85f && Hunter::NameSimilarity("Gregor B. Rosenauer", "Gregor Rosenauer") < 1.0f);
 			CHECK(Hunter::NameSimilarity("Gregor Rosenauer", "Gregor Poynton") < 0.5f && Hunter::NameSimilarity("Gregor", "Alice") == 0);
+			// the first name alone is another person (the Threads account of "Tobias Whetton" is not "Tobias Dam"), an initial fits the word that it begins
+			CHECK(Hunter::NameSimilarity("Tobias Dam", "Tobias Whetton") == 0 && Hunter::NameSimilarity("Dam", "Tobias Dam") > 0.5f);
+			CHECK(Hunter::NameSimilarity("T. Dam", "Tobias Dam") > 0.6f && Hunter::NameSimilarity("T. Dam", "Tobias Dam") < 1.0f && Hunter::NameSimilarity("T. Dam", "Thomas Whetton") == 0);
+			CHECK(Hunter::NameSimilarity("Wang Wei", "Wei Wang") == 1.0f);
 			CHECK(Hunter::UrlEncode("Gregor Rosenauer") == "Gregor%20Rosenauer" && Hunter::UrlEncode("a+b/c") == "a%2Bb%2Fc");
 
 			// Bluesky: the search and a profile
@@ -579,6 +583,14 @@ main()
 			robin::HuntHit sen;
 			sen.service = "bluesky"; sen.id = "sen-labs.org"; sen.name = "SEN Labs";
 			CHECK(Hunter::Score(&sen, wanted) >= 0.85f);
+
+			// the ORCID iD of the file settles it, too: the Wikidata entry that has it is the person, one of the same first name is nobody
+			robin::PersonProfile dam;
+			dam.name = "Tobias Dam"; dam.orcid = "0000-0002-1111-2222";
+			robin::HuntHit entry, whetton;
+			entry.service = "wikidata"; entry.id = entry.wikidata = "Q1"; entry.name = "Tobias Dam"; entry.orcid = "0000-0002-1111-2222";
+			whetton.service = "mastodon"; whetton.id = "tobiaswhetton@threads.net"; whetton.name = "Tobias Whetton"; whetton.description = "Hello"; whetton.avatarUrl = "https://a/b.png";
+			CHECK(Hunter::Score(&entry, dam) >= 0.9f && Hunter::Score(&whetton, dam) == 0);
 
 			// a clear winner needs 0.8 and a gap of 0.25
 			std::vector<robin::HuntHit> ranked(2);
