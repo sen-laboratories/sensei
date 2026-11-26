@@ -706,6 +706,25 @@ TestAffiliations()
 		CHECK(stays[3].rorId == "04w3jy968" && stays[3].since == "2022-01-15" && stays[3].type.empty());
 	}
 
+	// the paper names no institution (a recent paper often has none at OpenAlex): the employments that cover the day of the paper are where it comes from
+	std::vector<Employment> recent = {job("St. Poelten", "0123abc45", "Researcher", "2021-03", ""),
+		job("Vienna", "0456def78", "Postdoc", "2019", "2026-12"),		// (over now, but it was the employer when the paper came out)
+		job("Graz", "0789ghi12", "Student", "2015", "2020"),			// (over before the paper: not a stay)
+		job("Linz", "0aaabbb34", "Guest", "2027", "")};					// (begins after the paper: where the person is now)
+	stays = PlanAffiliations({}, recent, "2026-09-02");
+	CHECK(stays.size() == 3);
+	if (stays.size() == 3) {
+		CHECK(stays[0].rorId == "0123abc45" && stays[0].heldAtPublication && stays[0].ProducedPaper() && !stays[0].namedByPaper);
+		CHECK(stays[1].rorId == "0456def78" && stays[1].heldAtPublication && stays[1].until == "2026-12");
+		CHECK(stays[2].rorId == "0aaabbb34" && !stays[2].heldAtPublication && !stays[2].ProducedPaper());
+	}
+	// (without a date of the paper the old rule holds: only where the person is now)
+	stays = PlanAffiliations({}, recent);
+	CHECK(stays.size() == 2 && !stays[0].heldAtPublication && !stays[1].heldAtPublication);
+	// (a year says the whole year: a position that begins that year was held then)
+	CHECK(PlanAffiliations({}, {job("X", "0xxxxxx00", "Fellow", "2026-11", "")}, "2026").size() == 1);
+	CHECK(PlanAffiliations({}, {job("X", "0xxxxxx00", "Fellow", "2026-11", "")}, "2026")[0].heldAtPublication);
+
 	// the same twice is once; nothing at all is nothing
 	CHECK(PlanAffiliations({named[0], named[0]}, {}).size() == 1);
 	CHECK(PlanAffiliations({}, {}).empty());

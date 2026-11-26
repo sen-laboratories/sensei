@@ -125,7 +125,7 @@ AuthorMaker::MakeAuthors(const entry_ref& file, const Paper& paper)
 
 		// (after the person is related to the paper: an institution that cannot be made does not undo the author)
 		if (fSettings.affiliations)
-			fInstitutions.Affiliate(ref, file, PlanAffiliations(author.affiliations, person.employments));
+			fInstitutions.Affiliate(ref, file, PlanAffiliations(author.affiliations, person.employments, paper.date));
 	}
 	return made;
 }

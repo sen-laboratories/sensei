@@ -7,6 +7,8 @@
 
 #include <cctype>
 
+#include "PaperDate.h"
+
 namespace paperboy {
 
 std::string
@@ -41,11 +43,40 @@ Add(std::vector<Stay>* stays, const Stay& stay)
 		stays->push_back(stay);
 }
 
+/**
+ * Did the employment cover the day of the paper? One that goes on without a start is taken as covering (the person is there now, and nothing says the contrary); one with a start
+ * must have begun by the end of the period that the date names, and one that is over must not be over before its beginning (a year is the whole year: the benefit of the doubt).
+ */
+bool
+CoversPaper(const Employment& job, const std::string& paperDate)
+{
+	if (paperDate.empty())
+		return false;
+	const time_t first = ParseDate(paperDate);
+	const time_t last = ParseDateEnd(paperDate);
+	if (first < 0 || last < 0)
+		return false;
+	if (job.since.empty()) {
+		if (!job.until.empty())
+			return false;
+	} else {
+		const time_t begin = ParseDate(job.since);
+		if (begin < 0 || begin > last)
+			return false;
+	}
+	if (!job.until.empty()) {
+		const time_t end = ParseDateEnd(job.until);
+		if (end < 0 || end < first)
+			return false;
+	}
+	return true;
+}
+
 }	// namespace
 
 
 std::vector<Stay>
-PlanAffiliations(const std::vector<Affiliation>& named, const std::vector<Employment>& employments)
+PlanAffiliations(const std::vector<Affiliation>& named, const std::vector<Employment>& employments, const std::string& paperDate)
 {
 	std::vector<Stay> stays;
 
@@ -77,14 +108,17 @@ PlanAffiliations(const std::vector<Affiliation>& named, const std::vector<Employ
 			Add(&stays, base);
 	}
 
-	// where the person is now, if the paper does not say it
+	// where the person is now, and where the person was when the paper was written, if the paper does not say it
 	for (const Employment& job : employments) {
-		if (job.rorId.empty() || !job.until.empty())
+		if (job.rorId.empty())
 			continue;
-		bool named = false;
-		for (const Stay& stay : stays)
-			named = named || stay.rorId == job.rorId;
-		if (named)
+		const bool covers = CoversPaper(job, paperDate);
+		if (!job.until.empty() && !covers)
+			continue;
+		bool paperNamesIt = false;
+		for (const Affiliation& place : named)
+			paperNamesIt = paperNamesIt || (place.HasRor() && place.rorId == job.rorId);
+		if (paperNamesIt)
 			continue;
 		Stay stay;
 		stay.rorId = job.rorId;
@@ -92,9 +126,11 @@ PlanAffiliations(const std::vector<Affiliation>& named, const std::vector<Employ
 		stay.country = job.country;
 		stay.city = job.city;
 		stay.since = job.since;
+		stay.until = job.until;
 		stay.role = job.role;
 		stay.note = job.department;
 		stay.fromEmployment = true;
+		stay.heldAtPublication = covers;
 		Add(&stays, stay);
 	}
 	return stays;

@@ -79,7 +79,7 @@ InstitutionMaker::Affiliate(const entry_ref& person, const entry_ref& paper, con
 		else if (result != B_NOT_INITIALIZED)
 			spdlog::warn("could not relate {} to {}: {}", person.name, stay.name, strerror(result));
 
-		if (stay.namedByPaper) {
+		if (stay.ProducedPaper()) {
 			result = _RelatePaper(paper, institution);
 			if (result != B_OK && result != B_NOT_INITIALIZED)
 				spdlog::warn("could not relate the paper to {}: {}", stay.name, strerror(result));
