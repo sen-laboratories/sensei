@@ -27,6 +27,7 @@
 #include <sen/SenOntoPeople.h>
 #include <spdlog/spdlog.h>
 
+#include "PaperConfidence.h"
 #include "PaperDate.h"
 
 using namespace paperboy;
@@ -56,6 +57,12 @@ int32
 InstitutionMaker::Affiliate(const entry_ref& person, const entry_ref& paper, const std::vector<Stay>& stays)
 {
 	int32 related = 0;
+	// (the evidence of a position is shared among the institutions where the author held one: the paper may come from either)
+	int32 positions = 0;
+	for (const Stay& stay : stays) {
+		if (!stay.rorId.empty() && !stay.name.empty() && stay.ProducedPaper())
+			positions++;
+	}
 	for (const Stay& stay : stays) {
 		if (stay.rorId.empty() || stay.name.empty())
 			continue;
@@ -79,12 +86,29 @@ InstitutionMaker::Affiliate(const entry_ref& person, const entry_ref& paper, con
 		else if (result != B_NOT_INITIALIZED)
 			spdlog::warn("could not relate {} to {}: {}", person.name, stay.name, strerror(result));
 
+		// (the paper is related when all the authors are done: the institution of several authors is one relation, surer for each of them)
 		if (stay.ProducedPaper()) {
-			result = _RelatePaper(paper, institution);
-			if (result != B_OK && result != B_NOT_INITIALIZED)
-				spdlog::warn("could not relate the paper to {}: {}", stay.name, strerror(result));
+			Production& production = fProduction[stay.rorId];
+			production.institution = institution;
+			production.evidence.push_back(ProductionEvidence(stay, positions));
 		}
 	}
+	return related;
+}
+
+
+int32
+InstitutionMaker::RelatePaper(const entry_ref& paper)
+{
+	int32 related = 0;
+	for (const auto& entry : fProduction) {
+		const status_t result = _RelatePaper(paper, entry.second.institution, ProductionConfidence(entry.second.evidence));
+		if (result == B_OK)
+			related++;
+		else if (result != B_NOT_INITIALIZED)
+			spdlog::warn("could not relate the paper to the institution {}: {}", entry.first, strerror(result));
+	}
+	fProduction.clear();
 	return related;
 }
 
@@ -175,16 +199,19 @@ InstitutionMaker::_WriteAttributes(const entry_ref& ref, const Stay& stay)
 
 /** the paper comes from the institution: stored at the paper only (an institution does not list its papers); the same relation again (another author of the same institution) is one */
 status_t
-InstitutionMaker::_RelatePaper(const entry_ref& paper, const entry_ref& institution)
+InstitutionMaker::_RelatePaper(const entry_ref& paper, const entry_ref& institution, double confidence)
 {
 	BMessenger server(sen::kServerSignature);
 	if (!server.IsValid())
 		return B_NOT_INITIALIZED;
 
+	BMessage properties;
+	properties.AddFloat(sen::onto::core::attr::kRelConfidence, (float)confidence);
 	BMessage add(sen::cmd::kRelationAdd), answer;
 	add.AddString(sen::key::kRelationType, sen::onto::papers::mime::kSourceInstitution);
 	add.AddRef(sen::key::kSourceRef, &paper);
 	add.AddRef(sen::key::kTargetRef, &institution);
+	add.AddMessage(sen::key::kRelationProperties, &properties);
 	status_t result = server.SendMessage(&add, &answer, 10000000, 10000000);
 	if (result != B_OK)
 		return result;
@@ -216,6 +243,7 @@ InstitutionMaker::_Relate(const entry_ref& person, const entry_ref& institution,
 		properties.AddString(sen::onto::core::attr::kRelRole, stay.role.c_str());
 	if (!stay.note.empty())
 		properties.AddString(people::kRelNote, stay.note.c_str());
+	properties.AddFloat(sen::onto::core::attr::kRelConfidence, (float)AffiliationConfidence(stay));
 
 	BMessage add(sen::cmd::kRelationAdd), answer;
 	add.AddString(sen::key::kRelationType, sen::onto::people::mime::kAffiliation);

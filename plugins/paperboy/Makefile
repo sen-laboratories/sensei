@@ -35,7 +35,7 @@ APP_MIME_SIG = application/x-vnd.sen-plugin.sen-labs.paperboy
 #	Also note that spaces in folder names do not work well with this Makefile.
 SRCS =  App.cpp PaperSettingsForm.cpp Paperboy.cpp PaperAuthors.cpp PaperInstitutions.cpp PaperHttp.cpp PaperStore.cpp PaperText.cpp \
 	core/PaperAbstract.cpp core/PaperAffiliations.cpp core/PaperApi.cpp core/PaperDate.cpp core/PaperDoi.cpp core/PaperJson.cpp \
-	core/PaperChoice.cpp core/PaperName.cpp core/PaperPeople.cpp core/PaperSettings.cpp core/PaperSources.cpp core/PaperString.cpp core/PaperTitle.cpp \
+	core/PaperChoice.cpp core/PaperConfidence.cpp core/PaperName.cpp core/PaperPeople.cpp core/PaperSettings.cpp core/PaperSources.cpp core/PaperString.cpp core/PaperTitle.cpp \
 	../../common/ThumbnailUtil.cpp
 
 #	Specify the resource definition files to use. Full or relative paths can be

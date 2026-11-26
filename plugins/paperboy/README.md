@@ -101,6 +101,17 @@ So an institution of the paper that ORCID has an employment at gets that employm
 
 Only an institution **with a ROR iD** is made: nobody is guessed from a name The institutions that the paper names, and those where an author held a position when the paper was published (ORCID dates), are also the ones that the **paper comes from**: the paper gets the relation *Source Institution* (*produced at*, `schema:sourceOrganization`, in the papers ontology) to each of them, once however many authors share the institution. The relation is stored at the paper only: an institution does not list its papers (thousands of them), they are found from the institution as *produced*. The employer that only ORCID knows is one of them only if the employment covers the day of the paper (a current job that began after the paper is not). (an affiliation that arXiv gives as a line of text stays what it is, the `schema:affiliation` of the author in `schema:author`). The file has the name, `dc:identifier` (the bare ROR iD), the country, the city (ORCID has it) and the type, and the link to the registry in `schema:sameAs`. An institution is found by its ROR iD anywhere on the volume, so one that the **SEN Campus** plugin enriched is not made twice, and what a file has is never overwritten: Enrich the institution to get its names, the parent organization, the topics and the counts. The setting `affiliations` switches this off.
 
+
+### How sure the relations are
+
+Every relation that Paperboy makes (Authorship, Affiliation, Source Institution) carries a **confidence** (`SEN:REL:Confidence`, 0 to 1, read as a percentage or a probability; an estimate, not a measurement). It is made of the evidence for the relation (the weights are in sento's `SenConfidence.h`, the table in `core/PaperConfidence.h`):
+
+- **Authorship:** 0.97 if the person was found by the ORCID iD that the paper gives for the author; 0.90 if the person was made from the paper's entry; 0.50 if a file of the same name was there already and nothing else is known (it may be another person of that name).
+- **Affiliation:** 0.90 if ORCID lists the employment or the paper names the institution; 0.99 if both do.
+- **Source Institution:** the institution that the paper names for an author is 0.90; an employment that has a start and an end and covers the day of the paper 0.75; one that began before it and goes on 0.55; one without dates 0.35. An author with two positions on that day gives each of them less (the paper may come from either: 0.75 becomes 0.53). The authors who are at the same institution add up, but the authors of one paper repeat each other, so each further one counts half: four authors with a current position give 0.83 where one gives 0.55.
+
+A relation that has no value was made or confirmed by a person and counts as 1; making a relation again with a higher estimate raises the value, and nothing Paperboy does lowers it or changes a confirmed one.
+
 (Wikimedia sends a header with an empty value, which is valid HTTP but which Haiku's HTTP client wrongly refuses, so Wikimedia is read over a socket, `common/SocketHttp.h`; the other services go through the client of Haiku.)
 
 ## Citations

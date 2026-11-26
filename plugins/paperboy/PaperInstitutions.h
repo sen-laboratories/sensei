@@ -7,6 +7,7 @@
 #include <Entry.h>
 #include <SupportDefs.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,13 @@ public:
 	 */
 	int32			Affiliate(const entry_ref& person, const entry_ref& paper, const std::vector<paperboy::Stay>& stays);
 
+	/**
+	 * Relates the paper to the institutions that the authors' stays said it comes from (Source Institution), once for each institution, with the confidence that the evidence of all the authors
+	 * gives (see PaperConfidence.h). The evidence is kept from Affiliate() until now, and then forgotten: call it when all the authors of the paper are done.
+	 * @return the number of institutions that the paper is related to
+	 */
+	int32			RelatePaper(const entry_ref& paper);
+
 	/** how many institution files were made (not found) */
 	int32			Made() const { return fMade; }
 
@@ -41,7 +49,14 @@ private:
 	void			_WriteAttributes(const entry_ref& institution, const paperboy::Stay& stay);
 	status_t		_Relate(const entry_ref& person, const entry_ref& institution, const paperboy::Stay& stay);
 	/** the paper comes from the institution (the Source Institution relation, stored at the paper: the same institution of several authors is one relation) */
-	status_t		_RelatePaper(const entry_ref& paper, const entry_ref& institution);
+	status_t		_RelatePaper(const entry_ref& paper, const entry_ref& institution, double confidence);
+
+	/** what the authors' stays say for "the paper comes from this institution", by the ROR id: the institution and the evidence of each author */
+	struct Production {
+		entry_ref			institution;
+		std::vector<double>	evidence;
+	};
+	std::map<std::string, Production> fProduction;
 
 	int32			fMade;
 };

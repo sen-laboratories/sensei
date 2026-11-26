@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include "PaperConfidence.h"
 #include "PaperInstitutions.h"
 #include "PaperModel.h"
 #include "PaperPeople.h"
@@ -47,10 +48,10 @@ public:
 private:
 	/** the data of the person from ORCID, Wikidata and Commons, as far as they know it; false if none of them did */
 	bool			_Lookup(paperboy::PersonData* person, std::string* photo);
-	status_t		_FindOrCreate(const entry_ref& paper, const paperboy::PersonData& person, entry_ref* found, bool* created);
+	status_t		_FindOrCreate(const entry_ref& paper, const paperboy::PersonData& person, entry_ref* found, bool* created, paperboy::PersonMatch* match);
 	bool			_FindByOrcid(const std::string& orcid, const entry_ref& near, entry_ref* found);
 	void			_WriteAttributes(const entry_ref& person, const paperboy::PersonData& data);
-	status_t		_Relate(const entry_ref& person, const entry_ref& paper);
+	status_t		_Relate(const entry_ref& person, const entry_ref& paper, double confidence);
 
 	HttpClient*		fHttp;
 	paperboy::Settings fSettings;

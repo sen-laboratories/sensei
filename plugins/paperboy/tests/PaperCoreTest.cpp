@@ -16,6 +16,7 @@
 #include "PaperApi.h"
 #include "PaperDate.h"
 #include "PaperChoice.h"
+#include "PaperConfidence.h"
 #include "PaperDoi.h"
 #include "PaperJson.h"
 #include "PaperName.h"
@@ -732,12 +733,58 @@ TestAffiliations()
 }
 
 
+static void
+TestConfidence()
+{
+	// the paper names the institution (stated), an author's dated employment covers the day (dated), an open one only began before: the order of the evidence
+	paperboy::Stay named, dated, open, undated, none;
+	named.namedByPaper = true;
+	dated.heldAtPublication = true; dated.since = "2019"; dated.until = "2026-12";
+	open.heldAtPublication = true; open.since = "2021-03";
+	undated.heldAtPublication = true;
+	CHECK(ProductionEvidence(named, 1) > ProductionEvidence(dated, 1));
+	CHECK(ProductionEvidence(dated, 1) > ProductionEvidence(open, 1));
+	CHECK(ProductionEvidence(open, 1) > ProductionEvidence(undated, 1));
+	CHECK(ProductionEvidence(none, 1) == 0);
+
+	// the paper names it and a dated employment says so, too: two sources, surer than either
+	paperboy::Stay both = named;
+	both.heldAtPublication = true; both.since = "2019"; both.until = "2026-12";
+	CHECK(ProductionEvidence(both, 1) > ProductionEvidence(named, 1));
+
+	// two positions on the day: each is less sure than one alone would be
+	CHECK(ProductionEvidence(dated, 2) < ProductionEvidence(dated, 1));
+	CHECK(ProductionEvidence(dated, 3) < ProductionEvidence(dated, 2));
+	CHECK(ProductionEvidence(named, 3) == ProductionEvidence(named, 1));		// (the paper says so: no sharing)
+
+	// four authors of a paper are at the institution with a current position: surer than one, but not as sure as four independent witnesses
+	const double one = ProductionConfidence({ProductionEvidence(open, 1)});
+	const double four = ProductionConfidence(std::vector<double>(4, ProductionEvidence(open, 1)));
+	CHECK(four > one && four < 0.95 && one < 0.6);
+	CHECK(ProductionConfidence({}) == 0);
+
+	// the person of a paper: by the ORCID iD surer than made from the entry, and that surer than a file of the same name
+	CHECK(AuthorshipConfidence(PersonMatch::kByIdentifier) > AuthorshipConfidence(PersonMatch::kCreated));
+	CHECK(AuthorshipConfidence(PersonMatch::kCreated) > AuthorshipConfidence(PersonMatch::kByNameOnly));
+	CHECK(AuthorshipConfidence(PersonMatch::kByIdentifier) < 1.0);
+
+	// an affiliation that ORCID and the paper both give: surer than either alone
+	paperboy::Stay job;
+	job.fromEmployment = true;
+	paperboy::Stay agreed = job;
+	agreed.namedByPaper = true;
+	CHECK(AffiliationConfidence(agreed) > AffiliationConfidence(job) && AffiliationConfidence(job) == AffiliationConfidence(named));
+	CHECK(AffiliationConfidence(none) == 0);
+}
+
+
 int
 main(int argc, char** argv)
 {
 	if (argc > 1)
 		sDataDir = argv[1];
 
+	TestConfidence();
 	TestDoi();
 	TestDate();
 	TestAbstract();

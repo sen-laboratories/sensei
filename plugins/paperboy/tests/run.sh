@@ -7,5 +7,7 @@
 set -e
 cd "$(dirname "$0")/.."
 out=${TMPDIR:-/tmp}/paperboy-core-test
-${CXX:-c++} -std=c++20 -Wall -Wextra -Icore ${JSON_INCLUDE:+-I$JSON_INCLUDE} -o "$out" tests/PaperCoreTest.cpp core/*.cpp
+# the headers of sento as <sen/...>, as they are installed in Haiku
+mkdir -p "$out-include" && ln -sfn "$PWD/../../../sento/src/cpp/include" "$out-include/sen"
+${CXX:-c++} -std=c++20 -Wall -Wextra -Icore -I"$out-include" ${JSON_INCLUDE:+-I$JSON_INCLUDE} -o "$out" tests/PaperCoreTest.cpp core/*.cpp
 "$out" tests/data

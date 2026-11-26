@@ -23,6 +23,7 @@
 #include <sen/SenList.h>
 #include <sen/SenMimeTypes.h>
 #include <sen/SenOntoBooks.h>
+#include <sen/SenOntoCore.h>
 #include <sen/SenOntoPeople.h>
 #include <spdlog/spdlog.h>
 
@@ -99,7 +100,8 @@ AuthorMaker::MakeAuthors(const entry_ref& file, const Paper& paper)
 
 		entry_ref ref;
 		bool created = false;
-		status_t result = _FindOrCreate(file, person, &ref, &created);
+		PersonMatch match = PersonMatch::kCreated;
+		status_t result = _FindOrCreate(file, person, &ref, &created, &match);
 		if (result != B_OK) {
 			spdlog::warn("could not make the author {}: {}", person.name, strerror(result));
 			continue;
@@ -116,7 +118,7 @@ AuthorMaker::MakeAuthors(const entry_ref& file, const Paper& paper)
 			}
 		}
 
-		result = _Relate(ref, file);
+		result = _Relate(ref, file, AuthorshipConfidence(match));
 		if (result != B_OK) {
 			spdlog::warn("could not relate {} to the paper: {}", person.name, strerror(result));
 			continue;
@@ -127,6 +129,9 @@ AuthorMaker::MakeAuthors(const entry_ref& file, const Paper& paper)
 		if (fSettings.affiliations)
 			fInstitutions.Affiliate(ref, file, PlanAffiliations(author.affiliations, person.employments, paper.date));
 	}
+	// (the paper comes from the institutions that its authors were at: related once each, with what all of them say)
+	if (fSettings.affiliations)
+		fInstitutions.RelatePaper(file);
 	return made;
 }
 
@@ -194,10 +199,12 @@ AuthorMaker::_FindByOrcid(const std::string& orcid, const entry_ref& near, entry
 
 
 status_t
-AuthorMaker::_FindOrCreate(const entry_ref& paper, const PersonData& person, entry_ref* found, bool* created)
+AuthorMaker::_FindOrCreate(const entry_ref& paper, const PersonData& person, entry_ref* found, bool* created, PersonMatch* match)
 {
+	*match = PersonMatch::kCreated;
 	if (!person.orcid.empty() && _FindByOrcid(person.orcid, paper, found)) {
 		*created = false;
+		*match = PersonMatch::kByIdentifier;
 		return B_OK;
 	}
 
@@ -205,7 +212,7 @@ AuthorMaker::_FindOrCreate(const entry_ref& paper, const PersonData& person, ent
 	// one unless it is known to be another: another ORCID iD)
 	if (person.name.empty())
 		return B_BAD_VALUE;
-	return sensei::FindOrCreateEntityFile(paper, sen::onto::people::mime::kPerson, person.name.c_str(), person.orcid.empty() ? "author" : person.orcid.c_str(),
+	const status_t result = sensei::FindOrCreateEntityFile(paper, sen::onto::people::mime::kPerson, person.name.c_str(), person.orcid.empty() ? "author" : person.orcid.c_str(),
 		[&person](BNode& node) {
 			BString sameAs;
 			node.ReadAttrString(sen::onto::people::attr::kSameAs, &sameAs);
@@ -213,6 +220,10 @@ AuthorMaker::_FindOrCreate(const entry_ref& paper, const PersonData& person, ent
 				&& sameAs.FindFirst(person.orcid.c_str()) < 0;
 			return !other;
 		}, found, created);
+	// (a file of that name that was there already is the person on the name alone)
+	if (result == B_OK && !*created)
+		*match = PersonMatch::kByNameOnly;
+	return result;
 }
 
 
@@ -266,16 +277,19 @@ AuthorMaker::_WriteAttributes(const entry_ref& ref, const PersonData& data)
 
 /** the person is the author of the paper: the server writes the relation (and its opposite direction, "authored by") */
 status_t
-AuthorMaker::_Relate(const entry_ref& person, const entry_ref& paper)
+AuthorMaker::_Relate(const entry_ref& person, const entry_ref& paper, double confidence)
 {
 	BMessenger server(sen::kServerSignature);
 	if (!server.IsValid())
 		return B_NOT_INITIALIZED;		// the SEN server is not running: the person is there, the relation is made by the next enrichment
 
+	BMessage properties;
+	properties.AddFloat(sen::onto::core::attr::kRelConfidence, (float)confidence);
 	BMessage add(sen::cmd::kRelationAdd), answer;
 	add.AddString(sen::key::kRelationType, sen::onto::books::mime::kAuthorship);
 	add.AddRef(sen::key::kSourceRef, &person);
 	add.AddRef(sen::key::kTargetRef, &paper);
+	add.AddMessage(sen::key::kRelationProperties, &properties);
 	status_t result = server.SendMessage(&add, &answer, 10000000, 10000000);
 	if (result != B_OK)
 		return result;
