@@ -57,6 +57,7 @@ PlanAffiliations(const std::vector<Affiliation>& named, const std::vector<Employ
 		base.name = place.name;
 		base.country = place.country;
 		base.type = InstitutionTypeText(place.type);
+		base.namedByPaper = true;
 
 		bool dated = false;
 		for (const Employment& job : employments) {

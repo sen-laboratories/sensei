@@ -23,7 +23,7 @@
  * - an employment at ORCID that goes on (no end) at an institution that the paper does not name: one stay (where the person is now);
  * - an employment of the past at an institution that the paper does not name is left out: a career would make a file of every institution the person ever worked at.
  *
- * Only an institution with a ROR id is an institution: nobody is guessed from a name.
+ * Only an institution with a ROR id is an institution: nobody is guessed from a name. The institutions that the paper names are also the ones that the paper comes from (`namedByPaper`).
  */
 namespace paperboy {
 
@@ -39,6 +39,7 @@ struct Stay {
 	std::string role;
 	std::string note;							///< the department
 	bool fromEmployment = false;				///< the dates and the role are ORCID's
+	bool namedByPaper = false;					///< the paper names the institution for the author (so the paper comes from it); false for the current employer that only ORCID knows
 };
 
 /** @brief The stays of one author (see above); the institutions of the paper first, in the order of the paper. */

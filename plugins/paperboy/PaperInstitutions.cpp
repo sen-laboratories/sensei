@@ -23,6 +23,7 @@
 #include <sen/SenList.h>
 #include <sen/SenMessages.h>
 #include <sen/SenOntoCore.h>
+#include <sen/SenOntoPapers.h>
 #include <sen/SenOntoPeople.h>
 #include <spdlog/spdlog.h>
 
@@ -77,6 +78,12 @@ InstitutionMaker::Affiliate(const entry_ref& person, const entry_ref& paper, con
 			related++;
 		else if (result != B_NOT_INITIALIZED)
 			spdlog::warn("could not relate {} to {}: {}", person.name, stay.name, strerror(result));
+
+		if (stay.namedByPaper) {
+			result = _RelatePaper(paper, institution);
+			if (result != B_OK && result != B_NOT_INITIALIZED)
+				spdlog::warn("could not relate the paper to {}: {}", stay.name, strerror(result));
+		}
 	}
 	return related;
 }
@@ -163,6 +170,29 @@ InstitutionMaker::_WriteAttributes(const entry_ref& ref, const Stay& stay)
 		node.WriteAttr(people::kSameAs, B_STRING_TYPE, 0, joined.c_str(), joined.size() + 1);
 	}
 	node.Sync();
+}
+
+
+/** the paper comes from the institution: stored at the paper only (an institution does not list its papers); the same relation again (another author of the same institution) is one */
+status_t
+InstitutionMaker::_RelatePaper(const entry_ref& paper, const entry_ref& institution)
+{
+	BMessenger server(sen::kServerSignature);
+	if (!server.IsValid())
+		return B_NOT_INITIALIZED;
+
+	BMessage add(sen::cmd::kRelationAdd), answer;
+	add.AddString(sen::key::kRelationType, sen::onto::papers::mime::kSourceInstitution);
+	add.AddRef(sen::key::kSourceRef, &paper);
+	add.AddRef(sen::key::kTargetRef, &institution);
+	status_t result = server.SendMessage(&add, &answer, 10000000, 10000000);
+	if (result != B_OK)
+		return result;
+	if (answer.GetInt32(sen::key::kStatus, 0) >= 400) {
+		spdlog::warn("the SEN server: {}", answer.GetString(sen::key::kDetail, "no relation"));
+		return B_ERROR;
+	}
+	return B_OK;
 }
 
 

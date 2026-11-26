@@ -684,7 +684,7 @@ TestAffiliations()
 	if (stays.size() == 2) {
 		CHECK_EQ(stays[0].rorId, "0161xgx34");
 		CHECK_EQ(stays[0].type, "Education");
-		CHECK(stays[0].since.empty() && stays[0].until.empty() && !stays[0].fromEmployment);
+		CHECK(stays[0].since.empty() && stays[0].until.empty() && !stays[0].fromEmployment && stays[0].namedByPaper);
 		CHECK_EQ(stays[1].name, "Meta (United States)");
 	}
 
@@ -700,6 +700,7 @@ TestAffiliations()
 	if (stays.size() == 4) {
 		CHECK(stays[0].fromEmployment && stays[0].role == "Assistant professor" && stays[0].until == "2001");
 		CHECK(stays[1].role == "Professeur titulaire" && stays[1].until.empty() && stays[1].note == "DIRO");
+		CHECK(stays[0].namedByPaper && stays[1].namedByPaper && stays[2].namedByPaper && !stays[3].namedByPaper);		// (Samsung is where the person is now, not where the paper comes from)
 		CHECK_EQ(stays[1].type, "Education");		// (what the paper knows of the institution stays)
 		CHECK(!stays[2].fromEmployment && stays[2].rorId == "01zbnvs85");
 		CHECK(stays[3].rorId == "04w3jy968" && stays[3].since == "2022-01-15" && stays[3].type.empty());

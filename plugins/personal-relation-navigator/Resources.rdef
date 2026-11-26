@@ -31,7 +31,7 @@ resource(4, "SEN:plugin:navigate") 1;
 // whether the settings window of SEN has anything to show for this plugin (a plugin that says false is not listed there)
 resource(20, "SEN:plugin:hasSettings") false;
 
-/* the personal relation, its special cases (friend, colleague...) and the relations from a person to an organization */
+/* the personal relation, its special cases (friend, colleague...) and the relations from a person or a paper to an organization (employment, membership, affiliation, source institution) and from an institution to another one or to a topic */
 resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.person",
     "types" = "relation/x-vnd.sen-labs.relation.person.acquaintance",
@@ -48,5 +48,9 @@ resource file_types message {
     "types" = "relation/x-vnd.sen-labs.relation.person.client",
     "types" = "relation/x-vnd.sen-labs.relation.person.employment",
     "types" = "relation/x-vnd.sen-labs.relation.person.membership",
+    "types" = "relation/x-vnd.sen-labs.relation.person.affiliation",
+    "types" = "relation/x-vnd.sen-labs.relation.institution.part-of",
+    "types" = "relation/x-vnd.sen-labs.relation.institution.research-focus",
+    "types" = "relation/x-vnd.sen-labs.relation.source-institution",
     "types" = "relation/x-vnd.sen-labs.relation.person.status"
 };
