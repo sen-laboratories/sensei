@@ -28,7 +28,7 @@ class HttpClient;
  * The institutions that the paper names for an author, and the current employment at ORCID, are made as institutions, and the person is affiliated with them (InstitutionMaker):
  * with the dates, the role and the department that ORCID has.
  *
- * A person that exists is found again (by the ORCID iD in `schema:sameAs`, anywhere on the volume; else by the name, in the folder of the paper) and not made twice;
+ * A person that exists is found again (by the ORCID iD in `schema:sameAs`, on any volume (the Library can be on another one than the paper); else by the name, in the folder of the paper) and not made twice;
  * what the person has written stays, unless the enrichment overwrites.
  */
 class AuthorMaker {

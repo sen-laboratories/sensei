@@ -14,6 +14,7 @@
 #include <Query.h>
 #include <String.h>
 #include <Volume.h>
+#include <VolumeRoster.h>
 #include <fs_attr.h>
 #include <fs_index.h>
 
@@ -169,29 +170,43 @@ AuthorMaker::_Lookup(PersonData* person, std::string* photo)
 bool
 AuthorMaker::_FindByOrcid(const std::string& orcid, const entry_ref& near, entry_ref* found)
 {
-	BVolume volume(near.device);
-	if (volume.InitCheck() != B_OK || !volume.KnowsQuery())
-		return false;
-
-	index_info info;
-	if (fs_stat_index(near.device, sen::onto::people::attr::kSameAs, &info) != 0)
-		fs_create_index(near.device, sen::onto::people::attr::kSameAs, B_STRING_TYPE, 0);
+	// The person lives in the Library, which can be on another volume than the paper: the volume of the paper first (its index is made if it is missing), then the others that have the index.
+	std::vector<dev_t> devices(1, near.device);
+	BVolumeRoster roster;
+	BVolume each;
+	while (roster.GetNextVolume(&each) == B_OK) {
+		if (each.Device() != near.device)
+			devices.push_back(each.Device());
+	}
 
 	BString predicate;
 	predicate << sen::onto::people::attr::kSameAs << "==\"*" << orcid.c_str() << "*\"";
-	BQuery query;
-	if (query.SetVolume(&volume) != B_OK || query.SetPredicate(predicate.String()) != B_OK || query.Fetch() != B_OK)
-		return false;
+	for (dev_t device : devices) {
+		BVolume volume(device);
+		if (volume.InitCheck() != B_OK || !volume.KnowsQuery())
+			continue;
 
-	entry_ref hit;
-	while (query.GetNextRef(&hit) == B_OK) {
-		BNode node(&hit);
-		char type[B_MIME_TYPE_LENGTH];
-		type[0] = '\0';
-		BNodeInfo(&node).GetType(type);
-		if (strcmp(type, sen::onto::people::mime::kPerson) == 0) {
-			*found = hit;
-			return true;
+		index_info info;
+		if (fs_stat_index(device, sen::onto::people::attr::kSameAs, &info) != 0) {
+			if (device != near.device)
+				continue;		// (a volume that has no index for it has no people to find: a query would not work)
+			fs_create_index(device, sen::onto::people::attr::kSameAs, B_STRING_TYPE, 0);
+		}
+
+		BQuery query;
+		if (query.SetVolume(&volume) != B_OK || query.SetPredicate(predicate.String()) != B_OK || query.Fetch() != B_OK)
+			continue;
+
+		entry_ref hit;
+		while (query.GetNextRef(&hit) == B_OK) {
+			BNode node(&hit);
+			char type[B_MIME_TYPE_LENGTH];
+			type[0] = '\0';
+			BNodeInfo(&node).GetType(type);
+			if (strcmp(type, sen::onto::people::mime::kPerson) == 0) {
+				*found = hit;
+				return true;
+			}
 		}
 	}
 	return false;

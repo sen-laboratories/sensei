@@ -18,7 +18,7 @@
  *
  * What the paper and ORCID say (see PlanAffiliations()) is written as far as it is known: the name, the ROR id, the country, the city and the type. Nothing is fetched here: the
  * SEN Campus plugin (the institution enricher) adds what the registries know when the institution is enriched. The institutions that the paper names are also the ones that the paper
- * comes from: the paper gets the relation to each of them. An institution is found by its ROR id wherever it is on the volume, so
+ * comes from: the paper gets the relation to each of them. An institution is found by its ROR id wherever it is (on any volume that has the index; the paper's first), so
  * that the one that was enriched before (and may be named otherwise) is not made twice; what the file has stays, only what is missing is filled in.
  */
 class InstitutionMaker {

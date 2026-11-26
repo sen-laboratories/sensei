@@ -13,6 +13,7 @@
 #include <Query.h>
 #include <String.h>
 #include <Volume.h>
+#include <VolumeRoster.h>
 #include <fs_attr.h>
 #include <fs_index.h>
 
@@ -113,33 +114,46 @@ InstitutionMaker::RelatePaper(const entry_ref& paper)
 }
 
 
-/** The institution with the id (in `dc:identifier`, bare) of the volume of the paper; the index is the one that the ontology installer makes. */
+/** The institution with the id (in `dc:identifier`, bare), wherever it is: the volume of the paper first, then the others that have the index (the Library can be on another volume than the paper). */
 bool
 InstitutionMaker::_FindByRor(const std::string& rorId, const entry_ref& near, entry_ref* found)
 {
-	BVolume volume(near.device);
-	if (volume.InitCheck() != B_OK || !volume.KnowsQuery())
-		return false;
-
-	index_info info;
-	if (fs_stat_index(near.device, people::kRor, &info) != 0)
-		fs_create_index(near.device, people::kRor, B_STRING_TYPE, 0);
+	std::vector<dev_t> devices(1, near.device);
+	BVolumeRoster roster;
+	BVolume each;
+	while (roster.GetNextVolume(&each) == B_OK) {
+		if (each.Device() != near.device)
+			devices.push_back(each.Device());
+	}
 
 	BString predicate;
 	predicate << people::kRor << "==\"" << rorId.c_str() << "\"";
-	BQuery query;
-	if (query.SetVolume(&volume) != B_OK || query.SetPredicate(predicate.String()) != B_OK || query.Fetch() != B_OK)
-		return false;
+	for (dev_t device : devices) {
+		BVolume volume(device);
+		if (volume.InitCheck() != B_OK || !volume.KnowsQuery())
+			continue;
 
-	entry_ref hit;
-	while (query.GetNextRef(&hit) == B_OK) {
-		BNode node(&hit);
-		char type[B_MIME_TYPE_LENGTH];
-		type[0] = '\0';
-		BNodeInfo(&node).GetType(type);
-		if (strcmp(type, sen::onto::people::mime::kInstitution) == 0) {
-			*found = hit;
-			return true;
+		index_info info;
+		if (fs_stat_index(device, people::kRor, &info) != 0) {
+			if (device != near.device)
+				continue;		// (no index: no institutions of that kind there, and a query would not work)
+			fs_create_index(device, people::kRor, B_STRING_TYPE, 0);
+		}
+
+		BQuery query;
+		if (query.SetVolume(&volume) != B_OK || query.SetPredicate(predicate.String()) != B_OK || query.Fetch() != B_OK)
+			continue;
+
+		entry_ref hit;
+		while (query.GetNextRef(&hit) == B_OK) {
+			BNode node(&hit);
+			char type[B_MIME_TYPE_LENGTH];
+			type[0] = '\0';
+			BNodeInfo(&node).GetType(type);
+			if (strcmp(type, sen::onto::people::mime::kInstitution) == 0) {
+				*found = hit;
+				return true;
+			}
 		}
 	}
 	return false;
