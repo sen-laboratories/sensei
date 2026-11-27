@@ -29,6 +29,7 @@
 #include <spdlog/spdlog.h>
 
 #include "PaperConfidence.h"
+#include "PaperServer.h"
 #include "PaperDate.h"
 
 using namespace paperboy;
@@ -226,7 +227,7 @@ InstitutionMaker::_RelatePaper(const entry_ref& paper, const entry_ref& institut
 	add.AddRef(sen::key::kSourceRef, &paper);
 	add.AddRef(sen::key::kTargetRef, &institution);
 	add.AddMessage(sen::key::kRelationProperties, &properties);
-	status_t result = server.SendMessage(&add, &answer, 10000000, 10000000);
+	status_t result = AskServer(server, &add, &answer);
 	if (result != B_OK)
 		return result;
 	if (answer.GetInt32(sen::key::kStatus, 0) >= 400) {
@@ -265,7 +266,7 @@ InstitutionMaker::_Relate(const entry_ref& person, const entry_ref& institution,
 	add.AddRef(sen::key::kTargetRef, &institution);
 	if (!properties.IsEmpty())
 		add.AddMessage(sen::key::kRelationProperties, &properties);
-	status_t result = server.SendMessage(&add, &answer, 10000000, 10000000);
+	status_t result = AskServer(server, &add, &answer);
 	if (result != B_OK)
 		return result;
 	if (answer.GetInt32(sen::key::kStatus, 0) >= 400) {

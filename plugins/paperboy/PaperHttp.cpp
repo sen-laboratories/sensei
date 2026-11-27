@@ -35,6 +35,8 @@ namespace {
 constexpr bigtime_t kTimeout = 20 * 1000000LL;
 constexpr bigtime_t kDefaultBackoff = 2 * 1000000LL;
 constexpr bigtime_t kMaxBackoff = 10 * 1000000LL;
+// a request that has been under way this long is not asked again for a failure on the way (the connection is not poor, it is gone, and the next request would wait as long)
+constexpr bigtime_t kRetryWindow = 30 * 1000000LL;
 constexpr int kMaxRedirections = 5;
 constexpr size_t kMaxAnswer = 32 * 1024 * 1024;
 
@@ -73,6 +75,8 @@ HttpClient::Get(const std::string& url, std::string* body, const HttpOptions& op
 	if (fSession == NULL)
 		fSession = sen::SharedHttpSession();
 
+	int networkTries = 0;
+	const bigtime_t firstTry = system_time();
 	for (int attempt = 1; attempt <= options.maxAttempts; attempt++) {
 		bigtime_t wait = fLastRequest + options.minInterval - system_time();
 		if (wait > 0)
@@ -112,6 +116,15 @@ HttpClient::Get(const std::string& url, std::string* body, const HttpOptions& op
 			}
 			result.Body();		// synchronise with the borrowed buffer
 		} catch (const BNetworkRequestError& error) {
+			// A request that did not get an answer (a timeout, a connection that dropped, a lookup of the name that failed) is what a poor connection does to a request that is fine: it is asked
+			// again after a pause, a few times, whatever the attempts for a busy server say (an answer of the server, 4xx or 5xx, is not this).
+			if (networkTries < options.networkRetries && system_time() - firstTry < kRetryWindow) {
+				networkTries++;
+				spdlog::info("request to {} failed ({}), asking again ({} of {})", url, error.Message(), networkTries, options.networkRetries);
+				snooze(networkTries * 2 * 1000000LL);
+				attempt--;
+				continue;
+			}
 			spdlog::warn("request to {} failed: {}", url, error.Message());
 			return error.ErrorCode();
 		} catch (const BError& error) {

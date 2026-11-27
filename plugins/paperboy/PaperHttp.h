@@ -19,6 +19,7 @@ namespace BPrivate { namespace Network { class BHttpSession; } }
 struct HttpOptions {
 	bigtime_t	minInterval = 150 * 1000LL;			///< between two requests of the client (OpenAlex: ten a second at most)
 	const char*	accept = "application/json";
+	int			networkRetries = 2;					///< a request that fails on the way (no answer in time, the connection dropped, a name that was not found: a poor connection) is asked again, this often, after a short pause; an answer of the server, whatever it says, is not a reason
 	int			maxAttempts = 3;					///< a 429 or 503 is answered with a pause and another attempt
 };
 

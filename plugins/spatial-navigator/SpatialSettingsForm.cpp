@@ -412,10 +412,15 @@ TestOverpassServer(const Server& server)
 
 namespace {
 
-/** What a test found goes to the status of the server, and a mirror (not the public server) that is not reachable is left out of the list until a test of it works. */
+/**
+ * What a test found goes to the status of the server, and a mirror (not the public server) that is not reachable is left out of the list until a test of it works. A test that was made
+ * because the server was switched on (or its address, key or flag changed) and that does not pass switches it off again: a server that does not work is never on, until the user
+ * switches it on again and the test works.
+ */
 void
-TestDone(const Server& server, const ServerTest& test)
+TestDone(const Server& server, const ServerTest& test, bool activation)
 {
+	const bool switchOff = activation && !server.isPublic && test.state != "ok";
 	{
 		std::lock_guard<std::mutex> lock(sStatusLock);
 		LoadStatus();
@@ -423,8 +428,16 @@ TestDone(const Server& server, const ServerTest& test)
 		status.state = test.state;
 		status.text = test.text;
 		status.detail = test.detail;
+		if (switchOff)
+			status.detail = "Switched off: the test did not pass. Switch it on to test it again.\n" + status.detail;
 		sStatus[server.id] = status;
 		SaveStatus();
+	}
+	if (switchOff) {
+		Settings current;
+		ParseSettings(ReadFileText(), &current);
+		if (ServerIsOn(current, server.id))
+			WriteKeys({{"overpass_servers", ServersTextWithServerOff(current, server.id)}});
 	}
 	if (!server.isPublic) {
 		Settings current;
@@ -444,20 +457,27 @@ TestDone(const Server& server, const ServerTest& test)
 }
 
 
+/** a test that runs in a thread of its own: the server, and whether it was started by switching the server on */
+struct TestJob {
+	Server	server;
+	bool	activation;
+};
+
+
 int32
 RunTest(void* data)
 {
-	Server* server = (Server*)data;
-	const ServerTest test = TestOverpassServer(*server);
-	TestDone(*server, test);
-	delete server;
+	TestJob* job = (TestJob*)data;
+	const ServerTest test = TestOverpassServer(job->server);
+	TestDone(job->server, test, job->activation);
+	delete job;
 	return 0;
 }
 
 
 /** A server is tested in the background (it can take 20 seconds): the status shows that it is under way, and the result is pushed to the window when it is there. */
 void
-StartTest(const std::string& id)
+StartTest(const std::string& id, bool activation)
 {
 	Settings current;
 	ParseSettings(ReadFileText(), &current);
@@ -476,8 +496,10 @@ StartTest(const std::string& id)
 		status.testing = true;
 		sStatus[id] = status;
 	}
-	const thread_id thread = spawn_thread(RunTest, "overpass test", B_NORMAL_PRIORITY, new Server(server));
+	TestJob* job = new TestJob{server, activation};
+	const thread_id thread = spawn_thread(RunTest, "overpass test", B_NORMAL_PRIORITY, job);
 	if (thread < B_OK || resume_thread(thread) != B_OK) {
+		delete job;
 		std::lock_guard<std::mutex> lock(sStatusLock);
 		sStatus[id] = Status();
 	}
@@ -639,7 +661,7 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 	}
 	const std::vector<std::string> wasOn = on;
 	std::vector<std::pair<std::string, std::string>> perServer;		// (the keys, addresses and flags of the servers)
-	std::vector<std::string> toTest, changedIds;
+	std::vector<std::string> toTest, changedIds, switchedOn;
 	bool listChanged = false, testAll = false;
 
 	// what the user gave a server: each is a change only if it differs from what the server has now; the address of the list and the flag of the list are stored as nothing
@@ -791,8 +813,10 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 		valid.push_back({"overpass_servers", ServersText(order, on)});
 		// a server that is switched on is tested
 		for (const std::string& id : on) {
-			if (std::find(wasOn.begin(), wasOn.end(), id) == wasOn.end())
+			if (std::find(wasOn.begin(), wasOn.end(), id) == wasOn.end()) {
 				toTest.push_back(id);
+				switchedOn.push_back(id);
+			}
 		}
 	}
 	valid.insert(valid.end(), perServer.begin(), perServer.end());
@@ -820,8 +844,11 @@ SettingsProvider::Apply(const BMessage& changes, std::vector<std::string>* refus
 			if (std::find(done.begin(), done.end(), id) != done.end())
 				continue;
 			done.push_back(id);
+			// (a server that was switched on, or whose address, key or flag changed, must pass: if not it is switched off; the button only asks)
+			const bool activation = std::find(switchedOn.begin(), switchedOn.end(), id) != switchedOn.end()
+				|| std::find(changedIds.begin(), changedIds.end(), id) != changedIds.end();
 			if (ServerIsOn(now, id))
-				StartTest(id);
+				StartTest(id, activation);
 		}
 	}
 	return result != B_OK ? result : first;

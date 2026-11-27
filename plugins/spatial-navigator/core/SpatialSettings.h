@@ -79,11 +79,14 @@ extern const char* const kMirrorNotWorking;
 /** The ids of the list in the order of the setting (every server once; those that the setting does not name last, in the order of Mirrors()). */
 std::vector<std::string> ServerOrder(const Settings& settings);
 
-/** Whether a server (its id) is on: as the setting says; a server that the setting does not name is on if it needs no key. */
+/** Whether a server (its id) is on: as the setting says; a server that the setting does not name is off, except the public default (it has passed no test that switched it on). */
 bool ServerIsOn(const Settings& settings, const std::string& id);
 
 /** The value of the setting for an order and the ids that are on: `default -private-coffee`. */
 std::string ServersText(const std::vector<std::string>& order, const std::vector<std::string>& on);
+
+/** The setting `overpass_servers` as it is now, with this server switched off (it keeps its place): what is written when the test that switched a server on failed. */
+std::string ServersTextWithServerOff(const Settings& settings, const std::string& id);
 
 /** The name of the setting with the key of a server: `overpass_key_nextgis` (`overpass_key_overpass_ch`). Empty if the id is none of the list. */
 std::string KeySettingName(const std::string& id);

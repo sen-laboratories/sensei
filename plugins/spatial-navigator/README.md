@@ -71,9 +71,9 @@ the location server: a switch, the name and a description for each, in the order
 
 | Server | Address | Key |
 |---|---|---|
-| overpass-api.de | `https://overpass-api.de/api/interpreter` | no. On at first; under 10,000 queries a day, often busy |
-| Private.coffee | `https://overpass.private.coffee/api/interpreter` | no. No limit. On at first |
-| VK Maps | `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | no. No limit. On at first |
+| overpass-api.de | `https://overpass-api.de/api/interpreter` | no. On at first (the only one); under 10,000 queries a day, often busy |
+| Private.coffee | `https://overpass.private.coffee/api/interpreter` | no. No limit. Off at first: switch it on to test it |
+| VK Maps | `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | no. No limit. Off at first: switch it on to test it |
 | NextGIS | `https://overpass.nextgis.com/{key}/api/interpreter` | **required** (free, sign up). No limit. Off at first |
 | Overpass.ch | `https://api.overpass.ch/v1/{key}/interpreter` | **required** (free tier of 10,000 requests a month, 30 a minute; paid plans). Off at first |
 | Custom mirror | the address you type under the list | the check box *API key?* says. Off at first |
@@ -94,8 +94,8 @@ until it has one. The keys are kept as typed in `~/config/settings/sen/spatial-n
 **Status.** The last column shows only what a test found: a green check mark and the HTTP status (`200 OK`), a warning (the server answered with an error: `403 Forbidden`, `429 Too Many Requests`,
 `200 OK, not Overpass`), or an error (`No answer`, `Not reachable`, `502 Bad Gateway`), or **n/a** for a server that was not tested yet or cannot be asked yet (no address, no key: the tool tip says which); the tool tip of
 a result has the details (the time it took, what to check). A server is **tested when it is switched on**, and again when its address, key or flag changes; the button **Test availability** below the *Map style* menu, in the line of the title of the
-list, tests all that are on. A test takes up to 20 seconds, runs in the background and the column shows `Testing...` with a spinner meanwhile. A mirror (not the public server) that is not reachable is left out of the
-list until a test of it works (`overpass_failed` in the settings file names it). The last results are kept in `~/config/cache/sen/spatial-navigator/server-status`.
+list, tests all that are on. A test takes up to 20 seconds, runs in the background and the column shows `Testing...` with a spinner meanwhile. **A server that does not pass the test that switching it on makes is switched off again** (the tool tip says so): a server that does not work is never on, until you switch it on again and the test works. A mirror (not the public server) that is not reachable is also left out of the
+list until a test of it works (`overpass_failed` in the settings file names it); the button only asks, it does not switch anything off. Only the public server is on at first: the mirrors are switched on by the user (a server that was never tested could be down, and the questions that come after it would have lost the time). The last results are kept in `~/config/cache/sen/spatial-navigator/server-status`.
 
 The setting is one line, as for the location server: `overpass_servers = vk-maps default -private-coffee -nextgis -overpass-ch -custom` (the order; a `-` in front of a server that is off). A file from before the
 list, with `overpass_mirror = vk-maps` and `overpass_key`, is read as that server alone.

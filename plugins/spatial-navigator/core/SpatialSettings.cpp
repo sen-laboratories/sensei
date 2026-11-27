@@ -423,11 +423,9 @@ ServerIsOn(const Settings& settings, const std::string& id)
 {
 	if (std::find(settings.serverOrder.begin(), settings.serverOrder.end(), id) != settings.serverOrder.end())
 		return std::find(settings.serverOff.begin(), settings.serverOff.end(), id) == settings.serverOff.end();
-	for (const Mirror& mirror : Mirrors()) {
-		if (id == mirror.id)
-			return !mirror.requiresKey && id != "custom";
-	}
-	return false;
+	// A server that was never named is not switched on: it has not passed the test that switching it on makes, and one that is down costs the time of the questions that come after it
+	// (the public server is the one that works for everybody: it is the default).
+	return id == "default";
 }
 
 
@@ -485,6 +483,19 @@ MakeServer(const Settings& settings, const std::string& id, Server* server, std:
 		return true;
 	}
 	return false;
+}
+
+
+std::string
+ServersTextWithServerOff(const Settings& settings, const std::string& id)
+{
+	const std::vector<std::string> order = ServerOrder(settings);
+	std::vector<std::string> on;
+	for (const std::string& each : order) {
+		if (each != id && ServerIsOn(settings, each))
+			on.push_back(each);
+	}
+	return ServersText(order, on);
 }
 
 

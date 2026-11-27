@@ -306,14 +306,26 @@ static void
 TestSettings()
 {
 	using namespace spatial;
-	// with no setting the list is the public server, then the mirrors that need no key, in the order of the list; the servers that need a key and the custom one are off
+	// with no setting only the public server is on: a mirror is switched on by the user, and the test that this makes decides whether it stays on (one that was never tested could be down,
+	// and the time of the questions that follow it is lost)
 	Settings settings;
 	{
 		const std::vector<Server> servers = ActiveServers(settings);
-		CHECK(servers.size() == 3 && servers[0].id == "default" && servers[0].isPublic && servers[0].endpoint == kDefaultOverpassUrl);
-		CHECK(servers[1].id == "private-coffee" && servers[1].endpoint == "https://overpass.private.coffee/api/interpreter");
-		CHECK(servers[2].id == "vk-maps" && servers[2].endpoint == "https://maps.mail.ru/osm/tools/overpass/api/interpreter" && servers[2].key.empty());
-		CHECK(ServerOrder(settings).size() == Mirrors().size() && !ServerIsOn(settings, "nextgis") && !ServerIsOn(settings, "custom") && ServerIsOn(settings, "vk-maps"));
+		CHECK(servers.size() == 1 && servers[0].id == "default" && servers[0].isPublic && servers[0].endpoint == kDefaultOverpassUrl);
+		CHECK(ServerOrder(settings).size() == Mirrors().size() && !ServerIsOn(settings, "nextgis") && !ServerIsOn(settings, "custom") && !ServerIsOn(settings, "vk-maps")
+			&& !ServerIsOn(settings, "private-coffee") && ServerIsOn(settings, "default"));
+	}
+	// a server whose test failed when it was switched on is written off, and keeps its place
+	{
+		Settings listed;
+		ParseSettings("overpass_servers = default private-coffee vk-maps\n", &listed);
+		CHECK(ServerIsOn(listed, "private-coffee") && ServerIsOn(listed, "vk-maps") && ActiveServers(listed).size() == 3);
+		const std::string text = ServersTextWithServerOff(listed, "private-coffee");
+		CHECK(text.find("default -private-coffee vk-maps") == 0);
+		Settings after;
+		ParseSettings("overpass_servers = " + text, &after);
+		CHECK(!ServerIsOn(after, "private-coffee") && ServerIsOn(after, "vk-maps") && ServerIsOn(after, "default") && ServerOrder(after) == ServerOrder(listed));
+		CHECK(ActiveServers(after).size() == 2);
 	}
 	// the setting names the order and switches off with a -; what it does not name follows, as the list has it; a name that is none of the list is left out
 	{

@@ -30,6 +30,7 @@
 
 #include "PaperAffiliations.h"
 #include "PaperDate.h"
+#include "PaperServer.h"
 #include "PaperHttp.h"
 #include "PaperPeople.h"
 #include "../../common/ThumbnailUtil.h"
@@ -305,7 +306,7 @@ AuthorMaker::_Relate(const entry_ref& person, const entry_ref& paper, double con
 	add.AddRef(sen::key::kSourceRef, &person);
 	add.AddRef(sen::key::kTargetRef, &paper);
 	add.AddMessage(sen::key::kRelationProperties, &properties);
-	status_t result = server.SendMessage(&add, &answer, 10000000, 10000000);
+	status_t result = AskServer(server, &add, &answer);
 	if (result != B_OK)
 		return result;
 	if (answer.GetInt32(sen::key::kStatus, 0) >= 400) {
