@@ -23,6 +23,7 @@
 #include <sen/Sen.h>
 #include <sen/SenList.h>
 #include <sen/SenMimeTypes.h>
+#include <sen/SenTrash.h>
 #include <sen/SenOntoBooks.h>
 #include <sen/SenOntoCore.h>
 #include <sen/SenOntoPeople.h>
@@ -200,6 +201,8 @@ AuthorMaker::_FindByOrcid(const std::string& orcid, const entry_ref& near, entry
 
 		entry_ref hit;
 		while (query.GetNextRef(&hit) == B_OK) {
+			if (sen::trash::IsInTrash(hit))
+				continue;		// (a person that was thrown away is none until it is restored)
 			BNode node(&hit);
 			char type[B_MIME_TYPE_LENGTH];
 			type[0] = '\0';

@@ -26,6 +26,7 @@
 #include <sen/SenOntoCore.h>
 #include <sen/SenOntoPapers.h>
 #include <sen/SenOntoPeople.h>
+#include <sen/SenTrash.h>
 #include <spdlog/spdlog.h>
 
 #include "PaperConfidence.h"
@@ -147,6 +148,8 @@ InstitutionMaker::_FindByRor(const std::string& rorId, const entry_ref& near, en
 
 		entry_ref hit;
 		while (query.GetNextRef(&hit) == B_OK) {
+			if (sen::trash::IsInTrash(hit))
+				continue;		// (an institution that was thrown away is none until it is restored)
 			BNode node(&hit);
 			char type[B_MIME_TYPE_LENGTH];
 			type[0] = '\0';

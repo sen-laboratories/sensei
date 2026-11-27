@@ -19,6 +19,7 @@
 
 #include <sen/Sen.h>
 #include <sen/SenList.h>
+#include <sen/SenTrash.h>
 #include <spdlog/spdlog.h>
 
 #include "PaperDate.h"
@@ -345,6 +346,8 @@ FindLocalFile(const std::string& doi, const entry_ref& near, entry_ref* found)
 		while (query.GetNextRef(&hit) == B_OK) {
 			if (hit.device == near.device && hit.directory == near.directory && BString(hit.name) == near.name)
 				continue;		// the paper itself
+			if (sen::trash::IsInTrash(hit))
+				continue;		// (a paper that was thrown away is not the paper)
 			*found = hit;
 			return true;
 		}
